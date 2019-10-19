@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="AutomationDebug|Win32">
+      <Configuration>AutomationDebug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{02EED5E9-096E-4542-9040-0FAD7CCE7EC6}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>mesh_libs</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='AutomationDebug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='AutomationDebug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='AutomationDebug|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)..\MeshClient\MeshLibraries\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)..\MeshClient\MeshLibraries\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)..\MeshClient\MeshLibraries\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='AutomationDebug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>MESH_CORE_ONE_SHOT_ADV;MESH_OVER_GATT_ONLY;WICED_BT_MESH_TRACE_ENABLE;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>.\;..\..\..\..\..\..\include;..\..\..\..\..\..\libraries\mesh_core_lib;..\..\..\..\..\..\libraries\mesh_models_lib;..\..\..\..\..\..\..\20719-B1_Bluetooth\include\20719;..\..\..\..\..\..\..\20719-B1_Bluetooth\include\20719\stack;..\..\..\..\..\..\..\20719-B1_Bluetooth\include\20719\hal</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>MESH_CORE_ONE_SHOT_ADV;MESH_OVER_GATT_ONLY;WICED_BT_MESH_TRACE_ENABLE;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>.\;..\..\..\..\..\..\include;..\..\..\..\..\..\libraries\mesh_core_lib;..\..\..\..\..\..\libraries\mesh_models_lib;..\..\..\..\..\..\..\20719-B1_Bluetooth\include\20719;..\..\..\..\..\..\..\20719-B1_Bluetooth\include\20719\stack;..\..\..\..\..\..\..\20719-B1_Bluetooth\include\20719\hal</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>MESH_CORE_ONE_SHOT_ADV;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>.\;..\..\..\..\..\..\libraries\mesh_app_lib;..\..\..\..\..\..\libraries\mesh_core_lib;..\..\..\..\..\..\include;..\..\..\..\..\..\libraries\mesh_models_lib</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>MESH_CORE_ONE_SHOT_ADV;MESH_OVER_GATT_ONLY;WICED_BT_MESH_TRACE_ENABLE;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>.\;..\..\..\..\..\..\include;..\..\..\..\..\..\libraries\mesh_core_lib;..\..\..\..\..\..\libraries\mesh_models_lib;..\..\..\..\..\..\..\20719-B1_Bluetooth\include\20719;..\..\..\..\..\..\..\20719-B1_Bluetooth\include\20719\stack;..\..\..\..\..\..\..\20719-B1_Bluetooth\include\20719\hal</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName).pdb</ProgramDataBaseFileName>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>MESH_CORE_ONE_SHOT_ADV;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>.\;..\..\..\..\..\..\libraries\mesh_app_lib;..\..\..\..\..\..\libraries\mesh_core_lib;..\..\..\..\..\..\include;..\..\..\..\..\..\libraries\mesh_models_lib</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\access_layer.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\core_aes_ccm.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\directed_forwarding.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\directed_forwarding_ctrl_msg.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\directed_forwarding_msg.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\directed_forwarding_timer.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\ecdh.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_cfg_model.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_crt_msg.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_heartbeat.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_identity.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_msg_handler.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\friend.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\friendship.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\health.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\iv_updt.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\key_refresh.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\lower_transport_layer.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\low_power.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\mesh_core.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\mesh_event.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\mesh_util.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\network_layer.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\pb_transport.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\provisioning.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_core_lib\upper_transport_layer.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\generic_power_onoff_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\light_lc_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\remote_provision_server.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\mesh_gatt_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\generic_default_transition_time_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\generic_level_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\generic_onoff_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\generic_property_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\light_ctl_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\light_hsl_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\light_lightness_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\mesh_model_utils.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\blob_transfer_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\blob_transfer_server.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\fw_distributor.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_models_lib\sensor_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_provisioner_lib\mesh_config_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_provisioner_lib\mesh_fw_provider.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_provisioner_lib\mesh_health_client.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_provisioner_lib\mesh_provisioner.c" />
+    <ClCompile Include="..\..\..\..\..\..\libraries\mesh_provisioner_lib\mesh_proxy_client.c" />
+    <ClCompile Include="aes.cpp" />
+    <ClCompile Include="aes_cmac.cpp" />
+    <ClCompile Include="ccm.cpp" />
+    <ClCompile Include="mesh_main.c" />
+    <ClCompile Include="p_256_curvepara.c" />
+    <ClCompile Include="p_256_ecc_pp.c" />
+    <ClCompile Include="p_256_multprecision.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\access_layer.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\aes.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\brg_endian.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\brg_types.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\bt_target_.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\core_aes_ccm.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\directed_forwarding.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\directed_forwarding_ctrl_msg.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\directed_forwarding_msg.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\directed_forwarding_timer.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\ecdh.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\fid_app.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_cfg_model.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_crt_msg.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_heartbeat.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_identity.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\foundation_msg_handler.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\friend.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\friendship.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\health.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\iv_updt.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\key_refresh.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\lower_transport_layer.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\low_power.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\mesh_core.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\mesh_trace.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\mesh_util.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\network_layer.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\pb_transport.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\platform.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\provisioning_int.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\p_256_ecc_pp.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\p_256_multprecision.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\p_256_types.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_core_lib\upper_transport_layer.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_models_lib\remote_provision_server.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_models_lib\mesh_model_utils.h" />
+    <ClInclude Include="..\..\..\..\..\..\libraries\mesh_provisioner_lib\mesh_core_defs.h" />
+    <ClInclude Include="aes_cmac.h" />
+    <ClInclude Include="bt_target.h" />
+    <ClInclude Include="clock_timer.h" />
+    <ClInclude Include="mesh_main.h" />
+    <ClInclude Include="wiced_bt_app_common.h" />
+    <ClInclude Include="wiced_bt_ble.h" />
+    <ClInclude Include="wiced_bt_trace.h" />
+    <ClInclude Include="wiced_hal_nvram.h" />
+    <ClInclude Include="wiced_memory.h" />
+    <ClInclude Include="wiced_result.h" />
+    <ClInclude Include="wiced_timer.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
