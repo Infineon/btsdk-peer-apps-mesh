@@ -65,28 +65,34 @@ import java.util.concurrent.Semaphore;
     private static final String TAG = "MeshGattClient";
 
 
-    public static final UUID CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+     public static final UUID CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
      private static final long MTU_REQUEST_TIMEOUT = 5000;
      private static final int MSG_REQUEST_MTU = 1;
      private static BluetoothLeScanner    mLeScanner = null;
-    private BluetoothManager mBluetoothManager = null;
-    private BluetoothAdapter mBluetoothAdapter = null;
-    private Context mCtx = null;
-    private MeshNativeHelper mMeshNativeHelper = null;
-    private static BluetoothGatt mGatt = null;
-    private static BluetoothGattService        mGattService = null;
-    private static BluetoothGattCharacteristic mGattChar    = null;
-    private static BluetoothGattCharacteristic mGattCharNotify = null;
-    static LinkedList<BluetoothCommand> mCommandQueue = new LinkedList<BluetoothCommand>();
-    static Executor mCommandExecutor = Executors.newSingleThreadExecutor();
-    static Semaphore mCommandLock = new Semaphore(1,true);
-    private int mMtuSize = 0;
-    private static BluetoothDevice mCurrentDev = null;
+     private BluetoothManager mBluetoothManager = null;
+     private BluetoothAdapter mBluetoothAdapter = null;
+     private Context mCtx = null;
+     private MeshNativeHelper mMeshNativeHelper = null;
+     private static BluetoothGatt mGatt = null;
+     private static BluetoothGattService        mGattService = null;
+     private static BluetoothGattCharacteristic mGattChar    = null;
+     private static BluetoothGattCharacteristic mGattCharNotify = null;
+     static LinkedList<BluetoothCommand> mCommandQueue = new LinkedList<BluetoothCommand>();
+     static Executor mCommandExecutor = Executors.newSingleThreadExecutor();
+     static Semaphore mCommandLock = new Semaphore(1,true);
+     private int mMtuSize = 0;
+     private static BluetoothDevice mCurrentDev = null;
 
-    private static IMeshGattClientCallback mCallback = null;
-    private static OTAUpgrade otaUpgrade = null;
+     private String mComponentName;
+     private String mFileName;
+     private String mMetadata;
+     private byte   mDfuMethod;
+     private boolean mOtaSupported = false;
 
-    private static MeshGattClient ourInstance = new MeshGattClient();
+     private static IMeshGattClientCallback mCallback = null;
+     private static OTAUpgrade otaUpgrade = null;
+
+     private static MeshGattClient ourInstance = new MeshGattClient();
      private final GattUtils.RequestQueue mRequestQueue = GattUtils.createRequestQueue();
 
      private  BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
@@ -251,6 +257,18 @@ import java.util.concurrent.Semaphore;
                 }
 
             } else { //connecting to proxy
+
+                mOtaSupported = false;
+                mGattService = gatt.getService(Constants.UUID_UPGRADE_SERVICE);
+                if (mGattService != null) {
+                    Log.i(TAG, "onServicesDiscovered: Proxy device supports Cypress OTA Service");
+                    mOtaSupported = true;
+                }
+                mGattService = gatt.getService(Constants.UUID_SECURE_UPGRADE_SERVICE);
+                if (mGattService != null) {
+                    Log.i(TAG, "onServicesDiscovered: Proxy device supports Cypress Secure OTA Service");
+                    mOtaSupported = true;
+                }
 
                 mGattService = gatt.getService(Constants.UUID_SERVICE_SMART_MESH_PROXY);
                 if (mGattService == null) {
@@ -582,17 +600,47 @@ import java.util.concurrent.Semaphore;
         disconnectDevice();
     }
 
-    public void startOtaUpgrade(String componentName, String fileName, String metadata, byte dfuMethod) {
-
+    public int startOtaUpgrade(String componentName, String fileName, String metadata, byte dfuMethod) {
         Log.d(TAG,"startOtaUpgrade mGatt:"+mGatt);
-        if(otaUpgrade == null)
-        {
-            Log.d(TAG,"otaupgrade is null creating new object");
-            otaUpgrade = new OTAUpgrade();
+        Log.i(TAG, "startOtaUpgrade: componentName = " + componentName + ", dfuMethod = " + dfuMethod + ", otaSupported = " + mOtaSupported);
+        Log.i(TAG, "startOtaUpgrade: fileName = " + fileName + ", metadata = " + metadata);
+
+        mComponentName = componentName;
+        mFileName      = fileName;
+        mMetadata      = metadata;
+        mDfuMethod     = dfuMethod;
+
+        if(dfuMethod == MeshController.DFU_METHOD_PROXY_TO_ALL || dfuMethod == MeshController.DFU_METHOD_APP_TO_ALL){
+            Log.d(TAG,"send dfu start command");
+            return mMeshNativeHelper.meshClientDfuStart(dfuMethod, mOtaSupported, componentName);
+        }
+        else if (dfuMethod == MeshController.DFU_METHOD_APP_TO_DEVICE){
+            if(otaUpgrade == null)
+            {
+                Log.d(TAG,"otaupgrade is null creating new object");
+                otaUpgrade = new OTAUpgrade();
+            }
+
+            // MTU size is to accomodate extra bytes added from encryption
+            otaUpgrade.start(componentName, mCallback, fileName, dfuMethod,mOtaSupported, metadata, mGatt, mCurrentDev, (mMtuSize - 17), mRequestQueue);
+            return 0;
+        }
+        else {
+            return 1;
         }
 
-        // MTU size is to accomodate extra bytes added from encryption
-        otaUpgrade.start(componentName, mCallback, fileName, dfuMethod, metadata, mGatt, mCurrentDev, (mMtuSize - 17), mRequestQueue);
+
+
+
+
+//        if(otaUpgrade == null)
+//        {
+//            Log.d(TAG,"otaupgrade is null creating new object");
+//            otaUpgrade = new OTAUpgrade();
+//        }
+//
+//        // MTU size is to accomodate extra bytes added from encryption
+//        otaUpgrade.start(componentName, mCallback, fileName, dfuMethod, metadata, mGatt, mCurrentDev, (mMtuSize - 17), mRequestQueue);
     }
 
     public int stopOtaUpgrade() {
@@ -601,6 +649,16 @@ import java.util.concurrent.Semaphore;
         } else {
             return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
+    }
+
+    public void startOta() {
+        Log.i(TAG, "startOta");
+        if (otaUpgrade == null) {
+            otaUpgrade = new OTAUpgrade();
+        }
+
+        // MTU size is to accomodate extra bytes added from encryption
+        otaUpgrade.start(mComponentName, mCallback, mFileName, mDfuMethod, mOtaSupported, mMetadata, mGatt, mCurrentDev, (mMtuSize - 17), mRequestQueue);
     }
 
     public void otaUpgradeApply() {

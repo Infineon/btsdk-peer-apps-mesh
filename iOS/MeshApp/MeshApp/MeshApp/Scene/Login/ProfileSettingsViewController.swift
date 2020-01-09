@@ -146,11 +146,11 @@ class ProfileSettingsViewController: UIViewController {
 
         // Remove mesh files and account info data stored in the network for the user.
         NetworkManager.shared.deleteMeshFiles { (status) in
-            print("ProfileSettingsViewController, onDeleteAccountButtonClick, delete network data status=\(status)")
+            meshLog("ProfileSettingsViewController, onDeleteAccountButtonClick, delete network data status=\(status)")
 
             // Remove device loacl mesh files and account info.
             let error = MeshFrameworkManager.shared.deleteMeshStorage()
-            print("ProfileSettingsViewController, onDeleteAccountButtonClick, error=\(error)")
+            meshLog("ProfileSettingsViewController, onDeleteAccountButtonClick, error=\(error)")
             MeshFrameworkManager.shared.deinitMeshLibrary()
 
             UserSettings.shared.resetCurrentAccount()

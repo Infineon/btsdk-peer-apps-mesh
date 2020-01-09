@@ -56,21 +56,21 @@ class ComponentViewController: UIViewController {
 
         if componentType >= MeshConstants.MESH_COMPONENT_SENSOR_SERVER {
             guard let controlVC = self.storyboard?.instantiateViewController(withIdentifier: MeshAppStoryBoardIdentifires.SENSOR) as? SensorViewController else {
-                print("error: ComponentViewController, failed to load \(MeshAppStoryBoardIdentifires.SENSOR) ViewController from Main storyboard")
+                meshLog("error: ComponentViewController, failed to load \(MeshAppStoryBoardIdentifires.SENSOR) ViewController from Main storyboard")
                 return UIViewController()
             }
             return controlVC as UIViewController
         } else if componentType == MeshConstants.MESH_COMPONENT_UNKNOWN {
             // For unknown device, show set vendor specific data view.
             guard let controlVC = self.storyboard?.instantiateViewController(withIdentifier: MeshAppStoryBoardIdentifires.VENDOR_SPECIFIC_DATA) as? VendorSpecificDataViewController else {
-                print("error: ComponentViewController, failed to load \(MeshAppStoryBoardIdentifires.VENDOR_SPECIFIC_DATA) ViewController from Main storyboard")
+                meshLog("error: ComponentViewController, failed to load \(MeshAppStoryBoardIdentifires.VENDOR_SPECIFIC_DATA) ViewController from Main storyboard")
                 return UIViewController()
             }
             return controlVC as UIViewController
         }
 
         guard let controlVC = self.storyboard?.instantiateViewController(withIdentifier: MeshAppStoryBoardIdentifires.GROUP_DETAILS_CONTROLS) as? GroupDetailsControlsViewController else {
-            print("error: ComponentViewController, failed to load \(MeshAppStoryBoardIdentifires.GROUP_DETAILS_CONTROLS) ViewController from Main storyboard")
+            meshLog("error: ComponentViewController, failed to load \(MeshAppStoryBoardIdentifires.GROUP_DETAILS_CONTROLS) ViewController from Main storyboard")
             return UIViewController()
         }
         return controlVC as UIViewController
@@ -119,7 +119,7 @@ class ComponentViewController: UIViewController {
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_NETWORK_DATABASE_CHANGED):
             guard let dbChangedNetworkName = MeshNotificationConstants.getNetworkName(userInfo: userInfo),
                 dbChangedNetworkName == UserSettings.shared.currentActiveMeshNetworkName else {
-                    print("error, ComponentViewController, onNetworkDatabaseChanged, DB change event network name not match")
+                    meshLog("error, ComponentViewController, onNetworkDatabaseChanged, DB change event network name not match")
                     return
             }
             self.showToast(message: "Database of mesh network \(dbChangedNetworkName) has changed.")
@@ -160,7 +160,7 @@ class ComponentViewController: UIViewController {
                 return  // let VendorSpecificDataViewController process the notification event data.
             }
             guard let vendorData = MeshNotificationConstants.getVendorSpecificData(userInfo: userInfo) else {
-                print("error, ComponentViewController, getVendorSpecificData, no valid data received, userInfo=\(userInfo)")
+                meshLog("error, ComponentViewController, getVendorSpecificData, no valid data received, userInfo=\(userInfo)")
                 return
             }
             UtilityManager.showAlertDialogue(parentVC: self,
@@ -186,7 +186,7 @@ class ComponentViewController: UIViewController {
         if let deviceName = self.deviceName {
             self.componentType = MeshFrameworkManager.shared.getMeshComponentType(componentName: deviceName)
         }
-        print("ComponentViewController, contentViewInit, devceName:\(String(describing: self.deviceName)), componentType:\(self.componentType)")
+        meshLog("ComponentViewController, contentViewInit, devceName:\(String(describing: self.deviceName)), componentType:\(self.componentType)")
         if componentType >= MeshConstants.MESH_COMPONENT_SENSOR_SERVER {
             let vc = self.conponentControlVC
             if let controlVC = vc as? SensorViewController {
@@ -223,7 +223,7 @@ class ComponentViewController: UIViewController {
         // Get the new view controller using segue.destination.
         // Pass the selected object to the new view controller.
         if let identifier = segue.identifier {
-            print("ComponentViewController, segue.identifier=\(identifier)")
+            meshLog("ComponentViewController, segue.identifier=\(identifier)")
             switch identifier {
             case MeshAppStoryBoardIdentifires.SEGUE_COMPONENT_BACK_TO_GROUP_DETAILS:
                 if let groupDetailVC = segue.destination as? GroupDetailsViewController {
@@ -236,9 +236,9 @@ class ComponentViewController: UIViewController {
     }
 
     @IBAction func onSettingBarButtonItemClick(_ sender: UIBarButtonItem) {
-        print("ComponentViewController, onSettingBarButtonItemClick")
+        meshLog("ComponentViewController, onSettingBarButtonItemClick")
         guard let currentGroupName = self.groupName else {
-            print("ComponentViewController, onSettingBarButtonItemClick, invalid group name nil")
+            meshLog("ComponentViewController, onSettingBarButtonItemClick, invalid group name nil")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Show Setting button list table failed, invalid group name.")
             return
         }
@@ -248,7 +248,7 @@ class ComponentViewController: UIViewController {
             choices.removeAll(where: {$0 == ComponentPopoverChoices.remove.rawValue})
         }
         let controller = PopoverChoiceTableViewController(choices: choices) { (index: Int, selection: String) in
-            print("ComponentViewController, onSettingBarButtonItemClick, index=\(index), selection=\(selection)")
+            meshLog("ComponentViewController, onSettingBarButtonItemClick, index=\(index), selection=\(selection)")
             guard let choice = ComponentPopoverChoices.init(rawValue: selection) else { return }
 
             switch choice {
@@ -277,26 +277,26 @@ class ComponentViewController: UIViewController {
     }
 
     func onDeviceIdentify() {
-        print("ComponentViewController, onDeviceIdentify")
+        meshLog("ComponentViewController, onDeviceIdentify")
         guard let deviceName = self.deviceName else {
-            print("error: ComponentViewController, onDeviceIdentify, invalid deviceName nil")
+            meshLog("error: ComponentViewController, onDeviceIdentify, invalid deviceName nil")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid device name or nil.")
             return
         }
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("ComponentViewController, deviceIdentify, device:\(deviceName), failed to connect to mesh network")
+                meshLog("ComponentViewController, deviceIdentify, device:\(deviceName), failed to connect to mesh network")
                 return
             }
 
             let error = MeshFrameworkManager.shared.meshClientIdentify(name: deviceName, duration: 10)
-            print("ComponentViewController, deviceIdentify, device:\(deviceName), error:\(error)")
+            meshLog("ComponentViewController, deviceIdentify, device:\(deviceName), error:\(error)")
         }
     }
 
     func onComponentDeviceRename() {
-        print("ComponentViewController, onComponentDeviceRename, show input new name dialogue")
+        meshLog("ComponentViewController, onComponentDeviceRename, show input new name dialogue")
         let alertController = UIAlertController(title: ComponentPopoverChoices.rename.rawValue, message: nil, preferredStyle: .alert)
         alertController.addTextField { (textField: UITextField) in
             textField.placeholder = "Enter New Device Name"
@@ -316,7 +316,7 @@ class ComponentViewController: UIViewController {
                 self.indicatorView.stopAnimating()
                 self.operationType = nil
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: ComponentViewController, failed to call meshClientRename with new deviceName=\(newDeviceName), error=\(error)")
+                    meshLog("error: ComponentViewController, failed to call meshClientRename with new deviceName=\(newDeviceName), error=\(error)")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to rename \"\(oldDeviceName)\" device. Error Code: \(error)")
                     return
                 }
@@ -342,7 +342,7 @@ class ComponentViewController: UIViewController {
                     UserSettings.shared.setComponentStatus(componentName: newMeshDeviceName, values: values)
                 }
 
-                print("ComponentViewController, rename \"\(oldDeviceName)\" device to new name=\"\(newMeshDeviceName)\" success")
+                meshLog("ComponentViewController, rename \"\(oldDeviceName)\" device to new name=\"\(newMeshDeviceName)\" success")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Rename device from \"\(oldDeviceName)\" to \"\(newMeshDeviceName)\" sucess", title: "Success")
             }
         }))
@@ -351,7 +351,7 @@ class ComponentViewController: UIViewController {
 
     func onComponentDeviceDelete() {
         guard let deviceName = self.deviceName else {
-            print("error: ComponentViewController, onComponentDeviceDeletedelete, invalid deviceName:\(String(describing: self.deviceName))")
+            meshLog("error: ComponentViewController, onComponentDeviceDeletedelete, invalid deviceName:\(String(describing: self.deviceName))")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to delete the target device!", title: "Error")
             return
         }
@@ -363,7 +363,7 @@ class ComponentViewController: UIViewController {
         MeshFrameworkManager.shared.meshClientDeleteDevice(deviceName: deviceName) { (_ networkName: String?, _ error: Int) in
             self.resetOperationStatus()
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: ComponentViewController, onComponentDeviceDeletedelete, meshClientDeleteDevice deviceName:\(deviceName) failed, error=\(error)")
+                meshLog("error: ComponentViewController, onComponentDeviceDeletedelete, meshClientDeleteDevice deviceName:\(deviceName) failed, error=\(error)")
                 if error == MeshErrorCode.MESH_ERROR_INVALID_STATE {
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network is busying, please try again to delete device \"\(deviceName)\" a little later.", title: "Warnning")
                 } else {
@@ -375,7 +375,7 @@ class ComponentViewController: UIViewController {
             // update device status values in UserSettings.
             UserSettings.shared.removeComponentStatus(componentName: deviceName)
 
-            print("ComponentViewController, onComponentDeviceDelete, the mesh device: \(deviceName) has been deleted success, error=\(error)")
+            meshLog("ComponentViewController, onComponentDeviceDelete, the mesh device: \(deviceName) has been deleted success, error=\(error)")
             UtilityManager.showAlertDialogue(parentVC: self,
                                              message: "The mesh device has been deleted successfully.",
                                              title: "Success", completion: nil,
@@ -387,7 +387,7 @@ class ComponentViewController: UIViewController {
     }
 
     func onComponentDeviceAddToGroup() {
-        print("ComponentViewController, onComponentDeviceAddToGroup, show input new name dialogue")
+        meshLog("ComponentViewController, onComponentDeviceAddToGroup, show input new name dialogue")
         if let groupList = getPopoverSelectionItemList(popoverType: .componentMoveToGroup) {
             PopoverViewController.parentViewController = self
             PopoverViewController.popoverCompletion = onAddToGroupHandler
@@ -400,7 +400,7 @@ class ComponentViewController: UIViewController {
 
     func onAddToGroupHandler(_ btnType: PopoverButtonType, _ selectedItem: String?) {
         guard let deviceName = self.deviceName else {
-            print("error: ComponentViewController, onAddToGroupHandler, invalid device name or group name")
+            meshLog("error: ComponentViewController, onAddToGroupHandler, invalid device name or group name")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid device name or group name.")
             return
         }
@@ -409,13 +409,13 @@ class ComponentViewController: UIViewController {
         if btnType == .none && operationType == .add, let newGroupName = popoverSelectedGroupName {
             self.resetOperationStatus()
             guard let componets = MeshFrameworkManager.shared.getMeshGroupComponents(groupName: newGroupName), componets.filter({$0 == deviceName}).count > 0 else {
-                print("error: ComponentViewController, onAddToGroupHandler, failed to find device:\(deviceName) in new group:\(newGroupName)")
+                meshLog("error: ComponentViewController, onAddToGroupHandler, failed to find device:\(deviceName) in new group:\(newGroupName)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to add device:\(deviceName) in new group:\(newGroupName)")
                 return
             }
 
             // The mesh device has been added to new success.
-            print("ComponentViewController, onAddToGroupHandler, add device:\(deviceName) to:\(newGroupName) success")
+            meshLog("ComponentViewController, onAddToGroupHandler, add device:\(deviceName) to:\(newGroupName) success")
             UtilityManager.showAlertDialogue(parentVC: self,
                                              message: "The mesh device has been added to new group successfully.",
                                              title: "Success", completion: nil,
@@ -430,10 +430,10 @@ class ComponentViewController: UIViewController {
         self.resetOperationStatus()
         guard btnType == .confirm, let newGroupName = selectedItem, !newGroupName.isEmpty else {
             if btnType == .confirm {
-                print("error: ComponentViewController, onAddToGroupHandler, no add to group name selected")
+                meshLog("error: ComponentViewController, onAddToGroupHandler, no add to group name selected")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "No or invalid add to group name selected")
             } else {
-                print("ComponentViewController, onAddToGroupHandler, cancelled")
+                meshLog("ComponentViewController, onAddToGroupHandler, cancelled")
             }
             return
         }
@@ -442,7 +442,7 @@ class ComponentViewController: UIViewController {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.indicatorView.stopAnimating()
-                print("ComponentViewController, onMovedToGroupSelected, unable to connect to the mesh network")
+                meshLog("ComponentViewController, onMovedToGroupSelected, unable to connect to the mesh network")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to connect to mesh network caused by unable to add the device to new group. Please try to sync network systus firstly.")
                 return
             }
@@ -453,17 +453,17 @@ class ComponentViewController: UIViewController {
             MeshFrameworkManager.shared.addMeshComponent(componentName: deviceName, toGroup: newGroupName, completion: { (networkName: String?, error: Int) in
                 self.resetOperationStatus()
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: ComponentViewController, onAddToGroupHandler, add device:\(deviceName) to new group:\(newGroupName) failed, error=\(error)")
+                    meshLog("error: ComponentViewController, onAddToGroupHandler, add device:\(deviceName) to new group:\(newGroupName) failed, error=\(error)")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to add the device to selected group. Error Code: \(error)")
                     return
                 }
-                print("ComponentViewController, onAddToGroupHandler, addMeshComponent command sent success, waiting mesh DB changed event")
+                meshLog("ComponentViewController, onAddToGroupHandler, addMeshComponent command sent success, waiting mesh DB changed event")
             })
         }
     }
 
     func onComponentDeviceMoveToGroup() {
-        print("ComponentViewController, onComponentDeviceMoveToGroup, show input new name dialogue")
+        meshLog("ComponentViewController, onComponentDeviceMoveToGroup, show input new name dialogue")
         if let groupList = getPopoverSelectionItemList(popoverType: .componentMoveToGroup) {
             PopoverViewController.parentViewController = self
             PopoverViewController.popoverCompletion = onMovedToGroupHandler
@@ -476,7 +476,7 @@ class ComponentViewController: UIViewController {
 
     func onMovedToGroupHandler(_ btnType: PopoverButtonType, _ selectedItem: String?) {
         guard let deviceName = self.deviceName, let groupName = self.groupName else {
-            print("error: ComponentViewController, onMovedToGroupSelected, invalid device name or group name")
+            meshLog("error: ComponentViewController, onMovedToGroupSelected, invalid device name or group name")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid device name or group name.")
             return
         }
@@ -485,7 +485,7 @@ class ComponentViewController: UIViewController {
         if btnType == .none && operationType == .move, let newGroupName = popoverSelectedGroupName {
             self.resetOperationStatus()
             guard let groups = MeshFrameworkManager.shared.getMeshComponentGroupList(componentName: deviceName), groups.count > 0 else {
-                print("error: ComponentViewController, onMovedToGroupHandler, failed to get device group list, groups is nil")
+                meshLog("error: ComponentViewController, onMovedToGroupHandler, failed to get device group list, groups is nil")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to connect to mesh network caused by unable to move the device to new group. Please try to sync network status firstly.")
                 return
             }
@@ -493,7 +493,7 @@ class ComponentViewController: UIViewController {
             if groups.filter({$0 == newGroupName}).first != nil &&
                 (groups.filter({$0 == groupName}).first == MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME || groups.filter({$0 == groupName}).first == nil) {
                 // The mesh device has been moved success.
-                print("ComponentViewController, onNetworkDatabaseChanged, move device:\(deviceName) from:\(groupName) to:\(String(describing: popoverSelectedGroupName)) success")
+                meshLog("ComponentViewController, onNetworkDatabaseChanged, move device:\(deviceName) from:\(groupName) to:\(String(describing: popoverSelectedGroupName)) success")
                 UtilityManager.showAlertDialogue(parentVC: self,
                                                  message: "The mesh device has been moved to new group successfully.",
                                                  title: "Success", completion: nil,
@@ -502,7 +502,7 @@ class ComponentViewController: UIViewController {
                                                                         self.performSegue(withIdentifier: MeshAppStoryBoardIdentifires.SEGUE_COMPONENT_BACK_TO_GROUP_DETAILS, sender: nil)
                                                  }))
             } else {
-                print("error: ComponentViewController, onNetworkDatabaseChanged, failed to move device:\(deviceName) from:\(groupName) to:\(String(describing: popoverSelectedGroupName))")
+                meshLog("error: ComponentViewController, onNetworkDatabaseChanged, failed to move device:\(deviceName) from:\(groupName) to:\(String(describing: popoverSelectedGroupName))")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to move mesh device to new group.")
             }
             return
@@ -512,10 +512,10 @@ class ComponentViewController: UIViewController {
         self.resetOperationStatus()
         guard btnType == .confirm, let newGroupName = selectedItem, !newGroupName.isEmpty else {
             if btnType == .confirm {
-                print("error: ComponentViewController, onMovedToGroupSelected, no moved to group name selected")
+                meshLog("error: ComponentViewController, onMovedToGroupSelected, no moved to group name selected")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "No or invalid moved to group name selected")
             } else {
-                print("ComponentViewController, onMovedToGroupSelected, cancelled")
+                meshLog("ComponentViewController, onMovedToGroupSelected, cancelled")
             }
             return
         }
@@ -524,7 +524,7 @@ class ComponentViewController: UIViewController {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.indicatorView.stopAnimating()
-                print("ComponentViewController, onMovedToGroupSelected, unable to connect to the mesh network, error=\(error)")
+                meshLog("ComponentViewController, onMovedToGroupSelected, unable to connect to the mesh network, error=\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to connect to mesh network caused by unable to move the device to new group. Please try to sync network systus firstly.")
                 return
             }
@@ -541,14 +541,14 @@ class ComponentViewController: UIViewController {
                 MeshFrameworkManager.shared.addMeshComponent(componentName: deviceName, toGroup: newGroupName) { (networkName: String?, error: Int) in
                     guard error == MeshErrorCode.MESH_SUCCESS else {
                         self.resetOperationStatus()
-                        print("error: ComponentViewController, onMovedToGroupHandler, failed to add device:\(deviceName) to group:\(newGroupName), error:\(error)")
+                        meshLog("error: ComponentViewController, onMovedToGroupHandler, failed to add device:\(deviceName) to group:\(newGroupName), error:\(error)")
                         UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to add the component device to the target move to group. Error Code: \(error).")
                         return
                     }
 
                     if groupName == MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME {
                         self.resetOperationStatus()
-                        print("ComponentViewController, onMovedToGroupHandler, move device:\(deviceName) from group:\(groupName) to group:\(newGroupName) success")
+                        meshLog("ComponentViewController, onMovedToGroupHandler, move device:\(deviceName) from group:\(groupName) to group:\(newGroupName) success")
                         UtilityManager.showAlertDialogue(parentVC: self,
                                                          message: "The mesh device has been moved to new group successfully.",
                                                          title: "Success", completion: nil,
@@ -562,12 +562,12 @@ class ComponentViewController: UIViewController {
                     MeshFrameworkManager.shared.removeMeshComponent(componentName: deviceName, fromGroup: groupName, completion: { (networkName: String?, error: Int) in
                         self.resetOperationStatus()
                         guard error == MeshErrorCode.MESH_SUCCESS else {
-                            print("error: ComponentViewController, onMovedToGroupHandler, failed to remove device:\(deviceName) from group:\(groupName), error:\(error)")
+                            meshLog("error: ComponentViewController, onMovedToGroupHandler, failed to remove device:\(deviceName) from group:\(groupName), error:\(error)")
                             UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to remove the component device from original group after moved to the target group. Error Code: \(error).")
                             return
                         }
 
-                        print("ComponentViewController, onMovedToGroupHandler, move device:\(deviceName) from group:\(groupName) to group:\(newGroupName) success")
+                        meshLog("ComponentViewController, onMovedToGroupHandler, move device:\(deviceName) from group:\(groupName) to group:\(newGroupName) success")
                         UtilityManager.showAlertDialogue(parentVC: self,
                                                          message: "The mesh device has been moved to new group successfully.",
                                                          title: "Success", completion: nil,
@@ -591,7 +591,7 @@ class ComponentViewController: UIViewController {
                     if nonDefaultGroups.count > 0 {
                         self.resetOperationStatus()
                         // The device has been added into other group beside the default group.
-                        print("error: ComponentViewController, onMovedToGroupHandler, \(deviceName) has been added in the \(nonDefaultGroups[0]) group")
+                        meshLog("error: ComponentViewController, onMovedToGroupHandler, \(deviceName) has been added in the \(nonDefaultGroups[0]) group")
                         UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to move this device to group \"\(newGroupName)\", it has been added in the \"\(nonDefaultGroups[0])\" group. Please navigate to the \"\(nonDefaultGroups[0])\" group detail page, then move this device to the target group to make sure it's the expected operation.")
                         return
                     } else {
@@ -610,27 +610,27 @@ class ComponentViewController: UIViewController {
                 MeshFrameworkManager.shared.moveMeshComponent(componentName: deviceName, fromGroup: groupName, toGroup: newGroupName) { (networkName: String?, error: Int) in
                     guard error == MeshErrorCode.MESH_SUCCESS else {
                         self.resetOperationStatus()
-                        print("error: ComponentViewController, moveMeshComponent, \(deviceName) from \(groupName) to \(newGroupName) failed, error=\(error)")
+                        meshLog("error: ComponentViewController, moveMeshComponent, \(deviceName) from \(groupName) to \(newGroupName) failed, error=\(error)")
                         UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to move the device to selected group. Error Code: \(error)")
                         return
                     }
-                    print("ComponentViewController, moveMeshComponent command sent success, waiting mesh DB changed event")
+                    meshLog("ComponentViewController, moveMeshComponent command sent success, waiting mesh DB changed event")
                 }
             }
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.resetOperationStatus()
-                print("error: ComponentViewController, moveMeshComponent, \(deviceName) from \(groupName) to \(newGroupName) failed, error=\(error)")
+                meshLog("error: ComponentViewController, moveMeshComponent, \(deviceName) from \(groupName) to \(newGroupName) failed, error=\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to move the device to selected group. Error Code: \(error)")
                 return
             }
-            print("ComponentViewController, moveMeshComponent command sent success, waiting mesh DB changed event")
+            meshLog("ComponentViewController, moveMeshComponent command sent success, waiting mesh DB changed event")
         }
     }
 
     @objc func componentOperationTimeoutHandler() {
         componentOperationTimer?.invalidate()
         componentOperationTimer = nil
-        print("error: ComponentViewController, componentOperationTimeoutHandler, operation timeout, operationType=\(String(describing: operationType?.rawValue))")
+        meshLog("error: ComponentViewController, componentOperationTimeoutHandler, operation timeout, operationType=\(String(describing: operationType?.rawValue))")
         if let opType = operationType {
             switch opType {
             case .delete:
@@ -647,7 +647,7 @@ class ComponentViewController: UIViewController {
         guard let deviceName = self.deviceName,
             let networkName = MeshFrameworkManager.shared.getOpenedMeshNetworkName(),
             var groupList = MeshFrameworkManager.shared.getAllMeshNetworkGroups(networkName: networkName) else {
-                print("error: ComponentViewController, getPopoverGroupList, Failed to get group list")
+                meshLog("error: ComponentViewController, getPopoverGroupList, Failed to get group list")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to get group list.")
                 return nil
         }
@@ -659,7 +659,7 @@ class ComponentViewController: UIViewController {
         }
         groupList.removeAll(where: {$0 == MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME})
         guard groupList.count > 0 else {
-            print("error: ComponentViewController, getPopoverGroupList, No other group can be added or moved to. Currnetly scribed groups: \(groupList)")
+            meshLog("error: ComponentViewController, getPopoverGroupList, No other group can be added or moved to. Currnetly scribed groups: \(groupList)")
             UtilityManager.showAlertDialogue(parentVC: self, message: "No other group can be selected. Please create a new group firstly.")
             return nil
         }
@@ -669,46 +669,55 @@ class ComponentViewController: UIViewController {
 
     func onComponentRemoveFromCurrentGroup() {
         guard let deviceName = self.deviceName, let groupName = self.groupName else {
-                print("error: ComponentViewController, onComponentRemoveFromCurrentGroup, invalid device name or group name")
+                meshLog("error: ComponentViewController, onComponentRemoveFromCurrentGroup, invalid device name or group name")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid device name or group name is nil.")
                 return
         }
 
-        print("ComponentViewController, onComponentRemoveFromCurrentGroup, remove device:\"\(deviceName)\" from group:\"\(groupName)\"")
+        meshLog("ComponentViewController, onComponentRemoveFromCurrentGroup, remove device:\"\(deviceName)\" from group:\"\(groupName)\"")
         indicatorView.showAnimating(parentVC: self)
-        MeshFrameworkManager.shared.removeMeshComponent(componentName: deviceName, fromGroup: groupName)  { (networkName: String?, error: Int) in
-            self.indicatorView.stopAnimating()
+        MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: ComponentViewController, onComponentRemoveFromCurrentGroup, invalid device name or group name, error=\(error)")
-                UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to remove device:\"\(deviceName)\" from group:\"\(groupName)\". Error Code: \(error)")
+                self.indicatorView.stopAnimating()
+                meshLog("error: ComponentViewController, onComponentRemoveFromCurrentGroup, failed to connect to mesh network, error=\(error)")
+                UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to connect to the mesh network. Error Code: \(error)")
                 return
             }
 
-            // removed success.
-            print("ComponentViewController, onComponentRemoveFromCurrentGroup, remove device:\"\(deviceName)\" from group:\"\(groupName)\" message has been sent")
-            self.onRemovedFromGroupHandler()
+            MeshFrameworkManager.shared.removeMeshComponent(componentName: deviceName, fromGroup: groupName)  { (networkName: String?, error: Int) in
+                self.indicatorView.stopAnimating()
+                guard error == MeshErrorCode.MESH_SUCCESS else {
+                    meshLog("error: ComponentViewController, onComponentRemoveFromCurrentGroup, invalid device name or group name, error=\(error)")
+                    UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to remove device:\"\(deviceName)\" from group:\"\(groupName)\". Error Code: \(error)")
+                    return
+                }
+
+                // removed success.
+                meshLog("ComponentViewController, onComponentRemoveFromCurrentGroup, remove device:\"\(deviceName)\" from group:\"\(groupName)\" message has been sent")
+                self.onRemovedFromGroupHandler()
+            }
         }
     }
 
     func onRemovedFromGroupHandler() {
         guard let deviceName = self.deviceName, let groupName = self.groupName else {
-            print("error: ComponentViewController, onRemovedFromGroupHandler, invalid device name or group name")
+            meshLog("error: ComponentViewController, onRemovedFromGroupHandler, invalid device name or group name")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid device name or group name.")
             return
         }
 
         self.resetOperationStatus()
         if let groups = MeshFrameworkManager.shared.getMeshComponentGroupList(componentName: deviceName), let _ = groups.filter({$0 == groupName}).first {
-            print("error: ComponentViewController, onRemovedFromGroupHandler, failed to remove device:\(deviceName) from group:\(groupName)")
+            meshLog("error: ComponentViewController, onRemovedFromGroupHandler, failed to remove device:\(deviceName) from group:\(groupName)")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to remove device:\(deviceName) from group:\(groupName)")
         } else {
-            print("ComponentViewController, onRemovedFromGroupHandler, Remove device:\(deviceName) from group:\(groupName) success")
+            meshLog("ComponentViewController, onRemovedFromGroupHandler, Remove device:\(deviceName) from group:\(groupName) success")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Device:\(deviceName) has been removed from group:\(groupName) successfully.", title: "Success")
         }
     }
 
     func onFirmwareOta() {
-        print("ComponentViewController, onFirmwareOta, go to device firmware OTA page")
+        meshLog("ComponentViewController, onFirmwareOta, go to device firmware OTA page")
         //UtilityManager.navigateToViewController(sender: self, targetVCClass: DeviceOtaUpgradeViewController.self)
 
         if let vc = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: String(describing: MeshOtaDfuViewController.self)) as? MeshOtaDfuViewController {
@@ -723,10 +732,10 @@ class ComponentViewController: UIViewController {
     }
 
     func onSetVendorSpecifcData() {
-        print("ComponentViewController, onSetVendorData, show input vendor specific data dialogue")
+        meshLog("ComponentViewController, onSetVendorData, show input vendor specific data dialogue")
 
         guard let deviceName = self.deviceName, let _ = self.groupName else {
-            print("error: ComponentViewController, onSetVendorSpecifcData, invalid device name or group name")
+            meshLog("error: ComponentViewController, onSetVendorSpecifcData, invalid device name or group name")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid device name or group name.")
             return
         }
@@ -765,19 +774,19 @@ class ComponentViewController: UIViewController {
 
             MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected(handler: { (error) in
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: ComponentViewController, onSetVendorSpecifcData. Error Code: \(error)")
+                    meshLog("error: ComponentViewController, onSetVendorSpecifcData. Error Code: \(error)")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to set the vendor data, Mesh network not connected yet!")
                     return
                 }
 
-                print("onSetVendorSpecifcData, deviceName: \(deviceName), companyId: \(String(describing: companyId)), modelId: \(String(describing: modelId)), opcode: \(String(describing: opcode)), data: \(data.dumpHexBytes())")
+                meshLog("onSetVendorSpecifcData, deviceName: \(deviceName), companyId: \(String(describing: companyId)), modelId: \(String(describing: modelId)), opcode: \(String(describing: opcode)), data: \(data.dumpHexBytes())")
                 let error = MeshFrameworkManager.shared.meshClientVendorDataSet(deviceName: deviceName, companyId: companyId, modelId: modelId, opcode: opcode, data: data)
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("ComponentViewController, onSetVendorSpecifcData, failed to send out data, error: \(error)")
+                    meshLog("ComponentViewController, onSetVendorSpecifcData, failed to send out data, error: \(error)")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send out the vendor data, please check the values of Company Id, Model Id and OpCode are all set correctly! Error Code: \(error)", title: "Error")
                     return
                 }
-                print("ComponentViewController, onSetVendorSpecifcData, send out success")
+                meshLog("ComponentViewController, onSetVendorSpecifcData, send out success")
             })
         }))
         self.present(alertController, animated: true, completion: nil)
@@ -785,13 +794,14 @@ class ComponentViewController: UIViewController {
 
     func onConfigurePublication() {
         guard let vc = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: MeshAppStoryBoardIdentifires.PUBLICATION_CONFIGURE) as? PublicationConfigureViewController else {
-            print("error: ComponentViewController, onConfigurePublication, failed to load \(MeshAppStoryBoardIdentifires.PUBLICATION_CONFIGURE) View Controller")
+            meshLog("error: ComponentViewController, onConfigurePublication, failed to load \(MeshAppStoryBoardIdentifires.PUBLICATION_CONFIGURE) View Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to load \(MeshAppStoryBoardIdentifires.PUBLICATION_CONFIGURE) View Controller.", title: "Error")
             return
         }
         vc.deviceName = self.deviceName
         vc.groupName = self.groupName
         vc.componentType = self.componentType
+        vc.modalPresentationStyle = .fullScreen
         self.present(vc, animated: true, completion: nil)
     }
 

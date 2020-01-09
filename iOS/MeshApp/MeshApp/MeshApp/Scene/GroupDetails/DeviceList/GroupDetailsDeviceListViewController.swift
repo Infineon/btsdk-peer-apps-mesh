@@ -140,7 +140,7 @@ class GroupDetailsDeviceListViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + .milliseconds(milliseconds), execute: {
             MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("GroupDetailsDeviceListViewController, getDeviceStatus, failed to connect to the network")
+                    meshLog("GroupDetailsDeviceListViewController, getDeviceStatus, failed to connect to the network")
                     return
                 }
 
@@ -154,21 +154,21 @@ class GroupDetailsDeviceListViewController: UIViewController {
             fallthrough
         case MeshConstants.MESH_COMPONENT_GENERIC_ON_OFF_SERVER:
             let error = MeshFrameworkManager.shared.meshClientOnOffGet(deviceName: deviceName)
-            print("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientOnOffGet \(deviceName), error=\(error)")
+            meshLog("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientOnOffGet \(deviceName), error=\(error)")
         case MeshConstants.MESH_COMPONENT_GENERIC_LEVEL_CLIENT:
             fallthrough
         case MeshConstants.MESH_COMPONENT_GENERIC_LEVEL_SERVER:
             let error = MeshFrameworkManager.shared.meshClientLevelGet(deviceName: deviceName)
-            print("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientLevelGet \(deviceName), error=\(error)")
+            meshLog("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientLevelGet \(deviceName), error=\(error)")
         case MeshConstants.MESH_COMPONENT_LIGHT_HSL:
             let error = MeshFrameworkManager.shared.meshClientHslGet(deviceName: deviceName)
-            print("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientHslGet \(deviceName), error=\(error)")
+            meshLog("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientHslGet \(deviceName), error=\(error)")
         case MeshConstants.MESH_COMPONENT_LIGHT_CTL:
             let error = MeshFrameworkManager.shared.meshClientCtlGet(deviceName: deviceName)
-            print("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientCtlGet \(deviceName), error=\(error)")
+            meshLog("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientCtlGet \(deviceName), error=\(error)")
         case MeshConstants.MESH_COMPONENT_LIGHT_DIMMABLE:
             let error = MeshFrameworkManager.shared.meshClientLightnessGet(deviceName: deviceName)
-            print("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientLightnessGet \(deviceName), error=\(error)")
+            meshLog("GroupDetailsDeviceListViewController, getDeviceStatus, meshClientLightnessGet \(deviceName), error=\(error)")
         default:
             break
         }
@@ -222,7 +222,7 @@ extension GroupDetailsDeviceListViewController: UITableViewDataSource, UITableVi
         if indexPath.row < groupComponents.count {
             UserSettings.shared.currentActiveGroupName = groupName
             UserSettings.shared.currentActiveComponentName = groupComponents[indexPath.row].name
-            print("GroupDetailsDeviceListViewController, didSelectedRowAt=\(indexPath.row), deviceName=\(String(describing: UserSettings.shared.currentActiveComponentName))")
+            meshLog("GroupDetailsDeviceListViewController, didSelectedRowAt=\(indexPath.row), deviceName=\(String(describing: UserSettings.shared.currentActiveComponentName))")
             UtilityManager.navigateToViewController(targetClass: ComponentViewController.self)
         }
     }

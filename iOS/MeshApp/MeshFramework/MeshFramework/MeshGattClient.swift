@@ -25,7 +25,7 @@ open class MeshGattClient: NSObject {
 
     var mGattEstablishedConnectionCount: Int = 0 {
         didSet {
-            print("MeshGattClient, mGattEstablishedConnectionCount=\(mGattEstablishedConnectionCount)")
+            meshLog("MeshGattClient, mGattEstablishedConnectionCount=\(mGattEstablishedConnectionCount)")
             // Currently, with the support of the mesh library, only one connection can be established at any time
             // between the provisioner and target mesh device.
             if mGattEstablishedConnectionCount < 0 {
@@ -45,46 +45,46 @@ open class MeshGattClient: NSObject {
 
     open func startScan() {
         if centralManager.state == .poweredOn {
-            print("MeshGattClient, BLE scan started, isOtaScanning: \(OtaManager.shared.isOtaScanning)")
-            if false, centralManager.isScanning {
-                centralManager.stopScan()   // stop scanning before connecting to make connecting stable and fast in provisioning.
-            }
+            MeshNativeHelper.meshClientLog("[MeshGattClient stopScan] BLE scan started, isOtaScanning: \(OtaManager.shared.isOtaScanning)")
             let serviceUUIDs = OtaManager.shared.isOtaScanning ? nil : [MeshUUIDConstants.UUID_SERVICE_MESH_PROVISIONING, MeshUUIDConstants.UUID_SERVICE_MESH_PROXY]
             centralManager.scanForPeripherals(withServices: serviceUUIDs, options: nil)
         } else {
-            print("MeshGattClient, BLE scan not supported, centralManager.state=\(centralManager.state.rawValue), isScanning=\(centralManager.isScanning)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient stopScan] warning: BLE scan not supported, invalid centralManager.state=\(centralManager.state.rawValue), isScanning=\(centralManager.isScanning)")
         }
     }
 
     open func stopScan() {
         if centralManager.state == .poweredOn {
-            print("MeshGattClient, BLE scan stopped")
             centralManager.stopScan()
+            MeshNativeHelper.meshClientLog("[MeshGattClient stopScan] BLE scan stopped")
         } else {
-            print("MeshGattClient, BLE not pwered on, centralManager.state=\(centralManager.state.rawValue), isScanning=\(centralManager.isScanning)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient stopScan] warning: BLE not pwered on, invalid centralManager.state=\(centralManager.state.rawValue), isScanning=\(centralManager.isScanning)")
         }
     }
 
     open func connect(peripheral: CBPeripheral) {
-        print("MeshGattClient, connect, connecting to mesh device, \(peripheral)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient connect] connecting from mesh device, \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
         if centralManager.state == .poweredOn {
+            if centralManager.isScanning {
+                centralManager.stopScan()   // stop scanning before connecting to make connecting stable and fast in provisioning.
+            }
             if peripheral.state == .disconnected {
                 centralManager.connect(peripheral, options: nil)
             } else {
-                print("error: MeshGattClient, connect, invalid centralManager.state=\(centralManager.state.rawValue), connection cancelled, please try again")
+                MeshNativeHelper.meshClientLog("[MeshGattClient connect] error: invalid centralManager.state=\(centralManager.state.rawValue),  bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), connection cancelled, please try again later")
                 centralManager.cancelPeripheralConnection(peripheral)
             }
         } else {
-            print("error: MeshGattClient, connect, invalid centralManager.state=\(centralManager.state.rawValue)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient connect] error: invalid centralManager.state=\(centralManager.state.rawValue), \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
         }
     }
 
     open func disconnect(peripheral: CBPeripheral) {
-        print("MeshGattClient, disconnect, disconnecting from mesh device, \(peripheral)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient disconnect] disconnecting from mesh device, \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
         if centralManager.state == .poweredOn {
             centralManager.cancelPeripheralConnection(peripheral)
         } else {
-            print("warnning: MeshGattClient, disconnect, invalid centralManager.state=\(centralManager.state.rawValue)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient disconnect] warning: invalid centralManager.state=\(centralManager.state.rawValue), \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
         }
     }
 
@@ -97,28 +97,35 @@ open class MeshGattClient: NSObject {
 
     func writeData(for peripheral:CBPeripheral, serviceUUID: CBUUID, data: Data) {
         guard let service = peripheral.services?.filter({$0.uuid == serviceUUID}).first else {
-            print("error: MeshGattClient, writeData, invalid peripheral service nil")
+            MeshNativeHelper.meshClientLog("[MeshGattClient writeData] invalid peripheral service, no valid GATT Service found, \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             return
         }
 
         var characteristic: CBCharacteristic?
+        var characteristicName: String?
         switch serviceUUID {
         case MeshUUIDConstants.UUID_SERVICE_MESH_PROVISIONING:
             characteristic = service.characteristics?.filter({$0.uuid == MeshUUIDConstants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_IN}).first
-            print("\(characteristic == nil ? "error: " : "")MeshGattClient, writeData, PROVISIONING_DATA_IN characteristic=\(String(describing: characteristic))")
+            if let _ = characteristic {
+                characteristicName = "PROVISIONING_DATA_IN"
+            }
         case MeshUUIDConstants.UUID_SERVICE_MESH_PROXY:
             characteristic = service.characteristics?.filter({$0.uuid == MeshUUIDConstants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN}).first
-            print("\(characteristic == nil ? "error: " : "")MeshGattClient, writeData, PROXY_DATA_IN characteristic=\(String(describing: characteristic))")
+            if let _ = characteristic {
+                characteristicName = "PROXY_DATA_IN"
+            }
         default:
-            print("error: MeshGattClient, writeData, invalid target characteristic=\(String(describing: characteristic))")
+            MeshNativeHelper.meshClientLog("[MeshGattClient writeData] error: invalid target characterisitic=\(String(describing: characteristic)), \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             break
         }
 
-        if let targetCharacteristic = characteristic {
+        if let targetCharacteristic = characteristic, let targetCharacteristicName = characteristicName {
             serialQueue.sync {
-                print("MeshGattClient, writeData, withoutResponse, data=\(data.dumpHexBytes())")
+                MeshNativeHelper.meshClientLog("[MeshGattClient writeData] to \(targetCharacteristicName), data: \(data.dumpHexBytes()), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
                 peripheral.writeValue(data, for: targetCharacteristic, type: .withoutResponse)
             }
+        } else {
+            MeshNativeHelper.meshClientLog("[MeshGattClient writeData] invalid peripheral service, no valid Mesh Provisioning or Mesh Proxy Service found, \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
         }
     }
 }
@@ -143,7 +150,7 @@ extension MeshGattClient {
         let newDevice = [name: uuid]
         let storedDevice = unprovisionedDeviceList.filter { ($0.values.first == uuid) }
         if !unprovisionedDeviceList.contains(newDevice), storedDevice.isEmpty {
-            print("MeshGattClient, addUnprovisionedDevice, name:\(name), uuid:\(uuid.uuidString)")
+            meshLog("MeshGattClient, addUnprovisionedDevice, name:\(name), uuid:\(uuid.uuidString)")
             unprovisionedDeviceList.append(newDevice)
             NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_DEVICE_FOUND),
                                             object: nil,
@@ -158,7 +165,7 @@ extension MeshGattClient {
         for (index, device) in unprovisionedDeviceList.enumerated() {
             for (name, uuid) in device {
                 if uuid == uuid {
-                    print("MeshGattClient, removeUnprovisionedDevice, name:\(name), uuid:\(uuid.uuidString)")
+                    meshLog("MeshGattClient, removeUnprovisionedDevice, name:\(name), uuid:\(uuid.uuidString)")
                     unprovisionedDeviceList.remove(at: index)
                     return
                 }
@@ -167,7 +174,7 @@ extension MeshGattClient {
     }
 
     open func clearUnprovisionedDeviceList() {
-        print("MeshGattClient, clearUnprovisionedDeviceList")
+        meshLog("MeshGattClient, clearUnprovisionedDeviceList")
         unprovisionedDeviceList.removeAll()
     }
 
@@ -180,25 +187,25 @@ extension MeshGattClient: CBCentralManagerDelegate {
     open func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
-            print("info: MeshGattClient, centralManagerDidUpdateState, central.state=\(central.state.rawValue), .poweredon")
+            MeshNativeHelper.meshClientLog("[MeshGattClient centralManagerDidUpdateState] central.state=\(central.state.rawValue), .poweredon")
             // Automatcailly connect to the mesh network when the Bluetooth is turned on.
             mGattEstablishedConnectionCount = 0
             MeshNativeHelper.setCurrentConnectedPeripheral(nil)
             if let _ = MeshFrameworkManager.shared.getOpenedMeshNetworkName() {
                 MeshFrameworkManager.shared.connectMeshNetwork { (isConnected: Bool, connId: Int, addr: Int, isOverGatt: Bool, error: Int) in
-                    print("MeshGattClient, automatically connectingToMeshNetwork completion, isConnected:\(isConnected), connId:\(connId), addr:\(addr), isOverGatt:\(isOverGatt), error:\(error)")
+                    MeshNativeHelper.meshClientLog("[MeshGattClient centralManagerDidUpdateState] central.state=\(central.state.rawValue), .poweredon, automatically connectingToMeshNetwork, isConnected:\(isConnected), connId:\(connId), addr:\(addr), isOverGatt:\(isOverGatt), error:\(error)")
                 }
             }
             break
         case .poweredOff, .resetting:
-            print("info: MeshGattClient, centralManagerDidUpdateState, central.state=\(central.state.rawValue), .poweredoff")
+            MeshNativeHelper.meshClientLog("[MeshGattClient centralManagerDidUpdateState] central.state=\(central.state.rawValue), .poweredoff")
             // Disconnectted from the mesh network when the Bluetooth is turned off.
             mGattEstablishedConnectionCount = 0
             MeshNativeHelper.setCurrentConnectedPeripheral(nil)
             MeshFrameworkManager.shared.meshClientConnectionStateChanged(connId: mGattEstablishedConnectionCount)
             break
         default:
-            print("error: MeshGattClient, centralManagerDidUpdateState, unsupported central.state=\(central.state.rawValue)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient centralManagerDidUpdateState] error: unexpected central.state=\(central.state.rawValue)")
         }
     }
 
@@ -210,7 +217,7 @@ extension MeshGattClient: CBCentralManagerDelegate {
             }
         }
 
-        print("MeshGattClient, centralManager didDiscover peripheral, \(peripheral), rssi=\(RSSI), \(advertisementData)")
+        meshLog("MeshGattClient, centralManager didDiscover peripheral, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), rssi=\(RSSI), \(peripheral), advData: \(advertisementData.description)")
         if (!MeshNativeHelper.isMeshAdvertisementData(advertisementData)) {
             return
         }
@@ -218,7 +225,7 @@ extension MeshGattClient: CBCentralManagerDelegate {
     }
 
     open func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        print("MeshGattClient, centralManager didConnect peripheral, \(peripheral)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didConnect] \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
         mGattEstablishedConnectionCount += 1
         peripheral.delegate = self
         MeshNativeHelper.setCurrentConnectedPeripheral(peripheral)
@@ -232,11 +239,11 @@ extension MeshGattClient: CBCentralManagerDelegate {
         }
 
         // try to discovery mesh provisioning/proxy service and characteristics.
-        peripheral.discoverServices(nil)
+        peripheral.discoverServices(MeshUUIDConstants.UUID_MESH_SERVICES)
     }
 
     open func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        print("error: MeshGattClient, centralManager didFailToConnect peripheral, \(peripheral), \(String(describing: error))")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didFailToConnect] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), error:\(String(describing: error))")
         MeshNativeHelper.setCurrentConnectedPeripheral(nil)
 
         if OtaManager.shared.isOtaUpgrading {
@@ -248,7 +255,7 @@ extension MeshGattClient: CBCentralManagerDelegate {
     }
 
     open func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        print("MeshGattClient, centralManager didDisconnectPeripheral peripheral, \(peripheral), \(String(describing: error))")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didDisconnectPeripheral] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), error:\(String(describing: error))")
         mGattEstablishedConnectionCount -= 1
         MeshNativeHelper.setCurrentConnectedPeripheral(nil)
 
@@ -272,14 +279,14 @@ extension MeshGattClient: CBPeripheralDelegate {
             }
         }
 
-        print("MeshGattClient, peripheral didDiscoverServices, \(peripheral)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral)")
         if let error = error {
-            print("error: MeshGattClient, peripheral didDiscoverServices with \(error)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] error:\(String(describing: error)), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral)")
             disconnect(peripheral: peripheral)
             return
         }
         guard let services = peripheral.services, services.count > 0 else {
-            print("error: MeshGattClient, peripheral didDiscoverServices, no Service found")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] error: No GATT Service Found, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
             return
         }
@@ -288,22 +295,22 @@ extension MeshGattClient: CBPeripheralDelegate {
             // Connecting to Mesh Provisioning Sevice
             if let service: CBService = services.filter({$0.uuid == MeshUUIDConstants.UUID_SERVICE_MESH_PROVISIONING}).first {
                 mGattService = service
-                print("MeshGattClient, peripheral didDiscoverServices, found Mesh Provisioning Service")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] found Mesh Provisioning Service, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(service)")
 
                 peripheral.discoverCharacteristics(nil, for: service)
             } else {
-                print("error: MeshGattClient, peripheral didDiscoverServices, no Mesh Provisioning Service found")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] error: No Mesh Provisioning Service found, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
                 disconnect(peripheral: peripheral)
             }
         } else {
             // Connecting to Mesh Proxy Service
             if let service: CBService = services.filter({$0.uuid == MeshUUIDConstants.UUID_SERVICE_MESH_PROXY}).first {
                 mGattService = service
-                print("MeshGattClient, peripheral didDiscoverServices, found Mesh Proxy Service")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] found Mesh Proxy Service, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(service)")
 
                 peripheral.discoverCharacteristics(nil, for: service)
             } else {
-                print("error: MeshGattClient, peripheral didDiscoverServices, no Mesh Proxy Service found")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] error: No Mesh Proxy Service found, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
                 disconnect(peripheral: peripheral)
             }
         }
@@ -321,9 +328,9 @@ extension MeshGattClient: CBPeripheralDelegate {
             return
         }
 
-        print("MeshGattClient, peripheral didDiscoverCharacteristicsFor service=\(service)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(service)")
         if let error = error {
-            print("error: MeshGattClient, peripheral didDiscoverCharacteristicsFor service with \(error)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] error: \(error), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
             return
         }
@@ -334,9 +341,9 @@ extension MeshGattClient: CBPeripheralDelegate {
                 MeshUUIDConstants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN
             if let characteristic: CBCharacteristic = characteristics.filter({$0.uuid == dataIn}).first {
                 mGattDataInCharacteristic = characteristic
-                print("MeshGattClient, peripheral didDiscoverServices, found Mesh Data In characteristic")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] found Mesh Data In characterisitc, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(characteristic)")
             } else {
-                print("error: MeshGattClient, peripheral didDiscoverServices, no Mesh Data In characteristic found")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] error: No Mesh Data In characterisitc found, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
                 disconnect(peripheral: peripheral)
                 return
             }
@@ -347,12 +354,12 @@ extension MeshGattClient: CBPeripheralDelegate {
                 MeshUUIDConstants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_OUT
             if let characteristic: CBCharacteristic = characteristics.filter({$0.uuid == dataOut}).first {
                 mGattDataOutCharacteristic = characteristic
-                print("MeshGattClient, peripheral didDiscoverServices, found Mesh Data Out characteristic")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] found Mesh Data Out characterisitc, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(characteristic)")
 
                 // Must enable the notification for the Mesh Data Out characteristic.
                 peripheral.setNotifyValue(true, for: characteristic)
             } else {
-                print("error: MeshGattClient, peripheral didDiscoverServices, no Mesh Data Out characteristic found")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] error: No Mesh Data Out characterisitc found, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
                 disconnect(peripheral: peripheral)
                 return
             }
@@ -367,24 +374,24 @@ extension MeshGattClient: CBPeripheralDelegate {
             }
         }
 
-        print("MeshGattClient, peripheral didUpdateNotificationStateFor characteristic=\(characteristic)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateNotificationStateFor characteristic] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(characteristic)")
         if let error = error {
-            print("error: MeshGattClient, peripheral didUpdateNotificationStateFor characteristic with \(error)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateNotificationStateFor characteristic] error: \(error), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
             return
         }
 
         if characteristic.isNotifying {
             if MeshFrameworkManager.shared.isMeshProvisionConnecting(){
-                print("MeshGattClient, all the Mesh Provisioning Service and Characteristics found and notification are enabled successfully ")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateNotificationStateFor characteristic] all the Mesh Provisioning Service and Characteristics found and notification are enabled successfully, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             } else {
-                print("MeshGattClient, all the Mesh Proxy Service and Characteristics found and notification are enabled successfully ")
+                MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateNotificationStateFor characteristic] all the Mesh Proxy Service and Characteristics found and notification are enabled successfully, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             }
 
             MeshFrameworkManager.shared.meshClientSetGattMtuSize()
             MeshFrameworkManager.shared.meshClientConnectionStateChanged(connId: mGattEstablishedConnectionCount)
         } else {
-            print("error: MeshGattClient, peripheral didUpdateNotificationStateFor characteristic, invalid status of characteristic.isNotifying=\(characteristic.isNotifying)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateNotificationStateFor characteristic] error: invalid status of characteristic.isNotifying=\(characteristic.isNotifying), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
         }
     }
@@ -397,9 +404,9 @@ extension MeshGattClient: CBPeripheralDelegate {
             }
         }
 
-        print("MeshGattClient, peripheral didDiscoverDescriptorsFor characteristic=\(characteristic)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverDescriptorsFor characteristic] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(characteristic)")
         if let error = error {
-            print("error: MeshGattClient, peripheral didDiscoverDescriptorsFor characteristic with \(error)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverDescriptorsFor characteristic] error: \(error), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
             return
         }
@@ -413,9 +420,9 @@ extension MeshGattClient: CBPeripheralDelegate {
             }
         }
 
-        print("MeshGattClient, peripheral didUpdateValueFor descriptor=\(descriptor)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateValueFor descriptor] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(descriptor)")
         if let error = error {
-            print("error: MeshGattClient, peripheral didUpdateValueFor descriptor with \(error)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateValueFor descriptor] error: \(error), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
             return
         }
@@ -429,15 +436,17 @@ extension MeshGattClient: CBPeripheralDelegate {
             }
         }
 
-        print("MeshGattClient, peripheral didWriteValueFor descriptor=\(descriptor)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didWriteValueFor descriptor] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(descriptor)")
         if let error = error {
-            print("error: MeshGattClient, peripheral didWriteValueFor descriptor with \(error)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didWriteValueFor descriptor] error: \(error), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
             return
         }
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateValueFor characteristic] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(characteristic)")
+        meshLog("MeshGattClient, peripheral didUpdateValueFor characteristic, OtaManager.shared.isOtaUpgrading=\(OtaManager.shared.isOtaUpgrading)")
         if OtaManager.shared.isOtaUpgrading, let _ = OtaConstants.UUID_GATT_OTA_CHARACTERISTICS.filter({characteristic.uuid == $0}).first {
             OtaManager.shared.peripheral(peripheral, didUpdateValueFor: characteristic, error: error)
             if OtaManager.shared.shouldBlockingOtherGattProcess {
@@ -445,30 +454,33 @@ extension MeshGattClient: CBPeripheralDelegate {
             }
         }
 
-        print("MeshGattClient, peripheral didUpdateValueFor characteristic=\(characteristic)")
         if let error = error {
-            print("error: MeshGattClient, peripheral didUpdateValueFor characteristic with \(error)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateValueFor characteristic] error: \(error), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
             return
         }
 
         guard let service = peripheral.services, let data = characteristic.value else {
-            print("error: MeshGattClient, peripheral didUpdateValueFor characteristic, invalid sevice or data is nil")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateValueFor characteristic] error: invalid peripheral service=nil or characteristic.value=nil, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             return
         }
 
-        if let _ = service.filter({$0.uuid == MeshUUIDConstants.UUID_SERVICE_MESH_PROVISIONING}).first {
-            print("MeshGattClient, peripheral didUpdateValueFor characteristic, sendReceivedProvisionPacketToMeshCore, data=\(data.dumpHexBytes())")
+        if let _ = service.filter({$0.uuid == MeshUUIDConstants.UUID_SERVICE_MESH_PROVISIONING}).first,
+            let _ = MeshUUIDConstants.UUID_MESH_PROVISIONING_CHARACTERISTICS_CCCD.filter({characteristic.uuid == $0}).first {
+            MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateValueFor characteristic] sendReceivedProvisionPacketToMeshCore, data: \(data.dumpHexBytes()), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             MeshFrameworkManager.shared.sendReceivedProvisionPacketToMeshCore(data: data)
         }
 
-        if let _ = service.filter({$0.uuid == MeshUUIDConstants.UUID_SERVICE_MESH_PROXY}).first {
-            print("MeshGattClient, peripheral didUpdateValueFor characteristic, sendReceivedProxyPacketToMeshCore, data=\(data.dumpHexBytes())")
+        if let _ = service.filter({$0.uuid == MeshUUIDConstants.UUID_SERVICE_MESH_PROXY}).first,
+            let _ = MeshUUIDConstants.UUID_MESH_PROXY_CHARACTERISTICS_CCCD.filter({characteristic.uuid == $0}).first {
+            MeshNativeHelper.meshClientLog("[MeshGattClient didUpdateValueFor characteristic] sendReceivedProxyPacketToMeshCore, data: \(data.dumpHexBytes()), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             MeshFrameworkManager.shared.sendReceivedProxyPacketToMeshCore(data: data)
         }
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        MeshNativeHelper.meshClientLog("[MeshGattClient didWriteValueFor characteristic] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(characteristic)")
+        meshLog("MeshGattClient, peripheral didWriteValueFor characteristic, OtaManager.shared.isOtaUpgrading=\(OtaManager.shared.isOtaUpgrading)")
         if OtaManager.shared.isOtaUpgrading, let _ = OtaConstants.UUID_GATT_OTA_CHARACTERISTICS.filter({characteristic.uuid == $0}).first {
             OtaManager.shared.peripheral(peripheral, didWriteValueFor: characteristic, error: error)
             if OtaManager.shared.shouldBlockingOtherGattProcess {
@@ -476,27 +488,26 @@ extension MeshGattClient: CBPeripheralDelegate {
             }
         }
 
-        print("MeshGattClient, peripheral didWriteValueFor characteristic=\(characteristic)")
         if let error = error {
-            print("error: MeshGattClient, peripheral didWriteValueFor characteristic with \(error)")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didWriteValueFor characteristic] error: \(error), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
             return
         }
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
-        print("MeshGattClient, peripheral didReadRSSI, RSSI=\(RSSI), \(String(describing: error))")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didReadRSSI] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), RSSI: \(RSSI), error: \(String(describing: error))")
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didModifyServices invalidatedServices: [CBService]) {
-        print("MeshGattClient, peripheral didModifyServices, \(peripheral), invalidatedServices=\(invalidatedServices)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didModifyServices] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), didModifyServices: \(invalidatedServices)")
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didDiscoverIncludedServicesFor service: CBService, error: Error?) {
-        print("MeshGattClient, peripheral didDiscoverIncludedServicesFor, \(peripheral), service=\(service), \(String(describing: error))")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverIncludedServicesFor service] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(service), error: \(String(describing: error))")
     }
 
     open func peripheralDidUpdateName(_ peripheral: CBPeripheral) {
-        print("MeshGattClient, peripheralDidUpdateName, \(peripheral)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient peripheralDidUpdateName] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral)")
     }
 }

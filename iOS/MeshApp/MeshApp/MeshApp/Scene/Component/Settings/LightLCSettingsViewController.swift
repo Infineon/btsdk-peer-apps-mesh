@@ -58,7 +58,7 @@ class LightLCSettingsViewController: UIViewController {
         lightLCOnOffSwitch.isOn = false
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, viewInit, mesh network not connected, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, viewInit, mesh network not connected, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network not connected, please go to Network Status, sync to connect to the mesh network firstly. Error Code: \(error).")
                 return
             }
@@ -119,14 +119,14 @@ class LightLCSettingsViewController: UIViewController {
                 let lightLcMode = MeshNotificationConstants.getLightLcModeStatus(userInfo: userInfo),
                 MeshFrameworkManager.shared.meshClientIsSameNodeElements(networkName: networkName, elementName: deviceName, anotherElementName: lightLcMode.deviceName) {
                 lightLCModeSwitch.isOn = (lightLcMode.mode == MeshConstants.MESH_CLIENT_LC_MODE_OFF) ? false : true
-                print("LightLCSettingsViewController, notificationHandler, Light LC mode: \(lightLcMode.mode)")
+                meshLog("LightLCSettingsViewController, notificationHandler, Light LC mode: \(lightLcMode.mode)")
                 self.showToast(message: "Light LC mode: \(lightLcMode.mode)")
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LIGHT_LC_OCCUPANCY_MODE_STATUS):
             if let networkName = MeshFrameworkManager.shared.getOpenedMeshNetworkName(), let deviceName = self.deviceName,
                 let lightLcOccupancyMode = MeshNotificationConstants.getLightLcOccupancyModeStatus(userInfo: userInfo), MeshFrameworkManager.shared.meshClientIsSameNodeElements(networkName: networkName, elementName: deviceName, anotherElementName: lightLcOccupancyMode.deviceName) {
                 occupanyModeSwitch.isOn = (lightLcOccupancyMode.mode == MeshConstants.MESH_CLIENT_LC_OCCUPANCY_MODE_OFF) ? false : true
-                print("LightLCSettingsViewController, notificationHandler, Light LC occupany mode: \(lightLcOccupancyMode.mode)")
+                meshLog("LightLCSettingsViewController, notificationHandler, Light LC occupany mode: \(lightLcOccupancyMode.mode)")
                 self.showToast(message: "Light LC occupany mode: \(lightLcOccupancyMode.mode)")
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LIGHT_LC_PROPERTY_STATUS):
@@ -135,7 +135,7 @@ class LightLCSettingsViewController: UIViewController {
                 lightLcProperty.propertyId == self.lightLcProperty.id,
                 MeshFrameworkManager.shared.meshClientIsSameNodeElements(networkName: networkName, elementName: deviceName, anotherElementName: lightLcProperty.deviceName) {
                 propertyIdValueTextField.text = "\(lightLcProperty.value)"
-                print("LightLCSettingsViewController, notificationHandler, Light LC property ID: \(String.init(format: "0x%x", lightLcProperty.propertyId)), value: \(lightLcProperty.value)")
+                meshLog("LightLCSettingsViewController, notificationHandler, Light LC property ID: \(String.init(format: "0x%x", lightLcProperty.propertyId)), value: \(lightLcProperty.value)")
                 self.showToast(message: "Light LC property ID: \(String.init(format: "0x%x", lightLcProperty.propertyId)), value: \(lightLcProperty.value)")
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_ON_OFF_STATUS):
@@ -143,7 +143,7 @@ class LightLCSettingsViewController: UIViewController {
                 let onoffStatus = MeshNotificationConstants.getOnOffStatus(userInfo: userInfo),
                 MeshFrameworkManager.shared.meshClientIsSameNodeElements(networkName: networkName, elementName: deviceName, anotherElementName: onoffStatus.deviceName) {
                 lightLCOnOffSwitch.isOn = onoffStatus.isOn
-                print("LightLCSettingsViewController, notificationHandler, Light LC ON/OFF status: \(onoffStatus.isOn ? "ON" : "OFF")")
+                meshLog("LightLCSettingsViewController, notificationHandler, Light LC ON/OFF status: \(onoffStatus.isOn ? "ON" : "OFF")")
                 self.showToast(message: "Light LC ON/OFF status: \(onoffStatus.isOn ? "ON" : "OFF")")
             }
         default:
@@ -161,7 +161,7 @@ class LightLCSettingsViewController: UIViewController {
     @IBAction func onLightLCModeSetSwitchClick(_ sender: UISwitch) {
         guard let componentName = self.deviceName else {
             lightLCModeSwitch.isOn = !lightLCModeSwitch.isOn
-            print("error: LightLCSettingsViewController, onLightLCModeSetSwitchClick, invalid device name for the Light Controller")
+            meshLog("error: LightLCSettingsViewController, onLightLCModeSetSwitchClick, invalid device name for the Light Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Internal error: invalid device name for the Light Controller.")
             return
         }
@@ -169,43 +169,43 @@ class LightLCSettingsViewController: UIViewController {
         let error = MeshFrameworkManager.shared.meshClientSetLightLcMode(componentName: componentName, mode: mode)
         guard error == MeshErrorCode.MESH_SUCCESS else {
             lightLCModeSwitch.isOn = !lightLCModeSwitch.isOn
-            print("error: LightLCSettingsViewController, onLightLCModeSetSwitchClick, failed to call meshClientSetLightLcMode, error: \(error)")
+            meshLog("error: LightLCSettingsViewController, onLightLCModeSetSwitchClick, failed to call meshClientSetLightLcMode, error: \(error)")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send Set Light LC mode command. Error Code: \(error).")
             return
         }
 
-        print("LightLCSettingsViewController, onLightLCModeSetSwitchClick, meshClientSetLightLcMode return success")
+        meshLog("LightLCSettingsViewController, onLightLCModeSetSwitchClick, meshClientSetLightLcMode return success")
     }
 
     @IBAction func onLightLCModeGetButtonClick(_ sender: UIButton) {
         guard let componentName = self.deviceName else {
-            print("error: LightLCSettingsViewController, onLightLCModeGetButtonClick, invalid device name for the Light Controller")
+            meshLog("error: LightLCSettingsViewController, onLightLCModeGetButtonClick, invalid device name for the Light Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Internal error: invalid device name for the Light Controller.")
             return
         }
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onLightLCModeGetButtonClick, failed to connect to mesh network, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onLightLCModeGetButtonClick, failed to connect to mesh network, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the Mesh Network. Error Code: \(error).")
                 return
             }
 
             let error = MeshFrameworkManager.shared.meshClientGetLightLcMode(componentName: componentName)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onLightLCModeGetButtonClick, failed to call meshClientGetLightLcMode, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onLightLCModeGetButtonClick, failed to call meshClientGetLightLcMode, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send Get Light LC mode command. Error Code: \(error).")
                 return
             }
 
-            print("LightLCSettingsViewController, onLightLCModeGetButtonClick, meshClientGetLightLcMode return success")
+            meshLog("LightLCSettingsViewController, onLightLCModeGetButtonClick, meshClientGetLightLcMode return success")
         }
     }
 
     @IBAction func onOccupanySetSwitchClick(_ sender: UISwitch) {
         guard let componentName = self.deviceName else {
             occupanyModeSwitch.isOn = !occupanyModeSwitch.isOn
-            print("error: LightLCSettingsViewController, onOccupanySetSwitchClick, invalid device name for the Light Controller")
+            meshLog("error: LightLCSettingsViewController, onOccupanySetSwitchClick, invalid device name for the Light Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Internal error: invalid device name for the Light Controller.")
             return
         }
@@ -213,7 +213,7 @@ class LightLCSettingsViewController: UIViewController {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.occupanyModeSwitch.isOn = !self.occupanyModeSwitch.isOn
-                print("error: LightLCSettingsViewController, onOccupanySetSwitchClick, failed to connect to mesh network, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onOccupanySetSwitchClick, failed to connect to mesh network, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the Mesh Network. Error Code: \(error).")
                 return
             }
@@ -222,44 +222,44 @@ class LightLCSettingsViewController: UIViewController {
             let error = MeshFrameworkManager.shared.meshClientSetLightLcOccupancyMode(componentName: componentName, mode: mode)
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.occupanyModeSwitch.isOn = !self.occupanyModeSwitch.isOn
-                print("error: LightLCSettingsViewController, onOccupanySetSwitchClick, failed to call meshClientSetLightLcOccupancyMode, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onOccupanySetSwitchClick, failed to call meshClientSetLightLcOccupancyMode, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send Set Light LC occupancy mode command. Error Code: \(error).")
                 return
             }
 
-            print("LightLCSettingsViewController, onOccupanySetSwitchClick, meshClientSetLightLcOccupancyMode return success")
+            meshLog("LightLCSettingsViewController, onOccupanySetSwitchClick, meshClientSetLightLcOccupancyMode return success")
         }
     }
 
     @IBAction func onOccupanyGetButtonClick(_ sender: UIButton) {
         guard let componentName = self.deviceName else {
-            print("error: LightLCSettingsViewController, onOccupanyGetButtonClick, invalid device name for the Light Controller")
+            meshLog("error: LightLCSettingsViewController, onOccupanyGetButtonClick, invalid device name for the Light Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Internal error: invalid device name for the Light Controller.")
             return
         }
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onOccupanyGetButtonClick, failed to connect to mesh network, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onOccupanyGetButtonClick, failed to connect to mesh network, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the Mesh Network. Error Code: \(error).")
                 return
             }
 
             let error = MeshFrameworkManager.shared.meshClientGetLightLcOccupancyMode(componentName: componentName)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onOccupanyGetButtonClick, failed to call meshClientGetLightLcOccupancyMode, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onOccupanyGetButtonClick, failed to call meshClientGetLightLcOccupancyMode, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send Get Light LC occupancy mode command. Error Code: \(error).")
                 return
             }
 
-            print("LightLCSettingsViewController, onOccupanyGetButtonClick, meshClientGetLightLcOccupancyMode return success")
+            meshLog("LightLCSettingsViewController, onOccupanyGetButtonClick, meshClientGetLightLcOccupancyMode return success")
         }
     }
 
     @IBAction func onLightLCOnOffSwitchClick(_ sender: UISwitch) {
         guard let componentName = self.deviceName else {
             lightLCOnOffSwitch.isOn = !lightLCOnOffSwitch.isOn
-            print("error: LightLCSettingsViewController, onLightLCOnOffSwitchClick, invalid device name for the Light Controller")
+            meshLog("error: LightLCSettingsViewController, onLightLCOnOffSwitchClick, invalid device name for the Light Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Internal error: invalid device name for the Light Controller.")
             return
         }
@@ -267,7 +267,7 @@ class LightLCSettingsViewController: UIViewController {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.lightLCOnOffSwitch.isOn = !self.lightLCOnOffSwitch.isOn
-                print("error: LightLCSettingsViewController, onLightLCOnOffSwitchClick, failed to connect to mesh network, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onLightLCOnOffSwitchClick, failed to connect to mesh network, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the Mesh Network. Error Code: \(error).")
                 return
             }
@@ -275,68 +275,68 @@ class LightLCSettingsViewController: UIViewController {
             let error = MeshFrameworkManager.shared.meshClientSetLightLcOnOffSet(componentName: componentName, isOn: self.lightLCOnOffSwitch.isOn, reliable: true, transitionTime: 0, delay: 0)
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.lightLCOnOffSwitch.isOn = !self.lightLCOnOffSwitch.isOn
-                print("error: LightLCSettingsViewController, onLightLCOnOffSwitchClick, failed to call meshClientSetLightLcOnOffSet, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onLightLCOnOffSwitchClick, failed to call meshClientSetLightLcOnOffSet, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send Set Light LC ON/OFF command. Error Code: \(error).")
                 return
             }
 
-            print("LightLCSettingsViewController, onLightLCOnOffSwitchClick, meshClientSetLightLcOnOffSet return success")
+            meshLog("LightLCSettingsViewController, onLightLCOnOffSwitchClick, meshClientSetLightLcOnOffSet return success")
         }
     }
 
     @IBAction func onLightLCOnOffGetButtonClick(_ sender: UIButton) {
         guard let componentName = self.deviceName else {
-            print("error: LightLCSettingsViewController, onLightLCOnOffGetButtonClick, invalid device name for the Light Controller")
+            meshLog("error: LightLCSettingsViewController, onLightLCOnOffGetButtonClick, invalid device name for the Light Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Internal error: invalid device name for the Light Controller.")
             return
         }
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onLightLCOnOffGetButtonClick, failed to connect to mesh network, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onLightLCOnOffGetButtonClick, failed to connect to mesh network, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the Mesh Network. Error Code: \(error).")
                 return
             }
 
             let error = MeshFrameworkManager.shared.meshClientOnOffGet(deviceName: componentName)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onLightLCOnOffGetButtonClick, failed to call meshClientOnOffGet, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onLightLCOnOffGetButtonClick, failed to call meshClientOnOffGet, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send Get Light LC ON/OFF status command. Error Code: \(error).")
                 return
             }
 
-            print("LightLCSettingsViewController, onLightLCOnOffGetButtonClick, meshClientOnOffGet return success")
+            meshLog("LightLCSettingsViewController, onLightLCOnOffGetButtonClick, meshClientOnOffGet return success")
         }
     }
 
     @IBAction func onPropertyGetButtonClick(_ sender: UIButton) {
         guard let componentName = self.deviceName else {
-            print("error: LightLCSettingsViewController, onPropertyGetButtonClick, invalid device name for the Light Controller")
+            meshLog("error: LightLCSettingsViewController, onPropertyGetButtonClick, invalid device name for the Light Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Internal error: invalid device name for the Light Controller.")
             return
         }
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onPropertyGetButtonClick, failed to connect to mesh network, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onPropertyGetButtonClick, failed to connect to mesh network, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the Mesh Network. Error Code: \(error).")
                 return
             }
 
             let error = MeshFrameworkManager.shared.meshClientGetLightLcProperty(componentName: componentName, propertyId: self.lightLcProperty.id)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onPropertyGetButtonClick, failed to call meshClientGetLightLcProperty, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onPropertyGetButtonClick, failed to call meshClientGetLightLcProperty, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send Get Light LC Property command. Error Code: \(error).")
                 return
             }
 
-            print("LightLCSettingsViewController, onPropertyGetButtonClick, meshClientGetLightLcProperty return success")
+            meshLog("LightLCSettingsViewController, onPropertyGetButtonClick, meshClientGetLightLcProperty return success")
         }
     }
 
     @IBAction func onPropertyIdSelectionCustomDropDownButtonClick(_ sender: CustomDropDownButton) {
         propertyIdSelectCustomDropDownButton.showDropList(width: 300, parent: self) {
-            print("\(self.propertyIdSelectCustomDropDownButton.selectedIndex), \(self.propertyIdSelectCustomDropDownButton.selectedString)")
+            meshLog("\(self.propertyIdSelectCustomDropDownButton.selectedIndex), \(self.propertyIdSelectCustomDropDownButton.selectedString)")
             if self.propertyIdSelectCustomDropDownButton.selectedString != self.lightLcProperty.name {
                 self.propertyIdValueTextField.text = ""     // clear value data when property id changed.
             }
@@ -346,31 +346,31 @@ class LightLCSettingsViewController: UIViewController {
 
     @IBAction func onPropertySetButtonClick(_ sender: UIButton) {
         guard let componentName = self.deviceName else {
-            print("error: LightLCSettingsViewController, onPropertySetButtonClick, invalid device name for the Light Controller")
+            meshLog("error: LightLCSettingsViewController, onPropertySetButtonClick, invalid device name for the Light Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Internal error: invalid device name for the Light Controller.")
             return
         }
         guard let value = UtilityManager.convertDigitStringToInt(digit: self.propertyIdValueTextField.text) else {
-            print("error: LightLCSettingsViewController, onPropertySetButtonClick, invalid device name for the Light Controller")
+            meshLog("error: LightLCSettingsViewController, onPropertySetButtonClick, invalid device name for the Light Controller")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid property value string, please input a valid integer value.")
             return
         }
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onPropertySetButtonClick, failed to connect to mesh network, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onPropertySetButtonClick, failed to connect to mesh network, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the Mesh Network. Error Code: \(error).")
                 return
             }
 
             let error = MeshFrameworkManager.shared.meshClientSetLightLcProperty(componentName: componentName, propertyId: self.lightLcProperty.id, value: value)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: LightLCSettingsViewController, onPropertySetButtonClick, failed to call meshClientSetLightLcProperty, error: \(error)")
+                meshLog("error: LightLCSettingsViewController, onPropertySetButtonClick, failed to call meshClientSetLightLcProperty, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send Set Light LC Property command. Error Code: \(error).")
                 return
             }
 
-            print("LightLCSettingsViewController, onPropertySetButtonClick, meshClientSetLightLcProperty return success")
+            meshLog("LightLCSettingsViewController, onPropertySetButtonClick, meshClientSetLightLcProperty return success")
         }
     }
 

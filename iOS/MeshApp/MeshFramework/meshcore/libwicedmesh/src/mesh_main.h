@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -44,11 +44,9 @@
 #endif
 #include "wiced.h"
 #include "bt_types.h"
+#include "trace.h"
 
-// debug trace control, defined in build tool preprocessor macros.
-#ifdef WICED_BT_MESH_TRACE_ENABLE
-#define WICED_BT_TRACE_ENABLE 1
-#endif
+#define LOG_TAG "MeshLibrary"
 
 #ifdef __cplusplus
 extern "C"
@@ -66,23 +64,16 @@ extern wiced_bool_t mesh_adv_scan_start(void);
 extern wiced_bool_t mesh_set_scan_type(uint8_t is_active);
 void wiced_bt_ble_set_scan_mode(uint8_t is_active);
 extern void mesh_adv_scan_stop(void);
-void Logn(uint8_t* data, int len);
 
 extern wiced_result_t mesh_transport_send_data( uint16_t opcode, uint8_t* p_data, uint16_t length );
-
-//extern void wiced_hci_process_data( uint16_t opcode, uint8_t* p_data, uint16_t length );
-
-#define LOG_TAG "MeshLibrary"
-//#define  WICED_BT_TRACE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
-void Log(char *fmt, ...);
-#define WICED_BT_TRACE Log
-#define WICED_BT_TRACE_CRIT(...) wiced_printf(NULL, 0, __VA_ARGS__)
-#define WICED_BT_TRACE_ARRAY(ptr, len, ...) wiced_printf(NULL, 0, __VA_ARGS__); wiced_trace_array(ptr, len);
 
 /* through all the meshcore library, must use these APIs to protocol data. Such as for timer threads, and APIs call in and call out */
 wiced_bool_t initTimer(void);   // This API must be called firstly before using the EnterCriticalSection and LeaveCriticalSection APIs.
 void EnterCriticalSection(void);
 void LeaveCriticalSection(void);
+
+void setDfuFilePath(char* dfuFilepath);
+char *getDfuFilePath(void);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -78,6 +78,7 @@ NS_ASSUME_NONNULL_BEGIN
                remainingTime:(uint32_t)remainingTime;
 -(void) meshClientLightnessStateCb:(NSString *)deviceName target:(uint16_t)target present:(uint16_t)present remainingTime:(uint32_t)remainingTime;
 -(void) meshClientDfuStatusCb:(uint8_t)status progress:(uint8_t)progress;
+-(void) onDfuEventReceived:(uint8_t)event data:(NSData *)data;
 
 //GATT APIS
 -(Boolean) meshClientAdvScanStartCb;
@@ -92,6 +93,7 @@ NS_ASSUME_NONNULL_BEGIN
 -(void) onLightLcOccupancyModeStatusCb:(NSString *)deviceName mode:(int)mode;
 -(void) onLightLcPropertyStatusCb:(NSString *)deviceName propertyId:(int)propertyId value:(int)value;
 
+-(void) updateProvisionerUuid:(NSUUID *)uuid;
 @end
 
 NS_ASSUME_NONNULL_END

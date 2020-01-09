@@ -40,6 +40,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import com.cypress.le.mesh.meshapp.ActivityGroup;
 import com.cypress.le.mesh.meshapp.ActivityModel;
+import com.cypress.le.mesh.meshapp.Constants;
 import com.cypress.le.mesh.meshapp.LightingService;
 import com.cypress.le.mesh.meshapp.R;
 import com.cypress.le.mesh.meshframework.MeshController;
@@ -229,7 +230,7 @@ public class GrpDeviceListAdapter extends BaseAdapter {
                             Log.d(TAG, "sending brightnesschange both not null");
                             Thread t = new Thread(new Runnable() {
                                 public void run() {
-                                    serviceReference.getMesh().onoffSet(componentList.get(position - groupList.size()), val, false, 0, (short) 0);
+                                    serviceReference.getMesh().onoffSet(componentList.get(position - groupList.size()), val, false, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
 
                                 }
                             });
@@ -240,7 +241,7 @@ public class GrpDeviceListAdapter extends BaseAdapter {
                     } else if(componentList !=null) {
                         Thread t = new Thread(new Runnable() {
                             public void run() {
-                                serviceReference.getMesh().onoffSet(componentList.get(position), val, false, 0, (short) 0);
+                                serviceReference.getMesh().onoffSet(componentList.get(position), val, false, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
                             }
                         });
                         t.start();
@@ -268,7 +269,7 @@ public class GrpDeviceListAdapter extends BaseAdapter {
                             Log.d(TAG, "sending brightnesschange both not null");
                             Thread t = new Thread(new Runnable() {
                                 public void run() {
-                                    serviceReference.getMesh().onoffSet(componentList.get(position - groupList.size()), val, false, 0, (short) 0);
+                                    serviceReference.getMesh().onoffSet(componentList.get(position - groupList.size()), val, false, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
 
                                 }
                             });
@@ -279,7 +280,7 @@ public class GrpDeviceListAdapter extends BaseAdapter {
                     } else if(componentList !=null) {
                         Thread t = new Thread(new Runnable() {
                             public void run() {
-                                serviceReference.getMesh().onoffSet(componentList.get(position), val, false, 0, (short) 0);
+                                serviceReference.getMesh().onoffSet(componentList.get(position), val, false, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
                             }
                         });
                         t.start();

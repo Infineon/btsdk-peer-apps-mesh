@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -50,6 +50,8 @@
 #include "wiced_bt_mesh_core.h"
 #include "wiced_bt_mesh_models.h"
 #include "wiced_bt_mesh_provision.h"
+#include "wiced_bt_ota_firmware_upgrade.h"
+#include "wiced_bt_mesh_app.h"
 
 static void mesh_app_init(wiced_bool_t is_provisioned);
 static void mesh_provision_message_handler(uint16_t event, wiced_bt_mesh_event_t *p_event, void *p_data);
@@ -91,8 +93,15 @@ extern uint32_t mesh_native_helper_read_file_size(const char *p_path);
 #define MESH_FWID               0x3016000101010000
 #define MESH_CACHE_REPLAY_SIZE  200
 #define APPEARANCE_GENERIC_TAG  512
-#define MESH_VENDOR_COMPANY_ID          0x131   // Cypress Company ID
-#define MESH_VENDOR_MODEL_ID            1       // ToDo.  This need to be modified
+/*
+ * TODO: Change to any allocated SIG company ID when required.
+ *       This macro is used by Mesh Libraries. By Default, it was set to Cypress Company ID.
+ */
+#define MESH_VENDOR_COMPANY_ID          0x131
+#define MESH_VENDOR_MODEL_ID            1       // TODO: This need to be modified based on Mesh Device implementation.
+// This sample shows simple use of vendor get/set/status messages.  Vendor model can define any opcodes it wants.
+#define MESH_VENDOR_OPCODE1          1       // Command to Get data
+#define MESH_VENDOR_OPCODE2          2       // Command to Set data ack is required
 
 #define SENSOR_PROPERTY_ID_SIZE                     (2)
 #define PROPERTY_ID_AMBIENT_LUX_LEVEL_ON            (0x2B)
@@ -102,10 +111,6 @@ extern uint32_t mesh_native_helper_read_file_size(const char *p_path);
 #define PROPERTY_ID_PRESENT_AMBIENT_LIGHT_LEVEL     (0x4E)
 #define PROPERTY_ID_PRESENT_AMBIENT_TEMPERATURE     (0x4F)
 #define SETTING_PROPERTY_ID                         (0x2001)
-// This sample shows simple use of vendor get/set/status messages.  Vendor model
-// can define any opcodes it wants.
-#define MESH_VENDOR_OPCODE1          1       // Command to Get data
-#define MESH_VENDOR_OPCODE2          2       // Command to Set data ack is required
 
 
 wiced_result_t mesh_transport_send_data( uint16_t opcode, uint8_t* p_data, uint16_t length );
@@ -134,7 +139,7 @@ wiced_bt_mesh_core_config_model_t   mesh_element1_models[] =
     WICED_BT_MESH_MODEL_SENSOR_CLIENT,
     WICED_BT_MESH_MODEL_LIGHT_LC_CLIENT,
     WICED_BT_MESH_MODEL_FW_DISTRIBUTION_CLIENT,
-    WICED_BT_MESH_MODEL_FW_DISTRIBUTION_SERVER,
+    WICED_BT_MESH_MODEL_FW_DISTRIBUTOR,
 #ifdef MESH_VENDOR_MODEL_ID
     { MESH_VENDOR_COMPANY_ID, MESH_VENDOR_MODEL_ID, vendor_data_handler, NULL, NULL },
 #endif
@@ -175,10 +180,9 @@ wiced_bt_mesh_core_config_element_t mesh_elements[] =
 
 wiced_bt_mesh_core_config_t  mesh_config =
 {
-    .company_id         = MESH_COMPANY_ID_CYPRESS,                  // Company identifier assigned by the Bluetooth SIG
+    .company_id         = MESH_VENDOR_COMPANY_ID,                   // Company identifier assigned by the Bluetooth SIG
     .product_id         = MESH_PID,                                 // Vendor-assigned product identifier
     .vendor_id          = MESH_VID,                                 // Vendor-assigned product version identifier
-    .firmware_id        = MESH_FWID,
     .replay_cache_size  = MESH_CACHE_REPLAY_SIZE,                   // Number of replay protection entries, i.e. maximum number of mesh devices that can send application messages to this device.
     .features                  = 0,                                 //
     .friend_cfg         =                                           // Empty Configuration of the Friend Feature
@@ -252,11 +256,7 @@ wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t comp
     wiced_bt_mesh_event_t                     temp_event;
     uint16_t                                  model_id;
 
-#if WICED_BT_MODELS_VERBOSE == 1
-    WICED_BT_TRACE("company_id:%x opcode:%s\n", company_id, mesh_opcode_string(opcode));
-#else
     WICED_BT_TRACE("company_id:%x opcode:%x\n", company_id, opcode);
-#endif
     if (company_id == MESH_COMPANY_ID_UNUSED)
     {
         p_message_handler = wiced_bt_mesh_proxy_client_message_handler;
@@ -298,27 +298,6 @@ wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t comp
     return p_message_handler;
 }
 
-#if 0
-void SendWicedCommand(UINT16 opcode, LPBYTE p_data, DWORD len)
-{
-    WICED_BT_TRACE("SendWicedCommand\n");
-    uint8_t* data = (uint8_t*)malloc(len);
-
-    if (data)
-        memcpy(data, p_data, len);
-
-//    mesh_app_proc_rx_cmd(opcode, data, len);
-
-    free(data);
-}
-
-uint8_t wiced_hci_send(uint16_t opcode, uint8_t *p_buffer, uint16_t length)
-{
-    SendWicedCommand(opcode, p_buffer, length);
-    return TRUE;
-}
-#endif
-
 /*
  * Application implements that function to start/stop scanning as requested by the core
  */
@@ -341,6 +320,7 @@ void mesh_app_init(wiced_bool_t is_provisioned)
     wiced_bt_mesh_proxy_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_model_fw_provider_init();
     wiced_bt_mesh_model_fw_distribution_server_init();
+    wiced_bt_mesh_model_blob_transfer_server_init(0);
 
     wiced_bt_mesh_model_property_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_onoff_client_init(0, mesh_control_message_handler, is_provisioned);
@@ -377,32 +357,6 @@ void mesh_sensor_message_handler(uint8_t element_idx, uint16_t addr, uint16_t ev
     Log("sensor message:%d\n", event);
     mesh_sensor_process_event(addr, event, p_data);
 }
-
-#if 0
-/*
- * Send provisioner provisioning end event over transport
- */
-void mesh_provisioner_hci_event_provision_link_status_send(wiced_bt_mesh_provision_link_status_data_t *p_data)
-{
-    Log("provision connection status conn_id:%d addr:%x connected:%d\n", p_data->status);
-    mesh_provision_process_event(WICED_BT_MESH_PROVISION_LINK_STATUS, NULL, (wiced_bt_mesh_provision_link_status_data_t *)p_data);
-}
-
-uint8_t mesh_provisioner_process_proxy_connected(uint8_t* p_data, uint16_t length) {
-    int conn_id ;
-    int mtu;
-    STREAM_TO_UINT32(conn_id, p_data);
-    STREAM_TO_UINT16(mtu, p_data);
-
-    wiced_bt_mesh_core_connection_status(conn_id, TRUE,0,mtu);
-    return 0;
-}
-
-wiced_bool_t wiced_bt_mesh_proxy_disconnect(wiced_bt_mesh_provision_disconnect_data_t *p_disconnect)
-{
-//    return mesh_gatt_client_proxy_disconnect(&p_disconnect)  ? HCI_CONTROL_MESH_STATUS_SUCCESS : HCI_CONTROL_MESH_STATUS_ERROR;
-}
-#endif
 
 uint32_t mesh_app_on_received_provision_gatt_pkt(uint8_t *p_data, uint32_t length)
 {
@@ -507,15 +461,33 @@ void wiced_bt_fw_save_meta_data(uint8_t partition, uint8_t* p_data, uint32_t len
 {
 }
 
+wiced_bool_t wiced_firmware_upgrade_erase_nv(uint32_t start, uint32_t size)
+{
+    return WICED_TRUE;
+}
+
+wiced_bool_t wiced_ota_fw_upgrade_set_transfer_mode(wiced_bool_t transfer_only, wiced_ota_firmware_event_callback_t *p_event_callback)
+{
+    return WICED_TRUE;
+}
+
 #define PARTITION_ACTIVE    0
 #define PARTITION_UPGRADE   1
 wiced_bool_t wiced_bt_fw_read_meta_data(uint8_t partition, uint8_t * p_data, uint32_t * p_len)
 {
+    uint32_t fw_id_len;
     mesh_dfu_fw_id_t fw_id;
+    uint32_t validation_data_len;
     mesh_dfu_validation_data_t validation_data;
-    wiced_bool_t got_data = WICED_FALSE;
+    uint32_t image_size;
 
-    mesh_native_helper_read_dfu_meta_data(fw_id.fw_id, (uint32_t *)&fw_id.fw_id_len, validation_data.data, (uint32_t *)&validation_data.len);
+    if (partition != PARTITION_UPGRADE || p_len == NULL) {
+        return WICED_FALSE;
+    }
+
+    mesh_native_helper_read_dfu_meta_data(fw_id.fw_id, (uint32_t *)&fw_id_len, validation_data.data, (uint32_t *)&validation_data_len);
+    fw_id.fw_id_len = (uint8_t)fw_id_len;
+    validation_data.len = (uint8_t)validation_data_len;
 
     if (!fw_id.fw_id_len || !validation_data.len || (*p_len < (fw_id.fw_id_len + validation_data.len + 2))) {
         return WICED_FALSE;
@@ -527,11 +499,13 @@ wiced_bool_t wiced_bt_fw_read_meta_data(uint8_t partition, uint8_t * p_data, uin
         *p++ = fw_id.fw_id_len;
         memcpy(p, fw_id.fw_id, fw_id.fw_id_len);
         p += fw_id.fw_id_len;
+        image_size = wiced_bt_get_fw_image_size(PARTITION_UPGRADE);
+        memcpy(p, &image_size, sizeof(uint32_t));
+        p += sizeof(uint32_t);
         *p++ = validation_data.len;
         memcpy(p, validation_data.data, validation_data.len);
-        got_data = WICED_TRUE;
     }
-    return got_data;
+    return WICED_TRUE;
 }
 
 void mesh_core_state_changed(wiced_bt_mesh_core_state_type_t type, wiced_bt_mesh_core_state_t *p_state)
@@ -570,4 +544,12 @@ wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data
     wiced_bt_mesh_release_event(p_event);
 
     return WICED_TRUE;
+}
+
+void wiced_bt_mesh_add_vendor_model(wiced_bt_mesh_add_vendor_model_data_t *p_data)
+{
+}
+
+void wiced_firmware_upgrade_finish(void)
+{
 }

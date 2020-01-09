@@ -159,7 +159,7 @@ public class NodeAdapter extends BaseAdapter {
                 final boolean val = true;
                 Thread t = new Thread(new Runnable() {
                     public void run() {
-                        service.getMesh().onoffSet(mCompName, val, true, 0, (short) 0);
+                        service.getMesh().onoffSet(mCompName, val, true, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
                     }
                 });
                 t.start();
@@ -171,7 +171,7 @@ public class NodeAdapter extends BaseAdapter {
                 final boolean val = false;
                 Thread t = new Thread(new Runnable() {
                     public void run() {
-                        service.getMesh().onoffSet(mCompName, val, true, 0, (short) 0);
+                        service.getMesh().onoffSet(mCompName, val, true, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
                     }
                 });
                 t.start();
@@ -227,7 +227,7 @@ public class NodeAdapter extends BaseAdapter {
 
                 Thread t = new Thread(new Runnable() {
                     public void run() {
-                        service.getMesh().lightnessSet(mCompName, lightness, true, 0, (short) 0);
+                        service.getMesh().lightnessSet(mCompName, lightness, true, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
                     }
                 });
                 t.start();
@@ -295,7 +295,7 @@ public class NodeAdapter extends BaseAdapter {
                     public void run() {
                         if (temp == 0)
                             temp = 800;
-                        service.ctlSet(mCompName, temp, lightness, MeshController.MESH_TRANSITION_TIME_DEFAULT, 0);
+                        service.ctlSet(mCompName, temp, lightness, Constants.DEFAULT_TRANSITION_TIME, 0);
                     }
                 });
                 t.start();

@@ -67,7 +67,7 @@ class DeviceListTableViewCell: UITableViewCell {
     }
 
     @IBAction func onControlButtonClick(_ sender: UIButton) {
-        print("DeviceListTableViewCell, onControlButtonClick")
+        meshLog("DeviceListTableViewCell, onControlButtonClick")
         if let name = self.deviceNameLabel.text, name.count > 0 {
             UserSettings.shared.currentActiveGroupName = groupName
             UserSettings.shared.currentActiveComponentName = deviceName
@@ -76,12 +76,12 @@ class DeviceListTableViewCell: UITableViewCell {
     }
 
     @IBAction func onTurnOnButtonClick(_ sender: UIButton) {
-        print("DeviceListTableViewCell, onTurnOnButtonClick, deviceName=\(String(describing: deviceName))")
+        meshLog("DeviceListTableViewCell, onTurnOnButtonClick, deviceName=\(String(describing: deviceName))")
         turnDeviceOnOff(deviceName: deviceName, isOn: true)
     }
 
     @IBAction func onTurnOffButtonClick(_ sender: UIButton) {
-        print("DeviceListTableViewCell, onTurnOffButtonClick, deviceName=\(String(describing: deviceName))")
+        meshLog("DeviceListTableViewCell, onTurnOffButtonClick, deviceName=\(String(describing: deviceName))")
         turnDeviceOnOff(deviceName: deviceName, isOn: false)
     }
 
@@ -102,16 +102,16 @@ class DeviceListTableViewCell: UITableViewCell {
         if let deviceName = deviceName {
             MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: DeviceListTableViewCell, turnDeviceOnOff(deviceName:\(deviceName), isOn:\(isOn)), failed to connect to the mesh network")
+                    meshLog("error: DeviceListTableViewCell, turnDeviceOnOff(deviceName:\(deviceName), isOn:\(isOn)), failed to connect to the mesh network")
                     return
                 }
 
                 let error = MeshFrameworkManager.shared.meshClientOnOffSet(deviceName: deviceName, isOn: isOn, reliable: reliable)
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: DeviceListTableViewCell, meshClientOnOffSet(deviceName:\(deviceName), isOn:\(isOn), reliable=\(reliable)) failed, error=\(error)")
+                    meshLog("error: DeviceListTableViewCell, meshClientOnOffSet(deviceName:\(deviceName), isOn:\(isOn), reliable=\(reliable)) failed, error=\(error)")
                     return
                 }
-                print("DeviceListTableViewCell, meshClientOnOffSet(deviceName:\(deviceName), isOn:\(isOn), reliable=\(reliable)) message sent out success")
+                meshLog("DeviceListTableViewCell, meshClientOnOffSet(deviceName:\(deviceName), isOn:\(isOn), reliable=\(reliable)) message sent out success")
             }
         }
     }

@@ -60,7 +60,7 @@ class TransitionViewController: UIViewController {
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_NETWORK_OPENNED_CB):
             guard let status = MeshNotificationConstants.getNetworkOpenCbStatus(userInfo: userInfo), status == MeshErrorCode.MESH_SUCCESS else {
-                print("TransitionViewController, onMeshNetworkOpennedCb, failed to open mesh network, invalid status")
+                meshLog("TransitionViewController, onMeshNetworkOpennedCb, failed to open mesh network, invalid status")
                 UtilityManager.showAlertDialogue(parentVC: self,
                                                  message: "Failed to open mesh network, returned invalid status.", title: "Error",
                                                  action: UIAlertAction(title: "OK", style: .default, handler: { (action) in
@@ -71,11 +71,11 @@ class TransitionViewController: UIViewController {
             }
             //stopTimer()
             guard let meshNetworkName = UserSettings.shared.currentActiveMeshNetworkName else {
-                print("error: TransitionViewController, onMeshNetworkOpennedCb, UserSettings.shared.currentActiveMeshNetworkName is nil")
+                meshLog("error: TransitionViewController, onMeshNetworkOpennedCb, UserSettings.shared.currentActiveMeshNetworkName is nil")
                 return
             }
             UserSettings.shared.isCurrentActiveMeshNetworkOpenned = true
-            print("TransitionViewController, onMeshNetworkOpennedCb, mesh network: \(meshNetworkName) openned success")
+            meshLog("TransitionViewController, onMeshNetworkOpennedCb, mesh network: \(meshNetworkName) openned success")
 
             // navigate to mesh group list view controller.
             UtilityManager.navigateToViewController(targetClass: GroupListViewController.self)
@@ -88,7 +88,7 @@ class TransitionViewController: UIViewController {
              transitionLabel.text = "Connecting to Network ..."
              DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 0.01) {
              MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
-             print("TransitionViewController, onMeshNetworkOpennedCb, connect to mesh network \(error == MeshErrorCode.MESH_SUCCESS ? "succes" : "failed, error=\(error)")")
+             meshLog("TransitionViewController, onMeshNetworkOpennedCb, connect to mesh network \(error == MeshErrorCode.MESH_SUCCESS ? "succes" : "failed, error=\(error)")")
              // navigate to mesh group list view controller.
              UtilityManager.navigateToViewController(targetClass: GroupListViewController.self)
              }
@@ -100,7 +100,7 @@ class TransitionViewController: UIViewController {
     }
 
     @objc func onNetworkOpeningTimeout() {
-        print("error: TransitionViewController, opening mesh network \(String(describing: UserSettings.shared.currentActiveMeshNetworkName)) timeout")
+        meshLog("error: TransitionViewController, opening mesh network \(String(describing: UserSettings.shared.currentActiveMeshNetworkName)) timeout")
         UtilityManager.showAlertDialogue(parentVC: self, message: "Opening mesh network encounterred timeout error.", title: "Error",
                                          action: UIAlertAction(title: "OK", style: .default, handler: { (action) in
                                             // Go back to network list screen after User click the OK button when timeout happenned.

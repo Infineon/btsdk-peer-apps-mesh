@@ -91,7 +91,15 @@ class Constants {
     public static final UUID UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN             = UUID.fromString("00002ADD-0000-1000-8000-00805f9b34fb");
     public static final UUID UUID_CHARACTERISTIC_MESH_PROXY_DATA_OUT            = UUID.fromString("00002ADE-0000-1000-8000-00805f9b34fb");
 
+    /**
+     * UUID of Upgrade Service
+     */
+    public static final UUID UUID_UPGRADE_SERVICE                               = UUID.fromString("ae5d1e47-5c13-43a0-8635-82ad38a1381f");
 
+    /**
+     * UUID of Secure Upgrade Service
+     */
+    public static final UUID UUID_SECURE_UPGRADE_SERVICE                        = UUID.fromString("c7261110-f425-447a-a1bd-9d7246768bd8");
 
     public static final int MAX_PROVISION_DATA_LEN             = 51;
     public static final int MAX_MESH_GROUPS                    = 8;

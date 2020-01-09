@@ -33,6 +33,7 @@
 		1814B4EC21E77FD100A6FD77 /* PopoverTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1814B4EB21E77FD100A6FD77 /* PopoverTableViewCell.swift */; };
 		1814B4EE21E77FE700A6FD77 /* PopoverViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1814B4ED21E77FE700A6FD77 /* PopoverViewController.swift */; };
 		18310CAF222FB0B200D54229 /* CustomDropDownButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18310CAE222FB0B200D54229 /* CustomDropDownButton.swift */; };
+		183179832372B4BD008D84A3 /* ScanProvisionTestViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183179822372B4BD008D84A3 /* ScanProvisionTestViewController.swift */; };
 		184A9BAE21BA57FB005A1CF7 /* DeviceListEmptyTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184A9BAD21BA57FB005A1CF7 /* DeviceListEmptyTableViewCell.swift */; };
 		184A9BB021BA580B005A1CF7 /* DeviceListTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184A9BAF21BA580B005A1CF7 /* DeviceListTableViewCell.swift */; };
 		184F8CC222B23D13006CDB19 /* PublicationConfigureViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184F8CC122B23D13006CDB19 /* PublicationConfigureViewController.swift */; };
@@ -114,6 +115,7 @@
 		1814B4EB21E77FD100A6FD77 /* PopoverTableViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverTableViewCell.swift; sourceTree = "<group>"; };
 		1814B4ED21E77FE700A6FD77 /* PopoverViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverViewController.swift; sourceTree = "<group>"; };
 		18310CAE222FB0B200D54229 /* CustomDropDownButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomDropDownButton.swift; sourceTree = "<group>"; };
+		183179822372B4BD008D84A3 /* ScanProvisionTestViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanProvisionTestViewController.swift; sourceTree = "<group>"; };
 		184A9BAD21BA57FB005A1CF7 /* DeviceListEmptyTableViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListEmptyTableViewCell.swift; sourceTree = "<group>"; };
 		184A9BAF21BA580B005A1CF7 /* DeviceListTableViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListTableViewCell.swift; sourceTree = "<group>"; };
 		184F8CC122B23D13006CDB19 /* PublicationConfigureViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicationConfigureViewController.swift; sourceTree = "<group>"; };
@@ -366,6 +368,7 @@
 		1891A5A521CA4FE2000EEFCB /* ProvisioningStatus */ = {
 			isa = PBXGroup;
 			children = (
+				183179822372B4BD008D84A3 /* ScanProvisionTestViewController.swift */,
 				1891AA3421CB7709000EEFCB /* ProvisioningStatusPopoverViewController.swift */,
 			);
 			path = ProvisioningStatus;
@@ -570,6 +573,7 @@
 				181044F821B50B30002ECCBC /* TransitionViewController.swift in Sources */,
 				180E2B0221AF8AD90066F66E /* NetworkListEmptyTableViewCell.swift in Sources */,
 				180E2AE721AE3E030066F66E /* CustomCardView.swift in Sources */,
+				183179832372B4BD008D84A3 /* ScanProvisionTestViewController.swift in Sources */,
 				1866DF7521FB157800A29331 /* DeletingDevicesEmptyTableViewCell.swift in Sources */,
 				18923750222D295A00A1DEC8 /* SensorSettingViewController.swift in Sources */,
 			);
@@ -724,14 +728,14 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = LCV43QB9EG;
 				INFOPLIST_FILE = MeshApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cypress.iot.le.mesh.MeshApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = dudley_meshapp_development;
@@ -750,14 +754,14 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = LCV43QB9EG;
 				INFOPLIST_FILE = MeshApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cypress.iot.le.mesh.MeshApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = cypress.iot.le.mesh.meshapp.production;

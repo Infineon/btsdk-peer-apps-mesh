@@ -9,7 +9,7 @@
 * 	HCI Control Protocol Software User Manual (002-16618) for additional details.
 *
 *//*****************************************************************************
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -88,7 +88,7 @@
 #define HCI_CONTROL_GROUP_LED_DEMO                            0x24
 #define HCI_CONTROL_GROUP_SCRIPT                              0x25
 #define HCI_CONTROL_GROUP_OTP                                 0x26
-#define HCI_CONTROL_GROUP_SCRIPT                              0x25
+#define HCI_CONTROL_GROUP_MCE                                 0x27
 #define HCI_CONTROL_GROUP_MISC                                0xFF
 
 #define HCI_CONTROL_GROUP(x) ((((x) >> 8)) & 0xff)
@@ -234,15 +234,11 @@
 /* HID Device commands */
 #define HCI_CONTROL_HIDD_COMMAND_ACCEPT_PAIRING             ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x01 )     /* Set device discoverable/connectable to accept pairing */
 #define HCI_CONTROL_HIDD_COMMAND_SEND_REPORT                ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x02 )     /* Send HID report */
+#define HCI_CONTROL_HIDD_COMMAND_PUSH_PAIRING_HOST_INFO     ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x03 )     /* Paired host address and link keys */
 #define HCI_CONTROL_HIDD_COMMAND_CONNECT                    ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x04 )     /* Connect to previously paired host */
 #define HCI_CONTROL_HIDD_COMMAND_HID_HOST_ADDR              ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x05 )     /* Paired host address */
 #define HCI_CONTROL_HIDD_COMMAND_DISCONNECT                 ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x06 )     /* Disconnect HID connection */
 #define HCI_CONTROL_HIDD_COMMAND_VIRTUAL_UNPLUG             ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x07 )     /* Send Virtual Unplug */
-
-#define HCI_CONTROL_HID_COMMAND_ACCEPT_PAIRING              HCI_CONTROL_HIDD_COMMAND_ACCEPT_PAIRING
-#define HCI_CONTROL_HID_COMMAND_SEND_REPORT                 HCI_CONTROL_HIDD_COMMAND_SEND_REPORT
-#define HCI_CONTROL_HID_COMMAND_PUSH_PAIRING_HOST_INFO      ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x03 )     /* Paired host address and link keys */
-#define HCI_CONTROL_HID_COMMAND_CONNECT                     HCI_CONTROL_HIDD_COMMAND_CONNECT
 
 /* Test commands */
 #define HCI_CONTROL_TEST_COMMAND_ENCAPSULATED_HCI_COMMAND   ( ( HCI_CONTROL_GROUP_TEST << 8 ) | 0x10 )     /* Encapsulated HCI command - For manufacturing test purposes */
@@ -525,6 +521,8 @@
 #define HCI_CONTROL_MESH_COMMAND_HEALTH_ATTENTION_GET                       ( ( HCI_CONTROL_GROUP_MESH << 8 ) | 0xae )  /* Health Attention Get */
 #define HCI_CONTROL_MESH_COMMAND_HEALTH_ATTENTION_SET                       ( ( HCI_CONTROL_GROUP_MESH << 8 ) | 0xaf )  /* Health Attention Set */
 
+#define HCI_CONTROL_MESH_COMMAND_CONFIG_MODEL_ADD                           ( ( HCI_CONTROL_GROUP_MESH << 8 ) | 0xb0 )  /* Add Vendor Model */
+
 #define HCI_CONTROL_MESH_COMMAND_SET_LOCAL_DEVICE                           ( ( HCI_CONTROL_GROUP_MESH << 8 ) | 0xe0 )  /* Set Local Device. Application can set it once to make provisioner client. */
 #define HCI_CONTROL_MESH_COMMAND_SET_DEVICE_KEY                             ( ( HCI_CONTROL_GROUP_MESH << 8 ) | 0xe1 )  /* Setup device key.  Application can set it once and then send multiple configuration commands. */
 #define HCI_CONTROL_MESH_COMMAND_CORE_LOW_POWER_SEND_FRIEND_CLEAR           ( ( HCI_CONTROL_GROUP_MESH << 8 ) | 0xe2 )  /* Terminate friendship with a Friend by sending a Friend Clear */
@@ -582,6 +580,20 @@
 #define HCI_CONTROL_OTP_COMMAND_CONFIGURE_IND               ( ( HCI_CONTROL_GROUP_OTP << 8 ) | 0x07 )      /* Configure Indication */
 #define HCI_CONTROL_OTP_COMMAND_OACP                        ( ( HCI_CONTROL_GROUP_OTP << 8 ) | 0x08 )      /* Write OACP Command */
 
+/* MCE commands */
+#define HCI_CONTROL_MCE_COMMAND_GET_MAS_INSTANCES           ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x00 )      /* Get MAS instances */
+#define HCI_CONTROL_MCE_COMMAND_CONNECT                     ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x01 )      /* Connect */
+#define HCI_CONTROL_MCE_COMMAND_DISCONNECT                  ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x02 )      /* Disconnect */
+#define HCI_CONTROL_MCE_COMMAND_LIST_FOLDERS                ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x03 )      /* List folders */
+#define HCI_CONTROL_MCE_COMMAND_SET_FOLDER                  ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x04 )      /* Set folder */
+#define HCI_CONTROL_MCE_COMMAND_LIST_MESSAGES               ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x05 )      /* List messages */
+#define HCI_CONTROL_MCE_COMMAND_GET_MESSAGE                 ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x06 )      /* Get message */
+#define HCI_CONTROL_MCE_COMMAND_PUSH_MESSAGE                ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x07 )      /* Push message */
+#define HCI_CONTROL_MCE_COMMAND_UPDATE_INBOX                ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x08 )      /* Update inbox */
+#define HCI_CONTROL_MCE_COMMAND_SET_MESSAGE_STATUS          ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x09 )      /* Set message status */
+#define HCI_CONTROL_MCE_COMMAND_ABORT                       ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x0A )      /* Abort */
+#define HCI_CONTROL_MCE_COMMAND_NOTIF_REG                   ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x0B )      /* Register for message notification */
+
 /* General events that the controller can send */
 #define HCI_CONTROL_EVENT_COMMAND_STATUS                    ( ( HCI_CONTROL_GROUP_DEVICE << 8 ) | 0x01 )    /* Command status event for the requested operation */
 #define HCI_CONTROL_EVENT_WICED_TRACE                       ( ( HCI_CONTROL_GROUP_DEVICE << 8 ) | 0x02 )    /* WICED trace packet */
@@ -598,8 +610,8 @@
 #define HCI_CONTROL_EVENT_READ_LOCAL_BDA                    ( ( HCI_CONTROL_GROUP_DEVICE << 8 ) | 0x0D )    /* Local BDA Read event */
 #define HCI_CONTROL_EVENT_MAX_NUM_OF_PAIRED_DEVICES_REACHED ( ( HCI_CONTROL_GROUP_DEVICE << 8 ) | 0x0E )    /* Key Buffer Pool Full */
 #define HCI_CONTROL_EVENT_READ_BUFFER_STATS                 ( ( HCI_CONTROL_GROUP_DEVICE << 8 ) | 0x0F )    /* Read Buffer statistics event */
-#define HCI_CONTROL_EVENT_KEYPRESS_NOTIFICATION             ( ( HCI_CONTROL_GROUP_DEVICE << 8 ) | 0x17 )    /* KeyPress notification */
-#define HCI_CONTROL_EVENT_CONNECTION_STATUS                 ( ( HCI_CONTROL_GROUP_DEVICE << 8 ) | 0x18 )    /* Connection Status */
+#define HCI_CONTROL_EVENT_KEYPRESS_NOTIFICATION             ( ( HCI_CONTROL_GROUP_DEVICE << 8 ) | 0x10 )    /* KeyPress notification */
+#define HCI_CONTROL_EVENT_CONNECTION_STATUS                 ( ( HCI_CONTROL_GROUP_DEVICE << 8 ) | 0x11 )    /* Connection Status */
 
 /* Events for the HFP profile */
 #define HCI_CONTROL_HF_EVENT_OPEN                           ( ( HCI_CONTROL_GROUP_HF << 8 ) | 0x01 )    /* HS connection opened or connection attempt failed  */
@@ -721,14 +733,9 @@
 #define HCI_CONTROL_HIDD_EVENT_VIRTUAL_CABLE_UNPLUGGED      ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x02 )    /* Host requested Virtual Cable Unplug */
 #define HCI_CONTROL_HIDD_EVENT_DATA                         ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x03 )    /* Host sent report */
 #define HCI_CONTROL_HIDD_EVENT_CLOSED                       ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x04 )    /* Host attempt to establish connection failed */
+#define HCI_CONTROL_HIDD_EVENT_HOST_ADDR                    ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x05 )    /* Paired host address */
+#define HCI_CONTROL_HIDD_EVENT_STATE_CHANGE                 ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0x06 )    /* Device State Change */
 #define HCI_CONTROL_HIDD_EVENT_COMMAND_STATUS               ( ( HCI_CONTROL_GROUP_HIDD << 8 ) | 0xFF )    /* Result status for HID commands */
-
-#define HCI_CONTROL_HID_EVENT_OPENED                        HCI_CONTROL_HIDD_EVENT_OPENED
-#define HCI_CONTROL_HID_EVENT_VIRTUAL_CABLE_UNPLUGGED       HCI_CONTROL_HIDD_EVENT_VIRTUAL_CABLE_UNPLUGGED
-#define HCI_CONTROL_HID_EVENT_DATA                          HCI_CONTROL_HIDD_EVENT_DATA
-#define HCI_CONTROL_HID_EVENT_CLOSED                        HCI_CONTROL_HIDD_EVENT_CLOSED
-#define HCI_CONTROL_HID_EVENT_COMMAND_STATUS                HCI_CONTROL_HIDD_EVENT_COMMAND_STATUS
-
 
 /* Events for the Test events group */
 #define HCI_CONTROL_TEST_EVENT_ENCAPSULATED_HCI_EVENT       ( ( HCI_CONTROL_GROUP_TEST << 8 ) | 0x01 )     /* Encapsulated HCI Event message */
@@ -1033,6 +1040,21 @@
 #define HCI_CONTROL_SCAN_EVENT_HIGH_CONN                    3
 #define HCI_CONTROL_SCAN_EVENT_LOW_CONN                     4
 
+/* MCE events */
+#define HCI_CONTROL_MCE_EVENT_MAS_INSTANCES                 ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x00 )      /* MAS instances report */
+#define HCI_CONTROL_MCE_EVENT_CONNECTED                     ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x01 )      /* Connected */
+#define HCI_CONTROL_MCE_EVENT_DISCONNECTED                  ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x02 )      /* Disconnected */
+#define HCI_CONTROL_MCE_EVENT_FOLDER_LIST                   ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x03 )      /* List folders result */
+#define HCI_CONTROL_MCE_EVENT_FOLDER_SET                    ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x04 )      /* Set folder result */
+#define HCI_CONTROL_MCE_EVENT_MESSAGE_LIST                  ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x05 )      /* List messages result */
+#define HCI_CONTROL_MCE_EVENT_MESSAGE                       ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x06 )      /* Get message result */
+#define HCI_CONTROL_MCE_EVENT_MESSAGE_PUSHED                ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x07 )      /* Push message result */
+#define HCI_CONTROL_MCE_EVENT_INBOX_UPDATED                 ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x08 )      /* Update inbox result */
+#define HCI_CONTROL_MCE_EVENT_MESSAGE_STATUS_SET            ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x09 )      /* Set message status result */
+#define HCI_CONTROL_MCE_EVENT_ABORTED                       ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x0A )      /* Aborted */
+#define HCI_CONTROL_MCE_EVENT_NOTIF_REG                     ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x0B )      /* Notification registration result */
+#define HCI_CONTROL_MCE_EVENT_NOTIF                         ( ( HCI_CONTROL_GROUP_MCE << 8 ) | 0x0C )      /* Notification */
+
 /* Status codes returned in HCI_CONTROL_EVENT_COMMAND_STATUS the event */
 #define HCI_CONTROL_STATUS_SUCCESS                          0
 #define HCI_CONTROL_STATUS_IN_PROGRESS                      1
@@ -1105,4 +1127,25 @@
 #define HCI_CONTROL_MESH_STATUS_SUCCESS                     0   /* Command executed successfully */
 #define HCI_CONTROL_MESH_STATUS_ERROR                       1   /* Command start failed */
 #define HCI_CONTROL_MESH_STATUS_CONNECT_FAILED              2
+
+/* MCE command/event parameter types */
+#define HCI_CONTROL_MCE_PARAM_BDA                           1   /* BD address, 6 bytes */
+#define HCI_CONTROL_MCE_PARAM_MAS_INS_ID                    2   /* MAS instance ID, 1 byte */
+#define HCI_CONTROL_MCE_PARAM_SESS_HANDLE                   3   /* MAP session handle, 2 bytes */
+#define HCI_CONTROL_MCE_PARAM_FOLDER                        4   /* Folder name, variable length */
+#define HCI_CONTROL_MCE_PARAM_NAV_FLAG                      5   /* Folder navigation flag (up/down/root), 1 byte */
+#define HCI_CONTROL_MCE_PARAM_MSG_HANDLE                    6   /* Message handle, 8 bytes */
+#define HCI_CONTROL_MCE_PARAM_CHARSET                       7   /* Charset, 1 byte */
+#define HCI_CONTROL_MCE_PARAM_MSG_STATUS_INDIC              8   /* Message status indicator: read/delete, 1 byte */
+#define HCI_CONTROL_MCE_PARAM_MSG_STATUS_VALUE              9   /* Message status value: yes/no, 1 byte */
+#define HCI_CONTROL_MCE_PARAM_DATA                          10  /* Data (folder/message list, message), variable length */
+#define HCI_CONTROL_MCE_PARAM_DATA_END                      11  /* Last part of data (folder/message list, message), variable length */
+#define HCI_CONTROL_MCE_PARAM_STATUS                        12  /* Event status, 1 byte */
+#define HCI_CONTROL_MCE_PARAM_NUM_MAS_INST                  13  /* Number of MAS instances, 1 byte */
+#define HCI_CONTROL_MCE_PARAM_NAME                          14  /* Name, variable length */
+#define HCI_CONTROL_MCE_PARAM_SUPPORTED_TYPE                15  /* Supported message type, 1 byte */
+#define HCI_CONTROL_MCE_PARAM_NOTIF_STATUS                  16  /* Notification status (1:ON, 0:OFF), 1 byte */
+#define HCI_CONTROL_MCE_PARAM_MAX_LIST_COUNT                17  /* Maximum number of items listed, 2 bytes */
+#define HCI_CONTROL_MCE_PARAM_LIST_START_OFFSET             18  /* Offset of the first item in list, 2 bytes */
+
 #endif /* HCI_CONTROL_API.H_ */

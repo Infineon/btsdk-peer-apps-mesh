@@ -155,11 +155,11 @@ class SensorViewController: UIViewController {
     }
 
     @IBAction func onDevicePropertyIdDropListButtonClick(_ sender: CustomDropDownButton) {
-        print("SensorViewController, onDevicePropertyIdDropListButtonClick")
+        meshLog("SensorViewController, onDevicePropertyIdDropListButtonClick")
         devicePropertyIdDropListButton.showDropList(width: 220, parent: self) {
             self.updateSelectedPropertyId()
 
-            print("SensorViewController, onDevicePropertyIdDropListButtonClick, selectedIndex=\(self.devicePropertyIdDropListButton.selectedIndex), selectedString=\(self.devicePropertyIdDropListButton.selectedString), selectedPropertyId=\(String(describing: self.selectedPropertyId))")
+            meshLog("SensorViewController, onDevicePropertyIdDropListButtonClick, selectedIndex=\(self.devicePropertyIdDropListButton.selectedIndex), selectedString=\(self.devicePropertyIdDropListButton.selectedString), selectedPropertyId=\(String(describing: self.selectedPropertyId))")
         }
     }
 
@@ -203,9 +203,9 @@ class SensorViewController: UIViewController {
     }
 
     @IBAction func onDeviceGetVersionButtonClick(_ sender: UIButton) {
-        print("SensorViewController, onDeviceGetVersionButtonClick")
+        meshLog("SensorViewController, onDeviceGetVersionButtonClick")
         guard let deviceName = self.deviceName else {
-            print("error: SensorViewController, onDeviceGetVersionButtonClick, invalid deviceName nil")
+            meshLog("error: SensorViewController, onDeviceGetVersionButtonClick, invalid deviceName nil")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid or unknown of the sensor device name.")
             return
         }
@@ -216,7 +216,7 @@ class SensorViewController: UIViewController {
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.isGetVersionInProgressing = false
                 self.updateListoningAnimation()
-                print("error: SensorViewController, onDeviceGetVersionButtonClick, failed to connect to mesh network, error:\(error)")
+                meshLog("error: SensorViewController, onDeviceGetVersionButtonClick, failed to connect to mesh network, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the mesh network. Error Code: \(error).")
                 return
             }
@@ -225,12 +225,12 @@ class SensorViewController: UIViewController {
                 self.isGetVersionInProgressing = false
                 self.updateListoningAnimation()
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: SensorViewController, onDeviceGetVersionButtonClick, failed to call getMeshComponentInfo API, error:\(error)")
+                    meshLog("error: SensorViewController, onDeviceGetVersionButtonClick, failed to call getMeshComponentInfo API, error:\(error)")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to get Mesh Component Inforamtion. Error Code: \(error).")
                     return
                 }
                 guard let componentInfo = componentInfo else {
-                    print("error: SensorViewController, onDeviceGetVersionButtonClick, invalid componentInfo: nil for componentName:\(componentName)")
+                    meshLog("error: SensorViewController, onDeviceGetVersionButtonClick, invalid componentInfo: nil for componentName:\(componentName)")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid or empty component information value received.")
                     return
                 }
@@ -242,14 +242,14 @@ class SensorViewController: UIViewController {
     }
 
     @IBAction func onDeviceGetSensorDataButtonClick(_ sender: UIButton) {
-        print("SensorViewController, onDeviceGetSensorDataButtonClick")
+        meshLog("SensorViewController, onDeviceGetSensorDataButtonClick")
         guard let deviceName = self.deviceName else {
-            print("error: SensorViewController, onDeviceGetSensorDataButtonClick, invalid deviceName nil")
+            meshLog("error: SensorViewController, onDeviceGetSensorDataButtonClick, invalid deviceName nil")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid or unknown of the sensor device name.")
             return
         }
         guard let propertyId = selectedPropertyId else {
-            print("error: SensorViewController, onDeviceGetSensorDataButtonClick, invalid selectedPropertyId nil")
+            meshLog("error: SensorViewController, onDeviceGetSensorDataButtonClick, invalid selectedPropertyId nil")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid Property ID value, please selet a valid Property ID firstly.")
             return
         }
@@ -260,7 +260,7 @@ class SensorViewController: UIViewController {
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.isGetSensorDataInProgressing = false
                 self.updateListoningAnimation()
-                print("error: SensorViewController, onDeviceGetSensorDataButtonClick, failed to connect to mesh network, error:\(error)")
+                meshLog("error: SensorViewController, onDeviceGetSensorDataButtonClick, failed to connect to mesh network, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the mesh network. Error Code: \(error).")
                 return
             }
@@ -269,11 +269,11 @@ class SensorViewController: UIViewController {
             if self.deviceDataSubscribeSwitch.isOn {
                 let error = MeshFrameworkManager.shared.meshClientSensorGet(componentName: deviceName, propertyId: propertyId)
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: SensorViewController, onDeviceGetSensorDataButtonClick, failed to call meshClientSensorGet API, error:\(error)")
+                    meshLog("error: SensorViewController, onDeviceGetSensorDataButtonClick, failed to call meshClientSensorGet API, error:\(error)")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send out Sensor Get comamnd. Error Code: \(error).")
                     return
                 }
-                print("SensorViewController, onDeviceGetSensorDataButtonClick, meshClientSensorGet API called success, sensor data should be received through notification")
+                meshLog("SensorViewController, onDeviceGetSensorDataButtonClick, meshClientSensorGet API called success, sensor data should be received through notification")
                 return
             }
 
@@ -281,17 +281,17 @@ class SensorViewController: UIViewController {
                 self.isGetSensorDataInProgressing = false
                 self.updateListoningAnimation()
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: SensorViewController, onDeviceGetSensorDataButtonClick, failed to call meshClientSensorGet API, error:\(error)")
+                    meshLog("error: SensorViewController, onDeviceGetSensorDataButtonClick, failed to call meshClientSensorGet API, error:\(error)")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send out Sensor Get comamnd or wait for sensor data timed out. Error Code: \(error).")
                     return
                 }
                 guard let data = data else {
-                    print("error: SensorViewController, onDeviceGetSensorDataButtonClick, invalid received sensor data nil, ignore")
+                    meshLog("error: SensorViewController, onDeviceGetSensorDataButtonClick, invalid received sensor data nil, ignore")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid sensor data received, ignored.")
                     return
                 }
 
-                print("SensorViewController, onDeviceGetSensorDataButtonClick, meshClientSensorGet done success")
+                meshLog("SensorViewController, onDeviceGetSensorDataButtonClick, meshClientSensorGet done success")
                 UserSettings.shared.setComponentStatus(componentName: deviceName, values: [MeshComponentValueKeys.data: data])
                 self.parseSensorData(deviceName: deviceName, propertyId: propertyId, value: data)
             })
@@ -299,14 +299,14 @@ class SensorViewController: UIViewController {
     }
 
     @IBAction func onDeviceDataSubscribeSwitchClick(_ sender: UISwitch) {
-        print("SensorViewController, onDeviceDataSubscribeSwitchClick, deviceDataSubscribeSwitch.isOn=\(deviceDataSubscribeSwitch.isOn)")
+        meshLog("SensorViewController, onDeviceDataSubscribeSwitchClick, deviceDataSubscribeSwitch.isOn=\(deviceDataSubscribeSwitch.isOn)")
         guard let deviceName = self.deviceName else {
-            print("error: SensorViewController, onDeviceDataSubscribeSwitchClick, invalid sensor device name: nil")
+            meshLog("error: SensorViewController, onDeviceDataSubscribeSwitchClick, invalid sensor device name: nil")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid sensor device name: nil.")
             return
         }
         guard let groupName = self.groupName else {
-            print("error: SensorViewController, onDeviceDataSubscribeSwitchClick, invalid group name: nil")
+            meshLog("error: SensorViewController, onDeviceDataSubscribeSwitchClick, invalid group name: nil")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid group name: nil.")
             return
         }
@@ -315,7 +315,7 @@ class SensorViewController: UIViewController {
         let publishPeriod = MeshFrameworkManager.shared.meshClientGetPublicationPeriod(componentName: deviceName, isClient: false, method: MeshControl.METHOD_SENSOR)
         if publishTarget != groupName || publishPeriod == 0 {
             self.deviceDataSubscribeSwitch.isOn = !self.deviceDataSubscribeSwitch.isOn
-            print("warnning: SensorViewController, onDeviceDataSubscribeSwitchClick, please set publish setting firstly.")
+            meshLog("warnning: SensorViewController, onDeviceDataSubscribeSwitchClick, please set publish setting firstly.")
             UtilityManager.showAlertDialogue(parentVC: self,
                                              message: "Sensor data publish setting not set, please configure the sensor device to publish data to \"\(groupName)\" and set the publish period time to non-zero value firstly.",
                                              title: "Warnning",
@@ -330,7 +330,7 @@ class SensorViewController: UIViewController {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.deviceDataSubscribeSwitch.isOn = !self.deviceDataSubscribeSwitch.isOn
-                print("error: SensorViewController, onDeviceDataSubscribeSwitchClick, failed to connect to mesh network, error:\(error)")
+                meshLog("error: SensorViewController, onDeviceDataSubscribeSwitchClick, failed to connect to mesh network, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the mesh network. Error Code: \(error).")
                 return
             }
@@ -338,12 +338,12 @@ class SensorViewController: UIViewController {
             let error = MeshFrameworkManager.shared.meshClientlistenForAppGroupBroadcast(controlMethod: MeshControl.METHOD_SENSOR, groupName: groupName, startListening: self.deviceDataSubscribeSwitch.isOn)
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.deviceDataSubscribeSwitch.isOn = !self.deviceDataSubscribeSwitch.isOn
-                print("error: SensorViewController, onDeviceDataSubscribeSwitchClick, failed to call meshClientlistenForAppGroupBroadcast API, error:\(error)")
+                meshLog("error: SensorViewController, onDeviceDataSubscribeSwitchClick, failed to call meshClientlistenForAppGroupBroadcast API, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to subscribe for Sensor data. Error Code: \(error).")
                 return
             }
 
-            print("SensorViewController, onDeviceDataSubscribeSwitchClick, \(self.deviceDataSubscribeSwitch.isOn ? "subscribe to" : "stop subscribe the") sensor data done success.")
+            meshLog("SensorViewController, onDeviceDataSubscribeSwitchClick, \(self.deviceDataSubscribeSwitch.isOn ? "subscribe to" : "stop subscribe the") sensor data done success.")
             if let propertyId = self.selectedPropertyId {
                 self.sensorDataSubscribedStatus[propertyId] = self.deviceDataSubscribeSwitch.isOn
             }
@@ -352,7 +352,7 @@ class SensorViewController: UIViewController {
     }
 
     @IBAction func onSensorDataClearButtonClick(_ sender: UIButton) {
-        print("SensorViewController, onSensorDataClearButtonClick")
+        meshLog("SensorViewController, onSensorDataClearButtonClick")
         sensorDataDisplayTextView.text = ""
     }
 
@@ -363,7 +363,7 @@ class SensorViewController: UIViewController {
         // Get the new view controller using segue.destination.
         // Pass the selected object to the new view controller.
         if let identifier = segue.identifier {
-            print("ComponentViewController, segue.identifier=\(identifier)")
+            meshLog("ComponentViewController, segue.identifier=\(identifier)")
             switch identifier {
             case MeshAppStoryBoardIdentifires.SEGUE_SENSOR_CONFIGURE:
                 if let sensorSettingVC = segue.destination as? SensorSettingViewController {

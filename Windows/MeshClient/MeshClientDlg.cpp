@@ -1,5 +1,5 @@
 /*
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -385,6 +385,7 @@ BEGIN_MESSAGE_MAP(CMeshClientDlg, CDialogEx)
     ON_MESSAGE(WM_MESH_DEVICE_CONNECT, &CMeshClientDlg::OnMeshDeviceConnect)
     ON_MESSAGE(WM_MESH_DEVICE_DISCONNECT, &CMeshClientDlg::OnMeshDeviceDisconnect)
     ON_MESSAGE(WM_MESH_DEVICE_ADV_REPORT, &CMeshClientDlg::OnMeshDeviceAdvReport)
+    ON_MESSAGE(WM_MESH_DEVICE_CCCD_PUT_COMPLETE, &CMeshClientDlg::OnMeshDeviceCCCDPutComplete)
 
 #if defined(MESH_AUTOMATION_ENABLED) && (MESH_AUTOMATION_ENABLED == TRUE)
     ON_MESSAGE(WM_SOCKET, &CMeshClientDlg::OnSocketMessage)
@@ -544,6 +545,43 @@ void CMeshClientDlg::SetDlgItemHex(DWORD id, DWORD val)
     SetDlgItemText(id, buf);
 }
 
+static void mesh_clent_dlg_gen_uuid(BYTE *uuid)
+{
+    // Generate version 4 UUID (Random) per rfc4122:
+    // - Set the two most significant bits(bits 6 and 7) of the
+    //   clock_seq_hi_and_reserved to zero and one, respectively.
+    // - Set the four most significant bits(bits 12 through 15) of the
+    //   time_hi_and_version field to the 4 - bit version number.
+    // - Set all the other bits to randomly(or pseudo - randomly) chosen values.
+    *(UINT32 *)&uuid[0] = (UINT32)rand();
+    *(UINT32 *)&uuid[4] = (UINT32)rand();
+    *(UINT32 *)&uuid[8] = (UINT32)rand();
+    *(UINT32 *)&uuid[12] = (UINT32)rand();
+    // The version field is 4.
+    uuid[6] = (uuid[6] & 0x0f) | 0x40;
+    // The variant field is 10B
+    uuid[8] = (uuid[8] & 0x3f) | 0x80;
+}
+
+void CMeshClientDlg::updateProvisionerUuid()
+{
+    CString sProvisionerUuid = theApp.GetProfileString(L"LightControl", L"ProvisionerUuid", L"");
+    if (sProvisionerUuid == "")
+    {
+        BYTE uuid[16];
+        mesh_clent_dlg_gen_uuid(uuid);
+        WCHAR sProvisionerUuid[33] = { 0 };
+        for (int i = 0; i < 16; i++)
+            sprintf(&provisioner_uuid[i * 2], "%02X", uuid[i]);
+        MultiByteToWideChar(CP_UTF8, 0, provisioner_uuid, 32, sProvisionerUuid, 32);
+        theApp.WriteProfileStringW(L"LightControl", L"ProvisionerUuid", sProvisionerUuid);
+    }
+    else
+    {
+        WideCharToMultiByte(CP_UTF8, 0, sProvisionerUuid.GetBuffer(), -1, provisioner_uuid, 33, 0, FALSE);
+    }
+}
+
 BOOL CMeshClientDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
@@ -590,19 +628,7 @@ BOOL CMeshClientDlg::OnInitDialog()
 
     SetDlgItemText(IDC_PROVISIONER, szHostName);
 
-    CString sProvisionerUuid = theApp.GetProfileString(L"LightControl", L"ProvisionerUuid", L"");
-    if (sProvisionerUuid == "")
-    {
-        WCHAR sProvisionerUuid[33] = { 0 };
-        for (int i = 0; i < 8; i++)
-            sprintf(&provisioner_uuid[i * 4], "%04X", rand());
-        MultiByteToWideChar(CP_UTF8, 0, provisioner_uuid, 32, sProvisionerUuid, 32);
-        theApp.WriteProfileStringW(L"LightControl", L"ProvisionerUuid", sProvisionerUuid);
-    }
-    else
-    {
-        WideCharToMultiByte(CP_UTF8, 0, sProvisionerUuid.GetBuffer(), -1, provisioner_uuid, 33, 0, FALSE);
-    }
+    updateProvisionerUuid();
 
     ((CComboBox *)GetDlgItem(IDC_NETWORK))->ResetContent();
 
@@ -1041,6 +1067,9 @@ void CMeshClientDlg::OnBnClickedNetworkCreate()
         MessageBoxA(m_hWnd, mesh_name, "Network Already Exists", MB_ICONERROR);
     else
     {
+        // try to update provisioner uuid if required.
+        updateProvisionerUuid();
+
         int res = mesh_client_network_create(provisioner_name, provisioner_uuid, mesh_name);
         if (res == MESH_CLIENT_SUCCESS)
         {
@@ -1073,6 +1102,20 @@ void CMeshClientDlg::OnBnClickedNetworkDelete()
             WCHAR s[80];
             MultiByteToWideChar(CP_UTF8, 0, mesh_name, strlen(mesh_name) + 1, s, sizeof(s) / sizeof(WCHAR));
             Log(L"Network %s deleted\n", s);
+
+			// Clear the UUID after all mesh network deleted.
+            char *p = mesh_client_get_all_networks();
+            int num_networks = 0;
+            while (p != NULL && *p != NULL)
+            {
+                p += strlen(p) + 1;
+                num_networks++;
+            }
+            if (num_networks < 1)
+            {
+                WCHAR sProvisionerUuid[33] = { 0 };
+                theApp.WriteProfileStringW(L"LightControl", L"ProvisionerUuid", sProvisionerUuid);
+            }
         }
         else
         {
@@ -2097,6 +2140,23 @@ void fw_distribution_status(uint8_t status, uint8_t progress)
     pDlg->OnDfuStatusCallback(status, progress);
 }
 
+static bool ota_transfer_for_dfu = FALSE;
+
+void fw_distribution_event(uint8_t event, uint8_t* p_event_data, uint32_t event_data_length)
+{
+    CMeshClientDlg *pDlg = (CMeshClientDlg *)theApp.m_pMainWnd;
+    if (!pDlg)
+        return;
+
+    switch (event)
+    {
+    case DFU_EVENT_START_OTA:
+        ota_transfer_for_dfu = TRUE;
+        pDlg->StartOta();
+        break;
+    }
+}
+
 void CMeshClientDlg::OnBnClickedOtaUpgradeStatus()
 {
     m_dfuAction = DISTRIBUTION_ACTION_GET_STATUS;
@@ -2242,6 +2302,20 @@ void CMeshClientDlg::OnOtaUpgradeContinue()
         Log(L"Failed to find FW ID from DFU Info %s\n", sInfoFilePath);
         return;
     }
+
+    CBtWin10Interface* pWin10BtInterface = dynamic_cast<CBtWin10Interface*>(m_btInterface);
+
+    EnterCriticalSection(&cs);
+    BOOL ota_supported = pWin10BtInterface->CheckForOTAServices(&GUID_OTA_FW_UPGRADE_SERVICE, &GUID_OTA_SEC_FW_UPGRADE_SERVICE);
+    if (ota_supported)
+    {
+        Log(L"Found OTA service\n");
+        guidSvcWSUpgrade = m_btInterface->m_bSecure ? GUID_OTA_SEC_FW_UPGRADE_SERVICE : GUID_OTA_FW_UPGRADE_SERVICE;
+        guidCharWSUpgradeControlPoint = GUID_OTA_FW_UPGRADE_CHARACTERISTIC_CONTROL_POINT;
+        guidCharWSUpgradeData = GUID_OTA_FW_UPGRADE_CHARACTERISTIC_DATA;
+    }
+    LeaveCriticalSection(&cs);
+
     if (dfu_method != DFU_METHOD_APP_TO_DEVICE)
     {
         m_Progress.SetRange32(0, 100);
@@ -2251,7 +2325,7 @@ void CMeshClientDlg::OnOtaUpgradeContinue()
         int result;
         GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
         EnterCriticalSection(&cs);
-        result = mesh_client_dfu_start(dfu_method, name, fw_id.fw_id, fw_id.fw_id_len, va_data.data, va_data.len);
+        result = mesh_client_dfu_start(dfu_method, name, fw_id.fw_id, fw_id.fw_id_len, va_data.data, va_data.len, ota_supported, fw_distribution_event);
         LeaveCriticalSection(&cs);
         if (result == MESH_CLIENT_SUCCESS)
         {
@@ -2274,29 +2348,26 @@ void CMeshClientDlg::OnOtaUpgradeContinue()
         m_pDownloader = NULL;
     }
 
-    CBtWin10Interface *pWin10BtInterface = dynamic_cast<CBtWin10Interface *>(m_btInterface);
-
-    EnterCriticalSection(&cs);
-    if (pWin10BtInterface->CheckForOTAServices(&GUID_OTA_FW_UPGRADE_SERVICE, &GUID_OTA_SEC_FW_UPGRADE_SERVICE))
+    if (!ota_supported)
     {
-        Log(L"Found OTA service\n");
-        guidSvcWSUpgrade = m_btInterface->m_bSecure ? GUID_OTA_SEC_FW_UPGRADE_SERVICE : GUID_OTA_FW_UPGRADE_SERVICE;
-        guidCharWSUpgradeControlPoint = GUID_OTA_FW_UPGRADE_CHARACTERISTIC_CONTROL_POINT;
-        guidCharWSUpgradeData = GUID_OTA_FW_UPGRADE_CHARACTERISTIC_DATA;
-    }
-    else
-    {
-        LeaveCriticalSection(&cs);
         MessageBox(L"This device may not support OTA FW Upgrade. Select another device.", L"Error", MB_OK);
         return;
     }
-    LeaveCriticalSection(&cs);
 
+    // Start OTA
+    Log(L"Firmware OTA start");
+    StartOta();
+}
+
+void CMeshClientDlg::StartOta()
+{
     // Load OTA FW file into memory
+    CString sFilePath;
     FILE* fPatch;
+    GetDlgItemText(IDC_FILENAME, sFilePath);
     if (_wfopen_s(&fPatch, sFilePath, L"rb"))
     {
-        MessageBox(L"Failed to open the patch file", L"Error", MB_OK);
+        MessageBox(L"Failed to open the FW image file", L"Error", MB_OK);
         return;
     }
     fseek(fPatch, 0, SEEK_END);
@@ -2309,11 +2380,10 @@ void CMeshClientDlg::OnOtaUpgradeContinue()
     m_dwPatchSize = (DWORD)fread(m_pPatch, 1, m_dwPatchSize, fPatch);
     fclose(fPatch);
 
-    // Start OTA
-    Log(L"Firmware OTA start");
-
     // Create new downloader object
     m_pDownloader = new WSDownloader(m_btInterface, m_pPatch, m_dwPatchSize, m_hWnd);
+
+    CBtWin10Interface* pWin10BtInterface = dynamic_cast<CBtWin10Interface*>(m_btInterface);
     pWin10BtInterface->m_bConnected = TRUE;
 
     BTW_GATT_VALUE gatt_value;
@@ -2364,11 +2434,13 @@ LRESULT CMeshClientDlg::OnProgress(WPARAM state, LPARAM param)
     if (state == WSDownloader::WS_UPGRADE_STATE_WAIT_FOR_READY_FOR_DOWNLOAD)
     {
         total = (UINT)param;
-        m_Progress.SetRange32(0, (int)param);
+        if (!ota_transfer_for_dfu)
+            m_Progress.SetRange32(0, (int)param);
     }
     else if (state == WSDownloader::WS_UPGRADE_STATE_DATA_TRANSFER)
     {
-        m_Progress.SetPos((int)param);
+        if (!ota_transfer_for_dfu)
+            m_Progress.SetPos((int)param);
         if (param == total)
         {
             m_pDownloader->ProcessEvent(WSDownloader::WS_UPGRADE_START_VERIFICATION);
@@ -2383,11 +2455,23 @@ LRESULT CMeshClientDlg::OnProgress(WPARAM state, LPARAM param)
         {
             m_dfuState = DFU_STATE_IDLE;
         }
+        if (ota_transfer_for_dfu)
+        {
+            mesh_client_dfu_ota_finish(MESH_CLIENT_SUCCESS);
+            ota_transfer_for_dfu = FALSE;
+        }
     }
     else if (state == WSDownloader::WS_UPGRADE_STATE_ABORTED)
     {
         Log(L"Firmware OTA failed");
-        m_Progress.SetPos(total);
+        if (ota_transfer_for_dfu)
+        {
+            mesh_client_dfu_ota_finish(1);
+            ota_transfer_for_dfu = FALSE;
+            KillTimer(IDT_DISTRIBUTION_STATUS);
+        }
+        else
+            m_Progress.SetPos(total);
         m_dfuState = DFU_STATE_IDLE;
     }
     return S_OK;
@@ -2485,9 +2569,28 @@ LRESULT CMeshClientDlg::OnMeshDeviceConnect(WPARAM state, LPARAM param)
     LeaveCriticalSection(&cs);
 
     Sleep(500);
+    return WICED_TRUE;
+}
 
-    ods("connected\n");
+// Resume connection process after CCCD put completes
+LRESULT CMeshClientDlg::OnMeshDeviceCCCDPutComplete(WPARAM state, LPARAM param)
+{
+    CMeshClientDlg* pDlg = (CMeshClientDlg*)theApp.m_pMainWnd;
+
+    if ((pDlg == NULL) || pDlg->m_bConnecting == FALSE)
+        return WICED_FALSE;
+
+    ods("OnMeshDeviceCCCDPutComplete\n");
     pDlg->m_trace->SetCurSel(pDlg->m_trace->AddString(L"Connected"));
+
+    CBtWin10Interface* pWin10BtInterface = dynamic_cast<CBtWin10Interface*>(pDlg->m_btInterface);
+
+    if (!pWin10BtInterface)
+    {
+        return WICED_FALSE;
+    }
+    // To get MTU size
+    UINT16 mtu = pWin10BtInterface->GetMTUSize();
 
     EnterCriticalSection(&cs);
     mesh_client_connection_state_changed(1, mtu);
@@ -2629,6 +2732,9 @@ void CMeshClientDlg::OnBnClickedNetworkImport()
         return;
     }
 
+    // try to update provisioner uuid if required.
+    updateProvisionerUuid();
+
     // Load OTA FW file into memory
     fseek(fJsonFile, 0, SEEK_END);
     size_t json_string_size = ftell(fJsonFile);
@@ -2755,6 +2861,8 @@ void CMeshClientDlg::GetDfuImageChunk(uint8_t *p_data, uint32_t offset, uint16_t
     if (_wfopen_s(&fPatch, sFilePath, L"rb"))
         return;
 
+    offset -= 0x200;
+
     // Load OTA FW file into memory
     fseek(fPatch, offset, SEEK_SET);
     fread(p_data, 1, data_len, fPatch);
@@ -2807,6 +2915,16 @@ extern "C" int32_t ota_fw_upgrade_calculate_checksum(int32_t offset, int32_t len
 
 extern "C" void wiced_bt_fw_save_meta_data(uint8_t partition, uint8_t *p_data, uint32_t len)
 {
+}
+
+extern "C" wiced_bool_t wiced_firmware_upgrade_erase_nv(uint32_t start, uint32_t size)
+{
+    return WICED_TRUE;
+}
+
+extern "C" wiced_bool_t wiced_ota_fw_upgrade_set_transfer_mode(wiced_bool_t transfer_only, wiced_ota_firmware_event_callback_t* p_event_callback)
+{
+    return WICED_TRUE;
 }
 
 #define PARTITION_ACTIVE    0

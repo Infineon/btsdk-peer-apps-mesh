@@ -1,5 +1,5 @@
 /*
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -50,7 +50,7 @@
 #include <dirent.h>
 #include <errno.h>
 #endif
-#ifdef __ANDROID__
+#if defined __ANDROID__ || defined WICEDX_LINUX
 #include <dirent.h>
 #include <errno.h>
 #endif
@@ -1405,7 +1405,9 @@ wiced_bt_mesh_db_node_t *wiced_bt_mesh_db_node_create(wiced_bt_mesh_db_mesh_t *m
     node.num_elements = num_elements;
     if (num_elements)
     {
-        node.element = (wiced_bt_mesh_db_element_t *)wiced_bt_get_buffer(sizeof(wiced_bt_mesh_db_element_t) * num_elements);
+        if ((node.element = (wiced_bt_mesh_db_element_t*)wiced_bt_get_buffer(sizeof(wiced_bt_mesh_db_element_t) * num_elements)) == NULL)
+            return NULL;
+
         memset(node.element, 0, sizeof(wiced_bt_mesh_db_element_t) * num_elements);
         for (i = 0; i < num_elements; i++)
         {
@@ -1565,6 +1567,23 @@ wiced_bool_t wiced_bt_mesh_db_node_remove(wiced_bt_mesh_db_mesh_t *mesh_db, uint
                 }
                 mesh_db->num_nodes--;
             }
+            return WICED_TRUE;
+        }
+    }
+    return WICED_FALSE;
+}
+
+/*
+ * return true if the node is provisioner
+ */
+wiced_bool_t wiced_bt_mesh_db_is_provisioner(wiced_bt_mesh_db_mesh_t* mesh_db, wiced_bt_mesh_db_node_t* p_node)
+{
+    int i;
+
+    for (i = 0; i < mesh_db->num_provisioners; i++)
+    {
+        if (memcmp(mesh_db->provisioner[i].uuid, p_node->uuid, sizeof(p_node->uuid)) == 0)
+        {
             return WICED_TRUE;
         }
     }

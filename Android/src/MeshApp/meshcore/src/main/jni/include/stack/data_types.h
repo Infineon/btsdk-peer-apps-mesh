@@ -7,7 +7,7 @@
 *
 *
 *//*****************************************************************************
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -57,11 +57,17 @@ typedef UINT32          TIME_STAMP;
 typedef unsigned char   UBYTE;
 
 #ifdef __arm
+    #ifdef __ANDROID__
     #ifndef PACKED
-        #ifdef BYTE_PACKED
-            #define PACKED  BYTE_PACKED
-        #else
-            #define PACKED
+            #define PACKED __packed
+        #endif
+    #else
+        #ifndef PACKED
+            #ifdef BYTE_PACKED
+        #define PACKED  BYTE_PACKED
+            #else
+                #define PACKED
+            #endif
         #endif
     #endif
 #else

@@ -93,13 +93,13 @@ public class ExpandableListAdapter extends BaseExpandableListAdapter {
         onBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                serviceReference.getMesh().onoffSet(mComponents.get(groupPosition), true, true, 0, (short) 0);
+                serviceReference.getMesh().onoffSet(mComponents.get(groupPosition), true, true, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
             }
         });
         offBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                serviceReference.getMesh().onoffSet(mComponents.get(groupPosition), false, true, 0, (short) 0);
+                serviceReference.getMesh().onoffSet(mComponents.get(groupPosition), false, true, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
             }
         });
 

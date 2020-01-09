@@ -7,4 +7,7 @@
 #include "ccm.h"
 #include "ecdh.h"
 
+#include "bt_types.h" /* This must be defined AFTER buildcfg.h */
+
+
 #define SMP_LE_SC_INCLUDED TRUE

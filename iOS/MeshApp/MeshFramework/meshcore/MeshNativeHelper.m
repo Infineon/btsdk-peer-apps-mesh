@@ -26,10 +26,6 @@
 
 extern void mesh_application_init(void);
 extern void mesh_client_advert_report(uint8_t *bd_addr, uint8_t addr_type, int8_t rssi, uint8_t *adv_data);
-extern wiced_bool_t initTimer(void);
-extern void setDfuFilePath(char* dfuFilepath);
-extern char *getDfuFilePath(void);
-
 
 @implementation MeshNativeHelper
 {
@@ -65,13 +61,13 @@ void meshClientUnprovisionedDeviceFoundCb(uint8_t *uuid, uint16_t oob, uint8_t *
 {
     NSString *deviceName = nil;
     if (uuid == NULL) {
-        NSLog(@"[MeshNativeHelper, meshClientFoundUnprovisionedDeviceCb] error: invalid parameters, uuid=0x%p, name_len=%d", uuid, name_len);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientFoundUnprovisionedDeviceCb] error: invalid parameters, uuid=0x%p, name_len=%d\n", uuid, name_len);
         return;
     }
     if (name != NULL && name_len > 0) {
         deviceName = [[NSString alloc] initWithBytes:name length:name_len encoding:NSUTF8StringEncoding];
     }
-    NSLog(@"[MeshNativeHelper meshClientFoundUnprovisionedDeviceCb] found device name: %@, oob: 0x%04x, uuid: ", deviceName, oob); dumpHexBytes(uuid, MAX_UUID_SIZE);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientFoundUnprovisionedDeviceCb] found device name: %s, oob: 0x%04x, uuid: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", deviceName.UTF8String, oob, uuid[0], uuid[1], uuid[2], uuid[3], uuid[4], uuid[5], uuid[6], uuid[7], uuid[8], uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
     [nativeCallbackDelegate onDeviceFound:[[NSUUID alloc] initWithUUIDBytes:uuid]
                                       oob:oob
                                   uriHash:0
@@ -81,17 +77,17 @@ void meshClientUnprovisionedDeviceFoundCb(uint8_t *uuid, uint16_t oob, uint8_t *
 void meshClientProvisionCompleted(uint8_t status, uint8_t *p_uuid)
 {
     if (p_uuid == NULL) {
-        NSLog(@"[MeshNativeHelper meshClientProvisionCompleted] error: invalid parameters, uuid=0x%p", p_uuid);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientProvisionCompleted] error: invalid parameters, uuid=0x%p\n", p_uuid);
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientProvisionCompleted] status: %u", status);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientProvisionCompleted] status: %u\n", status);
     [nativeCallbackDelegate meshClientProvisionCompletedCb:status uuid:[[NSUUID alloc] initWithUUIDBytes:p_uuid]];
 }
 
 // called when mesh network connection status changed.
 void linkStatus(uint8_t is_connected, uint32_t connId, uint16_t addr, uint8_t is_over_gatt)
 {
-    NSLog(@"[MeshNativeHelper linkStatus] is_connected: %u, connId: 0x%08x, addr: 0x%04x, is_over_gatt: %u", is_connected, connId, addr, is_over_gatt);
+    WICED_BT_TRACE("[MeshNativeHelper linkStatus] is_connected: %u, connId: 0x%08x, addr: 0x%04x, is_over_gatt: %u\n", is_connected, connId, addr, is_over_gatt);
     [nativeCallbackDelegate onLinkStatus:is_connected connId:connId addr:addr isOverGatt:is_over_gatt];
 }
 
@@ -99,40 +95,40 @@ void linkStatus(uint8_t is_connected, uint32_t connId, uint16_t addr, uint8_t is
 void meshClientNodeConnectionState(uint8_t status, char *p_name)
 {
     if (p_name == NULL || *p_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientNodeConnectionState] error: invalid parameters, p_name=0x%p", p_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientNodeConnectionState] error: invalid parameters, p_name=0x%p\n", p_name);
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientNodeConnectionState] status: 0x%02x, device_name: %s", status, p_name);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientNodeConnectionState] status: 0x%02x, device_name: %s\n", status, p_name);
     [nativeCallbackDelegate meshClientNodeConnectStateCb:status componentName:[NSString stringWithUTF8String:(const char *)p_name]];
 }
 
 void resetStatus(uint8_t status, char *device_name)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper resetStatus] error: invalid parameters, device_name=0x%p", device_name);
+        WICED_BT_TRACE("[MeshNativeHelper resetStatus] error: invalid parameters, device_name=0x%p\n", device_name);
         return;
     }
-    NSLog(@"[MeshNativeHelper resetStatus] status: 0x%02x, device_name: %s", status, device_name);
+    WICED_BT_TRACE("[MeshNativeHelper resetStatus] status: 0x%02x, device_name: %s\n", status, device_name);
     [nativeCallbackDelegate onResetStatus:status devName:[NSString stringWithUTF8String:(const char *)device_name]];
 }
 
 void meshClientOnOffState(const char *device_name, uint8_t target, uint8_t present, uint32_t remaining_time)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientOnOffState] error: invalid parameters, device_name=0x%p", device_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientOnOffState] error: invalid parameters, device_name=0x%p\n", device_name);
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientOnOffState] device_name: %s, target: %u, present: %u, remaining_time: %u", device_name, target, present, remaining_time);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientOnOffState] device_name: %s, target: %u, present: %u, remaining_time: %u\n", device_name, target, present, remaining_time);
     [nativeCallbackDelegate meshClientOnOffStateCb:[NSString stringWithUTF8String:(const char *)device_name] target:target present:present remainingTime:remaining_time];
 }
 
 void meshClientLevelState(const char *device_name, int16_t target, int16_t present, uint32_t remaining_time)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientLevelState] error: invalid parameters, device_name=0x%p", device_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientLevelState] error: invalid parameters, device_name=0x%p\n", device_name);
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientLevelState] device_name: %s, target: %u, present: %u, remaining_time: %u", device_name, target, present, remaining_time);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientLevelState] device_name: %s, target: %u, present: %u, remaining_time: %u\n", device_name, target, present, remaining_time);
     [nativeCallbackDelegate meshClientLevelStateCb:[NSString stringWithUTF8String:(const char *)device_name]
                                             target:target
                                            present:present
@@ -142,10 +138,10 @@ void meshClientLevelState(const char *device_name, int16_t target, int16_t prese
 void meshClientLightnessState(const char *device_name, uint16_t target, uint16_t present, uint32_t remaining_time)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientLightnessState] error: invalid parameters, device_name=0x%p", device_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientLightnessState] error: invalid parameters, device_name=0x%p\n", device_name);
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientLightnessState] device_name: %s, target: %u, present: %u, remaining_time: %u", device_name, target, present, remaining_time);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientLightnessState] device_name: %s, target: %u, present: %u, remaining_time: %u\n", device_name, target, present, remaining_time);
     [nativeCallbackDelegate meshClientLightnessStateCb:[NSString stringWithUTF8String:(const char *)device_name]
                                                 target:target
                                                present:present
@@ -155,10 +151,10 @@ void meshClientLightnessState(const char *device_name, uint16_t target, uint16_t
 void meshClientHslState(const char *device_name, uint16_t lightness, uint16_t hue, uint16_t saturation, uint32_t remaining_time)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientHslState] error: invalid parameters, device_name=0x%p", device_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientHslState] error: invalid parameters, device_name=0x%p\n", device_name);
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientHslState] device_name: %s, lightness: %u, hue: %u, saturation: %u, remaining_time: %u",
+    WICED_BT_TRACE("[MeshNativeHelper meshClientHslState] device_name: %s, lightness: %u, hue: %u, saturation: %u, remaining_time: %u\n",
           device_name, lightness, hue, saturation, remaining_time);
     [nativeCallbackDelegate meshClientHslStateCb:[NSString stringWithUTF8String:(const char *)device_name]
                                        lightness:lightness hue:hue saturation:saturation];
@@ -167,10 +163,10 @@ void meshClientHslState(const char *device_name, uint16_t lightness, uint16_t hu
 void meshClientCtlState(const char *device_name, uint16_t present_lightness, uint16_t present_temperature, uint16_t target_lightness, uint16_t target_temperature, uint32_t remaining_time)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientCtlState] error: invalid parameters, device_name=0x%p", device_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientCtlState] error: invalid parameters, device_name=0x%p\n", device_name);
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientCtlState] device_name: %s, present_lightness: %u, present_temperature: %u, target_lightness: %u, target_temperature: %u, remaining_time: %u", device_name, present_lightness, present_temperature, target_lightness, target_temperature, remaining_time);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientCtlState] device_name: %s, present_lightness: %u, present_temperature: %u, target_lightness: %u, target_temperature: %u, remaining_time: %u\n", device_name, present_lightness, present_temperature, target_lightness, target_temperature, remaining_time);
     [nativeCallbackDelegate meshClientCtlStateCb:[NSString stringWithUTF8String:(const char *)device_name]
                                 presentLightness:present_lightness
                               presentTemperature:present_temperature
@@ -182,20 +178,20 @@ void meshClientCtlState(const char *device_name, uint16_t present_lightness, uin
 void meshClientDbChangedState(char *mesh_name)
 {
     if (mesh_name == NULL || *mesh_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientDbChangedState] error: invalid parameters, mesh_name=0x%p", mesh_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientDbChangedState] error: invalid parameters, mesh_name=0x%p\n", mesh_name);
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientDbChangedState] mesh_name: %s", mesh_name);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientDbChangedState] mesh_name: %s\n", mesh_name);
     [nativeCallbackDelegate onDatabaseChangedCb:[NSString stringWithUTF8String:mesh_name]];
 }
 
 void meshClientSensorStatusChangedCb(const char *device_name, int property_id, uint8_t length, uint8_t *value)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientSensorStatusChangedCb] error: invalid device_name:%s or property_id:%d, length=%d", device_name, property_id, length);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientSensorStatusChangedCb] error: invalid device_name:%s or property_id:%d, length=%d\n", device_name, property_id, length);
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientSensorStatusChangedCb] device_name:%s, property_id:%d, value lenght:%d", device_name, property_id, length);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSensorStatusChangedCb] device_name:%s, property_id:%d, value lenght:%d\n", device_name, property_id, length);
     [nativeCallbackDelegate onMeshClientSensorStatusChanged:[NSString stringWithUTF8String:device_name]
                                                  propertyId:(uint32_t)property_id
                                                        data:[NSData dataWithBytes:value length:length]];
@@ -204,10 +200,10 @@ void meshClientSensorStatusChangedCb(const char *device_name, int property_id, u
 void meshClientVendorSpecificDataCb(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *p_data, uint16_t data_len)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientVendorSpecificDataCb] error: invalid device_name NULL");
+        WICED_BT_TRACE("[MeshNativeHelper meshClientVendorSpecificDataCb] error: invalid device_name NULL\n");
         return;
     }
-    NSLog(@"[MeshNativeHelper meshClientVendorSpecificDataCb] device_name:%s, company_id:%d, model_id:%d, opcode:%d, data_len:%d",
+    WICED_BT_TRACE("[MeshNativeHelper meshClientVendorSpecificDataCb] device_name:%s, company_id:%d, model_id:%d, opcode:%d, data_len:%d\n",
           device_name, company_id, model_id, opcode, data_len);
     [nativeCallbackDelegate onMeshClientVendorSpecificDataChanged:[NSString stringWithUTF8String:device_name]
                                                         companyId:company_id modelId:model_id opcode:opcode
@@ -270,7 +266,7 @@ static NSMutableDictionary *gMeshTimersDict = nil;
         timerId = (uint32_t)timerKey.longLongValue;
     }
 
-    //NSLog(@"[MeshNativeHelper timerFiredMethod] timerId:%u", timerId);
+    //WICED_BT_TRACE("[MeshNativeHelper timerFiredMethod] timerId:%u\n", timerId);
     MeshTimerFunc((long)timerId);
 }
 
@@ -297,13 +293,13 @@ static NSMutableDictionary *gMeshTimersDict = nil;
                                                     userInfo:timerKey
                                                      repeats:repeats];
     if (timer == nil) {
-        NSLog(@"[MeshNativeHelper meshStartTimer] error: failed to create and init the timer");
+        WICED_BT_TRACE("[MeshNativeHelper meshStartTimer] error: failed to create and init the timer\n");
         return 0;
     }
 
     NSArray *timerInfo = [[NSArray alloc] initWithObjects:[NSNumber numberWithUnsignedInt:timerId], [NSNumber numberWithUnsignedShort:type], timer, nil];
     [gMeshTimersDict setObject:timerInfo forKey:timerKey];
-    //NSLog(@"[MeshNativeHelper meshStartTimer] timerId:%u started, type=%u, interval=%f", timerId, type, interval);
+    //WICED_BT_TRACE("[MeshNativeHelper meshStartTimer] timerId:%u started, type=%u, interval=%f\n", timerId, type, interval);
     return timerId;
 }
 uint32_t start_timer(uint32_t timeout, uint16_t type) {
@@ -322,7 +318,7 @@ uint32_t start_timer(uint32_t timeout, uint16_t type) {
         }
     }
     [gMeshTimersDict removeObjectForKey:timerKey];
-    //NSLog(@"[MeshNativeHelper meshStopTimer] timerId:%u stopped", timerId);
+    //WICED_BT_TRACE("[MeshNativeHelper meshStopTimer] timerId:%u stopped\n", timerId);
 }
 void stop_timer(uint32_t timerId)
 {
@@ -348,7 +344,7 @@ void stop_timer(uint32_t timerId)
     uint16_t type;
 
     if (timerInfo == nil || [timerInfo count] != 3 || timer == nil || numType == nil) {
-        NSLog(@"[MeshNativeHelper meshRestartTimer] error: failed to fetch the timer with timerId=%u", timerId);
+        WICED_BT_TRACE("[MeshNativeHelper meshRestartTimer] error: failed to fetch the timer with timerId=%u\n", timerId);
         return 0;
     }
 
@@ -364,13 +360,13 @@ void stop_timer(uint32_t timerId)
                                            userInfo:timerKey
                                             repeats:repeats];
     if (timer == nil) {
-        NSLog(@"[MeshNativeHelper meshRestartTimer] error: failed to create and init the timer");
+        WICED_BT_TRACE("[MeshNativeHelper meshRestartTimer] error: failed to create and init the timer\n");
         return 0;
     }
 
     timerInfo = [[NSArray alloc] initWithObjects:[NSNumber numberWithUnsignedInt:timerId], [NSNumber numberWithUnsignedShort:type], timer, nil];
     [gMeshTimersDict setObject:timerInfo forKey:timerKey];
-    //NSLog(@"%s timerId:%u restarted, type=%u, interval=%f", __FUNCTION__, timerId, type, interval);
+    //WICED_BT_TRACE("[MeshNativeHelper meshRestartTimer] timerId:%u, type=%u, interval=%f\n", timerId, type, interval);
     return timerId;
 }
 uint32_t restart_timer(uint32_t timeout, uint32_t timerId ) {
@@ -379,8 +375,9 @@ uint32_t restart_timer(uint32_t timeout, uint32_t timerId ) {
 
 void mesh_provision_gatt_send(uint16_t connId, uint8_t *packet, uint32_t packet_len)
 {
+    WICED_BT_TRACE("[MeshNativeHelper mesh_provision_gatt_send] connId=%d, packet_len=%d\n", connId, packet_len);
     if (packet == NULL || packet_len == 0) {
-        NSLog(@"[MeshNativeHelper mesh_provision_gatt_send] error: connId=%d packet=0x%p, packet_len=%u", connId, packet, packet_len);
+        WICED_BT_TRACE("[MeshNativeHelper mesh_provision_gatt_send] error: connId=%d packet=0x%p, packet_len=%u\n", connId, packet, packet_len);
         return;
     }
     NSData *data = [[NSData alloc] initWithBytes:packet length:packet_len];
@@ -389,8 +386,9 @@ void mesh_provision_gatt_send(uint16_t connId, uint8_t *packet, uint32_t packet_
 
 void proxy_gatt_send_cb(uint32_t connId, uint32_t ref_data, const uint8_t *packet, uint32_t packet_len)
 {
+    WICED_BT_TRACE("[MeshNativeHelper proxy_gatt_send_cb] connId=%d, packet_len=%d\n", connId, packet_len);
     if (packet == NULL || packet_len == 0) {
-        NSLog(@"[MeshNativeHelper proxy_gatt_send_cb] error: invalid parameters, packet=0x%p, packet_len=%u", packet, packet_len);
+        WICED_BT_TRACE("[MeshNativeHelper proxy_gatt_send_cb] error: invalid parameters, packet=0x%p, packet_len=%u\n", packet, packet_len);
         return;
     }
     NSData *data = [[NSData alloc] initWithBytes:packet length:packet_len];
@@ -399,6 +397,7 @@ void proxy_gatt_send_cb(uint32_t connId, uint32_t ref_data, const uint8_t *packe
 
 wiced_bool_t mesh_bt_gatt_le_disconnect(uint32_t connId)
 {
+    WICED_BT_TRACE("[MeshNativeHelper mesh_bt_gatt_le_disconnect] connId=%d\n", connId);
     return [nativeCallbackDelegate meshClientDisconnect:(uint16_t)connId];
 }
 
@@ -406,25 +405,31 @@ wiced_bool_t mesh_bt_gatt_le_connect(wiced_bt_device_address_t bd_addr, wiced_bt
                                      wiced_bt_ble_conn_mode_t conn_mode, wiced_bool_t is_direct)
 {
     if (bd_addr == NULL) {
-        NSLog(@"[MeshNativeHelper mesh_bt_gatt_le_connect] invalid parameters, bd_addr=0x%p", bd_addr);
+        WICED_BT_TRACE("[MeshNativeHelper mesh_bt_gatt_le_connect] invalid parameters, bd_addr=0x%p\n", bd_addr);
         return false;
     }
     NSData *bdAddr = [[NSData alloc] initWithBytes:bd_addr length:BD_ADDR_LEN];
+    WICED_BT_TRACE("[MeshNativeHelper mesh_bt_gatt_le_connect] bd_addr=%02x %02x %02x %02x %02x %02x, bd_addr_type=%d, conn_mode=%d, is_direct=%d\n",
+                   bd_addr[0], bd_addr[1], bd_addr[2], bd_addr[3], bd_addr[4], bd_addr[5],
+                   bd_addr_type, conn_mode, is_direct);
     return [nativeCallbackDelegate meshClientConnect:bdAddr];
 }
 
 wiced_bool_t mesh_set_scan_type(uint8_t is_active)
 {
+    WICED_BT_TRACE("[MeshNativeHelper mesh_set_scan_type] is_active=%d\n", is_active);
     return [nativeCallbackDelegate meshClientSetScanTypeCb:is_active];
 }
 
 wiced_bool_t mesh_adv_scan_start(void)
 {
+    WICED_BT_TRACE("[MeshNativeHelper mesh_adv_scan_start]\n");
     return [nativeCallbackDelegate meshClientAdvScanStartCb];
 }
 
 void mesh_adv_scan_stop(void)
 {
+    WICED_BT_TRACE("[MeshNativeHelper mesh_adv_scan_stop]\n");
     [nativeCallbackDelegate meshClientAdvScanStopCb];
 }
 
@@ -476,38 +481,73 @@ void mesh_adv_scan_stop(void)
     Boolean bRet = true;
     NSFileManager *fileManager = [NSFileManager defaultManager];
 
-    // check if the provisioner_uuid has been read from or has been created and written to the storage file.
-    if (strlen(provisioner_uuid) == 32) {
-        return 0;
-    }
-
     if (![fileManager fileExistsAtPath:path]) {
         bRet = [fileManager createDirectoryAtPath:path withIntermediateDirectories:true attributes:nil error:nil];
-        NSLog(@"[MeshNativeHelper setFileStorageAtPath] create direcotry \"%@\" %s", path, bRet ? "success" : "failed");
+        WICED_BT_TRACE("[MeshNativeHelper setFileStorageAtPath] create direcotry \"%s\" %s\n", path.UTF8String, bRet ? "success" : "failed");
     }
     if (!bRet || ![fileManager isWritableFileAtPath:path]) {
-        NSLog(@"[MeshNativeHelper setFileStorageAtPath] error: cannot wirte at path:\"%@\", bRet=%u", path, bRet);
+        WICED_BT_TRACE("[MeshNativeHelper setFileStorageAtPath] error: cannot wirte at path:\"%s\", bRet=%u\n", path.UTF8String, bRet);
         return -1;
     }
-
     // set this file directory to be current working directory
     const char *cwd = [path cStringUsingEncoding:NSASCIIStringEncoding];
     int cwdStatus = chdir(cwd);
     if (cwdStatus != 0) {
-        NSLog(@"[MeshNativeHelper setFileStorageAtPath] error: unable to change current working directory to \"%s\" ", cwd);
+        WICED_BT_TRACE("[MeshNativeHelper setFileStorageAtPath] error: unable to change current working directory to \"%s\" \n", cwd);
         return -2;
     } else {
-        NSLog(@"[MeshNativeHelper setFileStorageAtPath] Done, change current working directory to \"%@\"", path);
+        WICED_BT_TRACE("[MeshNativeHelper setFileStorageAtPath] Done, change current working directory to \"%s\"\n", path.UTF8String);
+    }
+
+    // try to create the mesh library log file if not existing, then open it for logging.
+    set_log_file_path((char *)cwd);
+    open_log_file();
+
+    return [MeshNativeHelper updateProvisionerUuid:nil];
+}
+
+/**
+ * This function generates version 4 UUID (Random) per rfc4122:
+ * - Set the two most significant bits(bits 6 and 7) of the
+ *   clock_seq_hi_and_reserved to zero and one, respectively.
+ * - Set the four most significant bits(bits 12 through 15) of the
+ *   time_hi_and_version field to the 4 - bit version number.
+ * - Set all the other bits to randomly(or pseudo - randomly) chosen values.
+ */
++(NSUUID *) generateRfcUuid
+{
+    unsigned char rfcuuid[16];
+    [NSUUID.UUID getUUIDBytes:rfcuuid];
+
+    // The version field is 4.
+    rfcuuid[6] = (rfcuuid[6] & 0x0f) | 0x40;
+    // The variant field is 10B
+    rfcuuid[8] = (rfcuuid[8] & 0x3f) | 0x80;
+    return [[NSUUID alloc] initWithUUIDBytes:rfcuuid];
+}
+
++(int) updateProvisionerUuid:(NSUUID *)provisionerUuid
+{
+    Boolean bRet = true;
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    char path[PATH_MAX];
+    getcwd(path, PATH_MAX);
+    WICED_BT_TRACE("[MeshNativeHelper updateProvisionerUuid] current working path: %s\n", path);
+
+    // check if the provisioner_uuid has been read from or has been created and written to the storage file.
+    if ([fileManager fileExistsAtPath:MeshNativeHelper.getProvisionerUuidFileName] && strlen(provisioner_uuid) == 32) {
+        WICED_BT_TRACE("[MeshNativeHelper updateProvisionerUuid] active provisioner_uuid: %s\n", provisioner_uuid);
+        return 0;
     }
 
     // create the prov_uuid.bin to stote the UUID string value or read the stored UUID string if existing.
     NSFileHandle *handle;
     NSData *data;
-    NSString *filePath = [path stringByAppendingPathComponent: [MeshNativeHelper getProvisionerUuidFileName]];
+    NSString *filePath = [MeshNativeHelper getProvisionerUuidFileName];
     if ([fileManager fileExistsAtPath:filePath]) {
         handle = [NSFileHandle fileHandleForReadingAtPath:filePath];
         if (handle == nil) {
-            NSLog(@"[MeshNativeHelper setFileStorageAtPath] error: unable to open file \"%@\" for reading", filePath);
+            WICED_BT_TRACE("[MeshNativeHelper updateProvisionerUuid] error: unable to open file \"%s\" for reading\n", filePath.UTF8String);
             return -3;
         }
 
@@ -515,7 +555,7 @@ void mesh_adv_scan_stop(void)
         data = [handle readDataOfLength:32];
         [data getBytes:provisioner_uuid length:(NSUInteger)32];
         provisioner_uuid[32] = '\0';  // always set the terminate character for the provisioner uuid string.
-        NSLog(@"[MeshNativeHelper setFileStorageAtPath] read provisioner_uuid: %s from prov_uuid.bin", provisioner_uuid);
+        WICED_BT_TRACE("[MeshNativeHelper updateProvisionerUuid] read provisioner_uuid: %s from %s\n", provisioner_uuid, MeshNativeHelper.getProvisionerUuidFileName.UTF8String);
     } else {
         bRet = [fileManager createFileAtPath:filePath contents:nil attributes:nil];
         handle = [NSFileHandle fileHandleForWritingAtPath:filePath];
@@ -523,7 +563,7 @@ void mesh_adv_scan_stop(void)
             if (handle) {
                 [handle closeFile];
             }
-            NSLog(@"[MeshNativeHelper setFileStorageAtPath] error: unable to create file \"%@\" for writing", filePath);
+            WICED_BT_TRACE("[MeshNativeHelper updateProvisionerUuid] error: unable to create file \"%s\" for writing\n", filePath.UTF8String);
             return -4;
         }
 
@@ -534,7 +574,9 @@ void mesh_adv_scan_stop(void)
         int j = 0;
         char *rfcuuid = NULL;
         if (provisionerUuid == nil) {
-            rfcuuid = (char *)NSUUID.UUID.UUIDString.UTF8String;
+            NSUUID *newUuid = MeshNativeHelper.generateRfcUuid;
+            rfcuuid = (char *)newUuid.UUIDString.UTF8String;
+            [nativeCallbackDelegate updateProvisionerUuid:newUuid];
         } else {
             rfcuuid = (char *)provisionerUuid.UUIDString.UTF8String;
         }
@@ -547,7 +589,7 @@ void mesh_adv_scan_stop(void)
         provisioner_uuid[j] = '\0';
         data = [NSData dataWithBytes:provisioner_uuid length:strlen(provisioner_uuid)];
         [handle writeData:data];    // write 32 bytes.
-        NSLog(@"[MeshNativeHelper setFileStorageAtPath] create provisioner_uuid: %s, and stored to prov_uuid.bin", provisioner_uuid);
+        WICED_BT_TRACE("[MeshNativeHelper updateProvisionerUuid] create provisioner_uuid: %s, and stored to %s\n", provisioner_uuid, MeshNativeHelper.getProvisionerUuidFileName.UTF8String);
     }
     [handle closeFile];
     return 0;
@@ -559,33 +601,34 @@ void mesh_adv_scan_stop(void)
 
 -(void) registerNativeCallback: (id)delegate
 {
-    NSLog(@"%s", __FUNCTION__);
+    WICED_BT_TRACE("[MeshNativeHelper registerNativeCallback]\n");
     nativeCallbackDelegate = delegate;
 }
 
 +(int) meshClientNetworkExists:(NSString *) meshName
 {
-    NSLog(@"%s, meshName: %@", __FUNCTION__, meshName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientNetworkExists] meshName: %s\n", meshName.UTF8String);
     return mesh_client_network_exists((char *)[meshName UTF8String]);
 }
 
 +(int) meshClientNetworkCreate:(NSString *)provisionerName meshName:(NSString *)meshName
 {
-    NSLog(@"%s, provisionerName: %@, meshName: %@", __FUNCTION__, provisionerName, meshName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientNetworkCreate] provisionerName: %s, provisioner_uuid: %s, meshName: %s\n", provisionerName.UTF8String, provisioner_uuid, meshName.UTF8String);
     int ret;
     EnterCriticalSection();
+    [MeshNativeHelper updateProvisionerUuid:nil];
     ret = mesh_client_network_create(provisionerName.UTF8String, provisioner_uuid, (char *)meshName.UTF8String);
     LeaveCriticalSection();
     return ret;
 }
 
 void mesh_client_network_opened(uint8_t status) {
-    NSLog(@"%s, status: %u", __FUNCTION__, status);
+    WICED_BT_TRACE("[MeshNativeHelper mesh_client_network_opened] status: %u\n", status);
     [nativeCallbackDelegate meshClientNetworkOpenCb:status];
 }
 +(int) meshClientNetworkOpen:(NSString *)provisionerName meshName:(NSString *)meshName
 {
-    NSLog(@"%s, provisionerName: %@, meshName: %@", __FUNCTION__, provisionerName, meshName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientNetworkOpen] provisionerName: %s, meshName: %s\n", provisionerName.UTF8String, meshName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_network_open(provisionerName.UTF8String, provisioner_uuid, (char *)meshName.UTF8String, mesh_client_network_opened);
@@ -595,7 +638,7 @@ void mesh_client_network_opened(uint8_t status) {
 
 +(int) meshClientNetworkDelete:(NSString*)provisionerName meshName:(NSString *)meshName
 {
-    NSLog(@"%s, provisionerName: %@, meshName: %@", __FUNCTION__, provisionerName, meshName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientNetworkDelete] provisionerName: %s, meshName: %s\n", provisionerName.UTF8String, meshName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_network_delete(provisionerName.UTF8String, provisioner_uuid, (char *)meshName.UTF8String);
@@ -605,7 +648,7 @@ void mesh_client_network_opened(uint8_t status) {
 
 +(void) meshClientNetworkClose
 {
-    NSLog(@"%s", __FUNCTION__);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientNetworkClose]\n");
     EnterCriticalSection();
     mesh_client_network_close();
     LeaveCriticalSection();
@@ -613,7 +656,7 @@ void mesh_client_network_opened(uint8_t status) {
 
 +(NSString *) meshClientNetworkExport:(NSString *)meshName
 {
-    NSLog(@"%s, meshName=%@", __FUNCTION__, meshName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientNetworkExport] meshName=%s\n", meshName.UTF8String);
     char *jsonString = NULL;
     EnterCriticalSection();
     jsonString = mesh_client_network_export((char *)meshName.UTF8String);
@@ -626,9 +669,10 @@ void mesh_client_network_opened(uint8_t status) {
 
 +(NSString *) meshClientNetworkImport:(NSString *)provisionerName jsonString:(NSString *)jsonString
 {
-    NSLog(@"%s, provisionerName: %@, jsonString: %@", __FUNCTION__, provisionerName, jsonString);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientNetworkImport] provisionerName: %s, provisioner_uuid: %s, jsonString: %s\n", provisionerName.UTF8String, provisioner_uuid, jsonString.UTF8String);
     char *networkName = NULL;
     EnterCriticalSection();
+    [MeshNativeHelper updateProvisionerUuid:nil];
     networkName = mesh_client_network_import(provisionerName.UTF8String, provisioner_uuid, (char *)jsonString.UTF8String, mesh_client_network_opened);
     LeaveCriticalSection();
 
@@ -641,7 +685,7 @@ void mesh_client_network_opened(uint8_t status) {
 
 +(int) meshClientGroupCreate:(NSString *)groupName parentGroupName:(NSString *)parentGroupName
 {
-    NSLog(@"%s, groupName: %@, parentGroupName: %@", __FUNCTION__, groupName, parentGroupName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGroupCreate] groupName: %s, parentGroupName: %s\n", groupName.UTF8String, parentGroupName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_group_create((char *)groupName.UTF8String, (char *)parentGroupName.UTF8String);
@@ -650,7 +694,7 @@ void mesh_client_network_opened(uint8_t status) {
 }
 +(int) meshClientGroupDelete:(NSString *)groupName
 {
-    NSLog(@"%s, groupName: %@", __FUNCTION__, groupName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGroupDelete] groupName: %s\n", groupName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_group_delete((char *)groupName.UTF8String);
@@ -683,14 +727,14 @@ NSArray<NSString *> * meshCStringToOCStringArray(const char *cstrings, BOOL free
 
 +(NSArray<NSString *> *) meshClientGetAllNetworks
 {
-    NSLog(@"%s", __FUNCTION__);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetAllNetworks]\n");
     char *networks = mesh_client_get_all_networks();
     return meshCStringToOCStringArray(networks, TRUE);
 }
 
 +(NSArray<NSString *> *) meshClientGetAllGroups:(NSString *)inGroup
 {
-    NSLog(@"%s, inGroup: %@", __FUNCTION__, inGroup);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetAllGroups] inGroup: %s\n", inGroup.UTF8String);
     char *groups = NULL;
     EnterCriticalSection();
     groups = mesh_client_get_all_groups((char *)inGroup.UTF8String);
@@ -700,7 +744,7 @@ NSArray<NSString *> * meshCStringToOCStringArray(const char *cstrings, BOOL free
 
 +(NSArray<NSString *> *) meshClientGetAllProvisioners
 {
-    NSLog(@"%s", __FUNCTION__);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetAllProvisioners]\n");
     char *provisioners = NULL;
     EnterCriticalSection();
     provisioners = mesh_client_get_all_provisioners();
@@ -713,7 +757,7 @@ NSArray<NSString *> * meshCStringToOCStringArray(const char *cstrings, BOOL free
     char *components = NULL;
     uint8_t p_uuid[16];
     [uuid getUUIDBytes:p_uuid];
-    NSLog(@"%s device uuid: %s", __FUNCTION__, uuid.UUIDString.UTF8String);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetDeviceComponents] device uuid: %s\n", uuid.UUIDString.UTF8String);
     EnterCriticalSection();
     components = mesh_client_get_device_components(p_uuid);
     LeaveCriticalSection();
@@ -722,7 +766,7 @@ NSArray<NSString *> * meshCStringToOCStringArray(const char *cstrings, BOOL free
 
 +(NSArray<NSString *> *) meshClientGetGroupComponents:(NSString *)groupName
 {
-    NSLog(@"%s, groupName: %@", __FUNCTION__, groupName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetGroupComponents] groupName: %s\n", groupName.UTF8String);
     char *componetNames = NULL;
     EnterCriticalSection();
     componetNames = mesh_client_get_group_components((char *)groupName.UTF8String);
@@ -732,7 +776,7 @@ NSArray<NSString *> * meshCStringToOCStringArray(const char *cstrings, BOOL free
 
 +(NSArray<NSString *> *) meshClientGetTargetMethods:(NSString *)componentName
 {
-    NSLog(@"%s, componentName: %@", __FUNCTION__, componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetTargetMethods] componentName: %s\n", componentName.UTF8String);
     char *targetMethods = NULL;
     EnterCriticalSection();
     targetMethods = mesh_client_get_target_methods(componentName.UTF8String);
@@ -742,7 +786,7 @@ NSArray<NSString *> * meshCStringToOCStringArray(const char *cstrings, BOOL free
 
 +(NSArray<NSString *> *) meshClientGetControlMethods:(NSString *)componentName
 {
-    NSLog(@"%s, componentName: %@", __FUNCTION__, componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetControlMethods] componentName: %s\n", componentName.UTF8String);
     char *controlMethods = NULL;
     EnterCriticalSection();
     controlMethods = mesh_client_get_control_methods(componentName.UTF8String);
@@ -752,7 +796,7 @@ NSArray<NSString *> * meshCStringToOCStringArray(const char *cstrings, BOOL free
 
 +(uint8_t) meshClientGetComponentType:(NSString *)componentName
 {
-    NSLog(@"%s, componentName: %@", __FUNCTION__, componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetComponentType] componentName: %s\n", componentName.UTF8String);
     uint8_t type;
     EnterCriticalSection();
     type = mesh_client_get_component_type((char *)componentName.UTF8String);
@@ -762,11 +806,11 @@ NSArray<NSString *> * meshCStringToOCStringArray(const char *cstrings, BOOL free
 
 void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name, char *component_info)
 {
-    NSLog(@"%s, status:0x%x", __FUNCTION__, status);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientComponentInfoStatusCallback] status:0x%x\n", status);
     NSString *componentName = nil;
     NSString *componentInfo = nil;
     if (component_name == NULL) {
-        NSLog(@"%s, error, invalid parameters, component_name: is NULL", __FUNCTION__);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientComponentInfoStatusCallback] error, invalid parameters, component_name: is NULL\n");
         return;
     }
     componentName = [NSString stringWithUTF8String:(const char *)component_name];
@@ -775,7 +819,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
             uint8_t firmware_id[8];
             memcpy(firmware_id, &component_info[34], 8);
             component_info[34] = '\0';
-            NSLog(@"%s, firmware ID: %02X %02X %02X %02X %02X %02X %02X %02X\n", __FUNCTION__,
+            WICED_BT_TRACE("[MeshNativeHelper meshClientComponentInfoStatusCallback] firmware ID: %02X %02X %02X %02X %02X %02X %02X %02X\n",
                    firmware_id[0], firmware_id[1], firmware_id[2], firmware_id[3],
                    firmware_id[4], firmware_id[5], firmware_id[6], firmware_id[7]);
             uint16_t pid = (uint16_t)(((uint16_t)(firmware_id[0]) << 8) | (uint16_t)(firmware_id[1]));
@@ -783,7 +827,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
             uint8_t fwVerMaj = (uint8_t)firmware_id[4];
             uint8_t fwVerMin = (uint8_t)firmware_id[5];
             uint16_t fwVerRev = (uint16_t)(((uint16_t)(firmware_id[6]) << 8) | (uint16_t)(firmware_id[7]));
-            NSLog(@"%s, Product ID:0x%04x (%u), HW Version ID:0x%04x (%u), Firmware Version, %u.%u.%u\n", __FUNCTION__,
+            WICED_BT_TRACE("[MeshNativeHelper meshClientComponentInfoStatusCallback] Product ID:0x%04x (%u), HW Version ID:0x%04x (%u), Firmware Version, %u.%u.%u\n",
                    pid, pid, hwid, hwid, fwVerMaj, fwVerMin, fwVerRev);
             char info[128] = { 0 };
             sprintf(info, "%s%d.%d.%d", component_info, fwVerMaj, fwVerMin, fwVerRev);
@@ -792,16 +836,16 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
             componentInfo = [NSString stringWithUTF8String:(const char *)component_info];
         }
 
-        NSLog(@"%s, componentInfo:%@", __FUNCTION__, componentInfo);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientComponentInfoStatusCallback] componentInfo:%s\n", componentInfo.UTF8String);
     } else {
-        NSLog(@"%s, component_info string is NULL", __FUNCTION__);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientComponentInfoStatusCallback] component_info string is NULL\n");
     }
     [nativeCallbackDelegate meshClientComponentInfoStatusCb:status componentName:componentName componentInfo:componentInfo];
 }
 
 +(uint8_t) meshClientGetComponentInfo:(NSString *)componentName
 {
-    NSLog(@"%s, componentName:%@", __FUNCTION__, componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetComponentInfo] componentName:%s\n", componentName.UTF8String);
     uint8_t ret;
     EnterCriticalSection();
     ret = mesh_client_get_component_info((char *)componentName.UTF8String, meshClientComponentInfoStatusCallback);
@@ -815,7 +859,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
  */
 +(int) meshClientListenForAppGroupBroadcasts:(NSString *)controlMethod groupName:(NSString *)groupName startListen:(BOOL)startListen
 {
-    NSLog(@"%s, controlMethod:%@, groupName:%@, startListen:%d", __FUNCTION__, controlMethod, groupName, (int)startListen);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientListenForAppGroupBroadcasts] controlMethod:%s, groupName:%s, startListen:%d\n", controlMethod.UTF8String, groupName.UTF8String, (int)startListen);
     char *listonControlMethod = (controlMethod != nil && controlMethod.length > 0) ? (char *)controlMethod.UTF8String : NULL;
     char *listonGroupName = (groupName != nil && groupName.length > 0) ? (char *)groupName.UTF8String : NULL;
     int ret;
@@ -828,7 +872,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(NSString *) meshClientGetPublicationTarget:(NSString *)componentName isClient:(BOOL)isClient method:(NSString *)method
 {
-    NSLog(@"%s, componentName:%@, isClient:%d, method:%@", __FUNCTION__, componentName, (int)isClient, method);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetPublicationTarget] componentName:%s, isClient:%d, method:%s\n", componentName.UTF8String, (int)isClient, method.UTF8String);
     const char *targetName;
     EnterCriticalSection();
     targetName = mesh_client_get_publication_target(componentName.UTF8String, (uint8_t)isClient, method.UTF8String);
@@ -842,7 +886,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
  */
 +(int) meshClientGetPublicationPeriod:(NSString *)componentName isClient:(BOOL)isClient method:(NSString *)method
 {
-    NSLog(@"%s, componentName:%@, isClient:%d, method:%@", __FUNCTION__, componentName, (int)isClient, method);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetPublicationPeriod] componentName:%s, isClient:%d, method:%s\n", componentName.UTF8String, (int)isClient, method.UTF8String);
     int publishPeriod;
     EnterCriticalSection();
     publishPeriod = mesh_client_get_publication_period((char *)componentName.UTF8String, (uint8_t)isClient, method.UTF8String);
@@ -854,7 +898,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientRename:(NSString *)oldName newName:(NSString *)newName
 {
-    NSLog(@"%s oldName:%@, newName:%@", __FUNCTION__, oldName, newName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientRename] oldName:%s, newName:%s\n", oldName.UTF8String, newName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_rename((char *)oldName.UTF8String, (char *)newName.UTF8String);
@@ -864,8 +908,8 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientMoveComponentToGroup:(NSString *)componentName from:(NSString *)fromGroupName to:(NSString *)toGroupName
 {
-    NSLog(@"[MeshNativehelper meshClientMoveComponentToGroup] componentName:%@, fromGroupName:%@, toGroupName:%@",
-          componentName, fromGroupName, toGroupName);
+    WICED_BT_TRACE("[MeshNativehelper meshClientMoveComponentToGroup] componentName:%s, fromGroupName:%s, toGroupName:%s\n",
+          componentName.UTF8String, fromGroupName.UTF8String, toGroupName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_move_component_to_group(componentName.UTF8String, fromGroupName.UTF8String, toGroupName.UTF8String);
@@ -875,8 +919,8 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientConfigurePublication:(NSString *)componentName isClient:(uint8_t)isClient method:(NSString *)method targetName:(NSString *)targetName publishPeriod:(int)publishPeriod
 {
-    NSLog(@"[MeshNativehelper meshClientConfigurePublication] componentName:%@, isClient:%d, method:%@, targetName:%@ publishPeriod:%d",
-          componentName, isClient, method, targetName, publishPeriod);
+    WICED_BT_TRACE("[MeshNativehelper meshClientConfigurePublication] componentName:%s, isClient:%d, method:%s, targetName:%s publishPeriod:%d\n",
+          componentName.UTF8String, isClient, method.UTF8String, targetName.UTF8String, publishPeriod);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_configure_publication(componentName.UTF8String, isClient, method.UTF8String, targetName.UTF8String, publishPeriod);
@@ -886,7 +930,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(uint8_t) meshClientProvision:(NSString *)deviceName groupName:(NSString *)groupName uuid:(NSUUID *)uuid identifyDuration:(uint8_t)identifyDuration
 {
-    NSLog(@"[MeshNativehelper meshClientProvision] deviceName:%@, groupName:%@, identifyDuration:%d", deviceName, groupName, identifyDuration);
+    WICED_BT_TRACE("[MeshNativehelper meshClientProvision] deviceName:%s, groupName:%s, identifyDuration:%d\n", deviceName.UTF8String, groupName.UTF8String, identifyDuration);
     uint8_t ret;
     uint8_t p_uuid[16];
     [uuid getUUIDBytes:p_uuid];
@@ -898,7 +942,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(uint8_t) meshClientConnectNetwork:(uint8_t)useGattProxy scanDuration:(uint8_t)scanDuration
 {
-    NSLog(@"%s useGattProxy:%d, scanDuration:%d", __FUNCTION__, useGattProxy, scanDuration);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientConnectNetwork] useGattProxy:%d, scanDuration:%d\n", useGattProxy, scanDuration);
     uint8_t ret;
     EnterCriticalSection();
     ret = mesh_client_connect_network(useGattProxy, scanDuration);
@@ -908,7 +952,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(uint8_t) meshClientDisconnectNetwork:(uint8_t)useGattProxy
 {
-    NSLog(@"%s useGattProxy:%d", __FUNCTION__, useGattProxy);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientDisconnectNetwork] useGattProxy:%d\n", useGattProxy);
     uint8_t ret;
     EnterCriticalSection();
     ret = mesh_client_disconnect_network();
@@ -918,7 +962,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientOnOffGet:(NSString *)deviceName
 {
-    NSLog(@"%s deviceName:%@", __FUNCTION__, deviceName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientOnOffGet] deviceName:%s\n", deviceName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_on_off_get(deviceName.UTF8String);
@@ -928,8 +972,8 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientOnOffSet:(NSString *)deviceName onoff:(uint8_t)onoff reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    NSLog(@"[MeshNativehelper meshClientOnOffSet] deviceName:%@, onoff:%d, reliable:%d, transitionTime:%d, delay:%d",
-          deviceName, onoff, reliable, transitionTime, delay);
+    WICED_BT_TRACE("[MeshNativehelper meshClientOnOffSet] deviceName:%s, onoff:%d, reliable:%d, transitionTime:%d, delay:%d\n",
+          deviceName.UTF8String, onoff, reliable, transitionTime, delay);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_on_off_set(deviceName.UTF8String, onoff, reliable, transitionTime, delay);
@@ -939,7 +983,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientLevelGet:(NSString *)deviceName
 {
-    NSLog(@"%s deviceName:%@", __FUNCTION__, deviceName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientLevelGet] deviceName:%s\n", deviceName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_level_get(deviceName.UTF8String);
@@ -949,8 +993,8 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientLevelSet:(NSString *)deviceName level:(int16_t)level reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    NSLog(@"[MeshNativehelper meshClientLevelSet] deviceName:%@, level:%d, reliable:%d, transitionTime:%d, delay:%d",
-          deviceName, level, reliable, transitionTime, delay);
+    WICED_BT_TRACE("[MeshNativehelper meshClientLevelSet] deviceName:%s, level:%d, reliable:%d, transitionTime:%d, delay:%d\n",
+          deviceName.UTF8String, level, reliable, transitionTime, delay);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_level_set(deviceName.UTF8String, (int16_t)level, reliable, transitionTime, delay);
@@ -960,7 +1004,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientHslGet:(NSString *)deviceName
 {
-    NSLog(@"%s deviceName:%@", __FUNCTION__, deviceName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientHslGet] deviceName:%s\n", deviceName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_hsl_get(deviceName.UTF8String);
@@ -970,8 +1014,8 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientHslSet:(NSString *)deviceName lightness:(uint16_t)lightness hue:(uint16_t)hue saturation:(uint16_t)saturation reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    NSLog(@"[MeshNativehelper meshClientHslSet] deviceName:%@, lightness:%d, hue:%d, saturation:%d, reliable:%d, transitionTime:%d, delay:%d",
-          deviceName, lightness, hue, saturation, reliable, transitionTime, delay);
+    WICED_BT_TRACE("[MeshNativehelper meshClientHslSet] deviceName:%s, lightness:%d, hue:%d, saturation:%d, reliable:%d, transitionTime:%d, delay:%d\n",
+          deviceName.UTF8String, lightness, hue, saturation, reliable, transitionTime, delay);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_hsl_set(deviceName.UTF8String, lightness, hue, saturation, reliable, transitionTime, delay);
@@ -981,11 +1025,11 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(void) meshClientInit
 {
-    NSLog(@"[MeshNativehelper meshClientInit]");
+    WICED_BT_TRACE("[MeshNativehelper meshClientInit]\n");
     @synchronized (MeshNativeHelper.getSharedInstance) {
         srand((unsigned int)time(NULL));    // Set the seed value to avoid same pseudo-random intergers are generated.
         if (!initTimer()) {                 // The the global shared recurive mutex lock 'cs' befer using it.
-            NSLog(@"[MeshNativehelper meshClientInit] error: failed to initiaze timer and shared recurive mutex lock. Stopped");
+            WICED_BT_TRACE("[MeshNativehelper meshClientInit] error: failed to initiaze timer and shared recurive mutex lock. Stopped\n");
             return;
         }
         mesh_client_init(&mesh_client_init_callback);
@@ -1003,8 +1047,8 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
                     netXmitCount:(int)netXmitCount
                  netXmitInterval:(int)netXmitInterval
 {
-    NSLog(@"[MeshNativehelper meshClientSetDeviceConfig] deviceName:%@, isGattProxy:%d, isFriend:%d, isRelay:%d, beacon:%d, relayXmitCount:%d, relayXmitInterval:%d, defaultTtl:%d, netXmitCount:%d, netXmitInterval%d",
-          deviceName, isGattProxy, isFriend, isRelay, beacon, relayXmitCount, relayXmitInterval, defaultTtl, netXmitCount, netXmitInterval);
+    WICED_BT_TRACE("[MeshNativehelper meshClientSetDeviceConfig] deviceName:%s, isGattProxy:%d, isFriend:%d, isRelay:%d, beacon:%d, relayXmitCount:%d, relayXmitInterval:%d, defaultTtl:%d, netXmitCount:%d, netXmitInterval%d\n",
+          deviceName.UTF8String, isGattProxy, isFriend, isRelay, beacon, relayXmitCount, relayXmitInterval, defaultTtl, netXmitCount, netXmitInterval);
     int ret;
     char *device_name = NULL;
     if (deviceName != NULL && deviceName.length > 0) {
@@ -1030,7 +1074,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
             publishRetransmitInterval:(int)publishRetransmitInterval
                            publishTtl:(int)publishTtl
 {
-    NSLog(@"[MeshNativehelper meshClientSetPublicationConfig] publishCredentialFlag:%d, publishRetransmitCount:%d, publishRetransmitInterval:%d, publishTtl:%d",
+    WICED_BT_TRACE("[MeshNativehelper meshClientSetPublicationConfig] publishCredentialFlag:%d, publishRetransmitCount:%d, publishRetransmitInterval:%d, publishTtl:%d\n",
           publishCredentialFlag, publishRetransmitCount, publishRetransmitInterval, publishTtl);
     int ret;
     EnterCriticalSection();
@@ -1044,7 +1088,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientResetDevice:(NSString *)componentName
 {
-    NSLog(@"%s componentName:%@", __FUNCTION__, componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientResetDevice] componentName:%s\n", componentName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_reset_device((char *)componentName.UTF8String);
@@ -1054,7 +1098,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientVendorDataSet:(NSString *)deviceName companyId:(uint16_t)companyId modelId:(uint16_t)modelId opcode:(uint8_t)opcode data:(NSData *)data
 {
-    NSLog(@"%s deviceName:%@", __FUNCTION__, deviceName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientVendorDataSet] deviceName:%s\n", deviceName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_vendor_data_set(deviceName.UTF8String, companyId, modelId, opcode, (uint8_t *)data.bytes, data.length);
@@ -1064,7 +1108,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientIdentify:(NSString *)name duration:(uint8_t)duration
 {
-    NSLog(@"%s name:%@, duration:%d", __FUNCTION__, name, duration);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientIdentify] name:%s, duration:%d\n", name.UTF8String, duration);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_identify(name.UTF8String, duration);
@@ -1074,7 +1118,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientLightnessGet:(NSString *)deviceName
 {
-    NSLog(@"%s deviceName:%@", __FUNCTION__, deviceName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientLightnessGet] deviceName:%s\n", deviceName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_lightness_get(deviceName.UTF8String);
@@ -1084,8 +1128,8 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientLightnessSet:(NSString *)deviceName lightness:(uint16_t)lightness reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    NSLog(@"[MeshNativehelper meshClientLightnessSet] deviceName:%@, lightness:%d, reliable:%d, transitionTime:%d, delay:%d",
-          deviceName, lightness, reliable, transitionTime, delay);
+    WICED_BT_TRACE("[MeshNativehelper meshClientLightnessSet] deviceName:%s, lightness:%d, reliable:%d, transitionTime:%d, delay:%d\n",
+          deviceName.UTF8String, lightness, reliable, transitionTime, delay);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_lightness_set(deviceName.UTF8String, lightness, reliable, transitionTime, delay);
@@ -1095,7 +1139,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientCtlGet:(NSString *)deviceName
 {
-    NSLog(@"%s deviceName:%@", __FUNCTION__, deviceName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientCtlGet] deviceName:%s\n", deviceName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_ctl_get(deviceName.UTF8String);
@@ -1106,8 +1150,8 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 +(int) meshClientCtlSet:(NSString *)deviceName lightness:(uint16_t)lightness temperature:(uint16_t)temperature deltaUv:(uint16_t)deltaUv
                reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    NSLog(@"[MeshNativeHelper meshClientCtlSet] deviceName: %@, lightness: %d, temperature: %d, deltaUv: %d, reliable: %d, transitionTime: %d, delay: %d",
-          deviceName, lightness, temperature, deltaUv, reliable, transitionTime, delay);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientCtlSet] deviceName: %s, lightness: %d, temperature: %d, deltaUv: %d, reliable: %d, transitionTime: %d, delay: %d\n",
+          deviceName.UTF8String, lightness, temperature, deltaUv, reliable, transitionTime, delay);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_ctl_set(deviceName.UTF8String, lightness, temperature, deltaUv, reliable, transitionTime, delay);
@@ -1118,7 +1162,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 //MESH CLIENT GATT APIS
 +(void) meshClientScanUnprovisioned:(int)start uuid:(NSData *)uuid
 {
-    NSLog(@"%s start:%d", __FUNCTION__, start);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientScanUnprovisioned] start:%d\n", start);
     EnterCriticalSection();
     mesh_client_scan_unprovisioned(start, (uuid != nil && uuid.length == MESH_DEVICE_UUID_LEN) ? (uint8_t *)uuid.bytes : NULL);
     LeaveCriticalSection();
@@ -1126,27 +1170,27 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(Boolean) meshClientIsConnectingProvisioning
 {
-    NSLog(@"%s", __FUNCTION__);
     Boolean is_connecting_provisioning;
     EnterCriticalSection();
     is_connecting_provisioning = mesh_client_is_connecting_provisioning();
     LeaveCriticalSection();
+    WICED_BT_TRACE("[MeshNativeHelper meshClientIsConnectingProvisioning] is_connecting_provisioning=%d\n", is_connecting_provisioning);
     return is_connecting_provisioning;
 }
 
 +(void) meshClientConnectionStateChanged:(uint16_t)connId mtu:(uint16_t)mtu
 {
-    NSLog(@"[MeshNativeHelper meshClientConnectionStateChanged] connId:0x%04x, mtu:%d", connId, mtu);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientConnectionStateChanged] connId:0x%04x, mtu:%d\n", connId, mtu);
     mesh_client_connection_state_changed(connId, mtu);
 }
 
 +(void) meshClientAdvertReport:(NSData *)bdaddr addrType:(uint8_t)addrType rssi:(int8_t)rssi advData:(NSData *) advData
 {
-    NSLog(@"[MeshNativeHelper meshClientAdvertReport] advData.length:%lu, rssi:%d", (unsigned long)advData.length, rssi);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientAdvertReport] advData.length:%lu, rssi:%d\n", (unsigned long)advData.length, rssi);
     if (bdaddr.length == 6 && advData.length > 0) {
         mesh_client_advert_report((uint8_t *)bdaddr.bytes, addrType, rssi, (uint8_t *)advData.bytes);
     } else {
-        NSLog(@"[MeshNativeHelper meshClientAdvertReport] error: invalid bdaddr or advdata, bdaddr.length=%lu, advData.length=%lu",
+        WICED_BT_TRACE("[MeshNativeHelper meshClientAdvertReport] error: invalid bdaddr or advdata, bdaddr.length=%lu, advData.length=%lu\n",
               (unsigned long)bdaddr.length, (unsigned long)advData.length);
     }
 }
@@ -1156,7 +1200,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
     uint8_t ret;
     EnterCriticalSection();
     ret = mesh_client_connect_component((char *)componentName.UTF8String, useProxy, scanDuration);
-    NSLog(@"[MeshNativehelper meshConnectComponent] componentName: %@, useProxy: %d, scanDuration: %d, error: %d", componentName, useProxy, scanDuration, ret);
+    WICED_BT_TRACE("[MeshNativehelper meshConnectComponent] componentName: %s, useProxy: %d, scanDuration: %d, error: %d\n", componentName.UTF8String, useProxy, scanDuration, ret);
     if (ret != MESH_CLIENT_SUCCESS) {
         meshClientNodeConnectionState(MESH_CLIENT_NODE_WARNING_UNREACHABLE, (char *)componentName.UTF8String);
     }
@@ -1166,7 +1210,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(void) sendRxProxyPktToCore:(NSData *)data
 {
-    NSLog(@"%s data.length: %lu", __FUNCTION__, (unsigned long)data.length);
+    WICED_BT_TRACE("[MeshNativeHelper sendRxProxyPktToCore] data.length: %lu\n", (unsigned long)data.length);
     EnterCriticalSection();
     mesh_client_proxy_data((uint8_t *)data.bytes, data.length);
     LeaveCriticalSection();
@@ -1174,7 +1218,7 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(void) sendRxProvisPktToCore:(NSData *)data
 {
-    NSLog(@"%s data.length: %lu", __FUNCTION__, (unsigned long)data.length);
+    WICED_BT_TRACE("[MeshNativeHelper sendRxProvisPktToCore] data.length: %lu\n", (unsigned long)data.length);
     EnterCriticalSection();
     mesh_client_provisioning_data(WICED_TRUE, (uint8_t *)data.bytes, data.length);
     LeaveCriticalSection();
@@ -1378,10 +1422,7 @@ static NSMutableDictionary *gMeshBdAddrDict = nil;
 
 +(NSData *) getMeshPeripheralMappedBdAddr:(CBPeripheral *)peripheral
 {
-    const char *uuid = peripheral.identifier.UUIDString.UTF8String;
-    unsigned char md5Data[CC_MD5_DIGEST_LENGTH];
-    CC_MD5(uuid, (unsigned int)strlen(uuid), md5Data);
-    NSData * bdAddr = [[NSData alloc] initWithBytes:md5Data length:BD_ADDR_LEN];
+    NSData * bdAddr = [MeshNativeHelper peripheralIdentifyToBdAddr:peripheral];
     [MeshNativeHelper meshBdAddrDictAppend:bdAddr peripheral:peripheral];
     return bdAddr;
 }
@@ -1479,39 +1520,26 @@ static NSMutableDictionary *gMeshBdAddrDict = nil;
     return [[NSData alloc] initWithBytes:rawAdvData length:rawAdvDataSize];
 }
 
-void dumpHexBytes(const void *data, unsigned long size)
-{
-    const unsigned char *p = data;
-    for (int i = 0; i < size; i++) {
-        printf("%02X ", p[i]);
-        if ((i + 1) % 16 == 0) {
-            printf("\n");
-        }
-    }
-    printf("\n");
-}
-
-
 +(void) meshClientSetGattMtu:(int)mtu
 {
-    NSLog(@"%s, mtu: %d", __FUNCTION__, mtu);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSetGattMtu] mtu: %d\n", mtu);
     EnterCriticalSection();
     wiced_bt_mesh_core_set_gatt_mtu((uint16_t)mtu);
     LeaveCriticalSection();
 }
 +(Boolean) meshClientIsConnectedToNetwork
 {
-    NSLog(@"%s", __FUNCTION__);
     Boolean is_proxy_connected;
     EnterCriticalSection();
     is_proxy_connected = mesh_client_is_proxy_connected();
     LeaveCriticalSection();
+    WICED_BT_TRACE("[MeshNativeHelper meshClientIsConnectedToNetwork] is_proxy_connected=%d\n", is_proxy_connected);
     return is_proxy_connected;
 }
 
 +(int) meshClientAddComponent:(NSString *)componentName toGorup:(NSString *)groupName
 {
-    NSLog(@"[MeshNativeHelper meshClientAddComponent] componentName: %@, groupName: %@", componentName, groupName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientAddComponent] componentName: %s, groupName: %s\n", componentName.UTF8String, groupName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_add_component_to_group(componentName.UTF8String, groupName.UTF8String);
@@ -1521,7 +1549,7 @@ void dumpHexBytes(const void *data, unsigned long size)
 
 +(NSData *) meshClientOTADataEncrypt:(NSString *)componentName data:(NSData *)data
 {
-    //NSLog(@"[MeshNativeHelper meshClientOTADataEncrypt] componentName: %@, length: %lu", componentName, (unsigned long)[data length]);
+    //WICED_BT_TRACE("[MeshNativeHelper meshClientOTADataEncrypt] componentName: %s, length: %lu\n", componentName.UTF8String, (unsigned long)[data length]);
     /* The output buffer should be at least 17 bytes larger than input buffer */
     uint8_t *pOutBuffer = (uint8_t *)malloc(data.length + 17);
     uint16_t outBufferLen = 0;
@@ -1541,7 +1569,7 @@ void dumpHexBytes(const void *data, unsigned long size)
 
 +(NSData *) meshClientOTADataDecrypt:(NSString *)componentName data:(NSData *)data
 {
-    //NSLog(@"[MeshNativeHelper meshClientOTADataDecrypt] componentName: %@, length: %lu", componentName, (unsigned long)[data length]);
+    //WICED_BT_TRACE("[MeshNativeHelper meshClientOTADataDecrypt] componentName: %s, length: %lu\n", componentName.UTF8String, (unsigned long)[data length]);
     /* The output buffer should be at least 17 bytes larger than input buffer */
     uint8_t *pOutBuffer = (uint8_t *)malloc(data.length + 17);
     uint16_t outBufferLen = 0;
@@ -1561,7 +1589,7 @@ void dumpHexBytes(const void *data, unsigned long size)
 
 +(NSArray<NSString *> *) meshClientGetComponentGroupList:(NSString *)componentName
 {
-    NSLog(@"[MeshNativeHelper meshClientGetComponentGroupList] componentName: %@", componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetComponentGroupList] componentName: %s\n", componentName.UTF8String);
     char *groupList = NULL;
     EnterCriticalSection();
     groupList = mesh_client_get_component_group_list((char *)componentName.UTF8String);
@@ -1571,7 +1599,7 @@ void dumpHexBytes(const void *data, unsigned long size)
 
 +(int) meshClientRemoveComponent:(NSString *)componentName from:(NSString *)groupName
 {
-    NSLog(@"[MeshNativeHelper meshClientRemoveComponent] componentName:%@, groupName:%@", componentName, groupName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientRemoveComponent] componentName:%s, groupName:%s\n", componentName.UTF8String, groupName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_remove_component_from_group(componentName.UTF8String, groupName.UTF8String);
@@ -1585,7 +1613,7 @@ void dumpHexBytes(const void *data, unsigned long size)
     NSArray *list = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true);
     NSString *homeDirectory = list[0];
     NSString *fileDirectory = [homeDirectory stringByAppendingPathComponent:@"mesh"];
-    NSLog(@"%s current fileDirectory \"%@\"", __FUNCTION__, fileDirectory);
+    WICED_BT_TRACE("[MeshNativeHelper getJsonFilePath] current fileDirectory \"%s\"\n", fileDirectory.UTF8String);
 
     NSString *fileContent;
     NSArray  *contents = [fileManager contentsOfDirectoryAtPath:fileDirectory error:nil];
@@ -1593,7 +1621,7 @@ void dumpHexBytes(const void *data, unsigned long size)
 
     for (fileContent in contents){
         if([[fileContent pathExtension]isEqualToString:@"json"]){
-            NSLog(@"%@ file Name",fileContent);
+            WICED_BT_TRACE("  %s\n",fileContent.UTF8String);
             filePathString = fileContent;
             break;
         }
@@ -1609,14 +1637,14 @@ void dumpHexBytes(const void *data, unsigned long size)
     NSArray *list = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true);
     NSString *homeDirectory = list[0];
     NSString *fileDirectory = [homeDirectory stringByAppendingPathComponent:@"mesh"];
-    NSLog(@"%s current fileDirectory \"%@\"", __FUNCTION__, fileDirectory);
+    WICED_BT_TRACE("[MeshNativeHelper deleteAllFiles] current fileDirectory \"%s\"\n", fileDirectory.UTF8String);
 
     NSString *fileContent;
     NSArray  *contents = [fileManager contentsOfDirectoryAtPath:fileDirectory error:nil];
 
     for (fileContent in contents){
         NSString *fullFilePath = [fileDirectory stringByAppendingPathComponent:fileContent];
-        NSLog(@"%@", fullFilePath);
+        WICED_BT_TRACE("  %s\n", fullFilePath.UTF8String);
         [fileManager removeItemAtPath:fullFilePath error: NULL];
     }
 }
@@ -1643,13 +1671,13 @@ static CBPeripheral *currentConnectedPeripheral = nil;
 // DFU APIs
 void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
 {
-    NSLog(@"[MeshNativeHelper mesh_client_dfu_status_cb] status:0x%02x, progress:%u", status, progress);
+    WICED_BT_TRACE("[MeshNativeHelper mesh_client_dfu_status_cb] status:0x%02x, progress:%u\n", status, progress);
     [nativeCallbackDelegate meshClientDfuStatusCb:status progress:progress];
 }
 
 +(int) meshClientDfuGetStatus:(NSString *)componentName
 {
-    NSLog(@"[MeshNativeHelper meshClientDfuGetStatus] componentName:%@", componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientDfuGetStatus] componentName:%s\n", componentName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_dfu_get_status((char *)componentName.UTF8String, mesh_client_dfu_status_cb);
@@ -1657,24 +1685,45 @@ void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
     return ret;
 }
 
+void mesh_client_dfu_event_callback(uint8_t event, uint8_t *p_event_data, uint32_t event_data_length)
+{
+    switch (event) {
+        case MESH_DFU_EVENT_START_OTA:
+            WICED_BT_TRACE("[MeshNativeHelper mesh_client_dfu_event_callback] MESH_DFU_EVENT_START_OTA, event_data_length:%d\n", event_data_length);
+            break;
+        default:
+            WICED_BT_TRACE("[MeshNativeHelper mesh_client_dfu_event_callback] unknown event: 0x%02x, event_data_length=%d\n", event_data_length);
+            break;
+    }
+    [nativeCallbackDelegate onDfuEventReceived:event data:[[NSData alloc] initWithBytes:p_event_data length:event_data_length]];
+}
+
 +(int) meshClientDfuStart:(int)dfuMethod  componentName:(NSString *)componentName firmwareId:(NSData *)firmwareId validationData:(NSData *)validationData
 {
-    NSLog(@"[MeshNativeHelper meshClientDfuStart] dfuMethod:%d, componentName:%@", dfuMethod, componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientDfuStart] dfuMethod:%d, componentName:%s\n", dfuMethod, componentName.UTF8String);
     int ret;
     EnterCriticalSection();
-    ret = mesh_client_dfu_start((uint8_t)dfuMethod, (char *)componentName.UTF8String, (uint8_t *)firmwareId.bytes, (uint8_t)firmwareId.length, (uint8_t *)validationData.bytes, (uint8_t)validationData.length);
+    ret = mesh_client_dfu_start((uint8_t)dfuMethod, (char *)componentName.UTF8String, (uint8_t *)firmwareId.bytes, (uint8_t)firmwareId.length, (uint8_t *)validationData.bytes, (uint8_t)validationData.length, WICED_TRUE, mesh_client_dfu_event_callback);
     LeaveCriticalSection();
     return ret;
 }
 
 +(int) meshClientDfuStop
 {
-    NSLog(@"[MeshNativeHelper meshClientDfuStop]");
+    WICED_BT_TRACE("[MeshNativeHelper meshClientDfuStop]\n");
     int ret;
     EnterCriticalSection();
     ret = mesh_client_dfu_stop();
     LeaveCriticalSection();
     return ret;
+}
+
++(void) meshClientDfuOtaFinish:(int)status
+{
+    WICED_BT_TRACE("[MeshNativeHelper meshClientDfuOtaFinish] status:%d\n", status);
+    EnterCriticalSection();
+    mesh_client_dfu_ota_finish((uint8_t)status);
+    LeaveCriticalSection();
 }
 
 // Sensor APIs
@@ -1688,7 +1737,7 @@ void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
                    fastCadenceLow:(int *)fastCadenceLow
                   fastCadenceHigh:(int *)fastCadenceHigh
 {
-    NSLog(@"[MeshNativeHelper meshClientSensorCadenceGet] deviceName:%@, propertyId:0x%04x", deviceName, propertyId);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSensorCadenceGet] deviceName:%s, propertyId:0x%04x\n", deviceName.UTF8String, propertyId);
     uint16_t fast_cadence_period_divisor = 0;
     wiced_bool_t trigger_type = 0;
     uint32_t trigger_delta_down = 0;
@@ -1731,8 +1780,8 @@ void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
                    fastCadenceLow:(int)fastCadenceLow
                   fastCadenceHigh:(int)fastCadenceHigh
 {
-    NSLog(@"[MeshNativeHelper meshClientSensorCadenceSet] deviceName:%@, propertyId:0x%04x, %u, %u, %u, %u, %u, %u, %u",
-          deviceName, propertyId, fastCadencePeriodDivisor, triggerType, triggerDeltaDown, triggerDeltaUp, minInterval, fastCadenceLow, fastCadenceHigh);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSensorCadenceSet] deviceName:%s, propertyId:0x%04x, %u, %u, %u, %u, %u, %u, %u\n",
+          deviceName.UTF8String, propertyId, fastCadencePeriodDivisor, triggerType, triggerDeltaDown, triggerDeltaUp, minInterval, fastCadenceLow, fastCadenceHigh);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_sensor_cadence_set(deviceName.UTF8String, propertyId,
@@ -1750,7 +1799,7 @@ void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
 +(NSData *) meshClientSensorSettingGetPropertyIds:(NSString *)componentName
                                                propertyId:(int)propertyId
 {
-    NSLog(@"[MeshNativeHelper meshClientSensorSettingGetPropertyIds] componentName:%@, propertyId:0x%04x", componentName, propertyId);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSensorSettingGetPropertyIds] componentName:%s, propertyId:0x%04x\n", componentName.UTF8String, propertyId);
     NSData *settingPropertyIdsData = nil;
     int *settingPropertyIds = NULL;
     int count = 0;
@@ -1771,7 +1820,7 @@ void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
 
 +(NSData *) meshClientSensorPropertyListGet:(NSString *)componentName
 {
-    NSLog(@"[MeshNativeHelper meshClientSensorPropertyListGet] componentName:%@", componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSensorPropertyListGet] componentName:%s\n", componentName.UTF8String);
     NSData *propertyListData = nil;
     int *propertyList = NULL;
     int count = 0;
@@ -1795,7 +1844,7 @@ void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
                 settingPropertyId:(int)settingPropertyId
                             value:(NSData *)value
 {
-    NSLog(@"[MeshNativeHelper meshClientSensorSettingSet] componentName:%@, propertyId:0x%04x, settingPropertyId:0x%04x", componentName, propertyId, settingPropertyId);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSensorSettingSet] componentName:%s, propertyId:0x%04x, settingPropertyId:0x%04x\n", componentName.UTF8String, propertyId, settingPropertyId);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_sensor_setting_set(componentName.UTF8String, propertyId, settingPropertyId, (uint8_t *)value.bytes);
@@ -1805,7 +1854,7 @@ void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
 
 +(int) meshClientSensorGet:(NSString *)componentName propertyId:(int)propertyId
 {
-    NSLog(@"[MeshNativeHelper meshClientSensorGet] componentName:%@, propertyId:0x%04x", componentName, propertyId);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSensorGet] componentName:%s, propertyId:0x%04x\n", componentName.UTF8String, propertyId);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_sensor_get(componentName.UTF8String, propertyId);
@@ -1815,7 +1864,7 @@ void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
 
 +(BOOL) meshClientIsLightController:(NSString *)componentName
 {
-    NSLog(@"[MeshNativeHelper meshClientIsLightController] componentName:%@", componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientIsLightController] componentName:%s\n", componentName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_is_light_controller((char *)componentName.UTF8String);
@@ -1826,7 +1875,7 @@ void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
 void meshClientLightLcModeStatusCb(const char *device_name, int mode)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientLightLcModeStatusCb] error: invalid parameters, device_name=0x%p", device_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientLightLcModeStatusCb] error: invalid parameters, device_name=0x%p\n", device_name);
         return;
     }
     [nativeCallbackDelegate onLightLcModeStatusCb:[NSString stringWithUTF8String:(const char *)device_name]
@@ -1835,7 +1884,7 @@ void meshClientLightLcModeStatusCb(const char *device_name, int mode)
 
 +(int) meshClientGetLightLcMode:(NSString *)componentName
 {
-    NSLog(@"[MeshNativeHelper meshClientGetLightLcMode] componentName:%@", componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetLightLcMode] componentName:%s\n", componentName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_light_lc_mode_get(componentName.UTF8String, meshClientLightLcModeStatusCb);
@@ -1845,7 +1894,7 @@ void meshClientLightLcModeStatusCb(const char *device_name, int mode)
 
 +(int) meshClientSetLightLcMode:(NSString *)componentName mode:(int)mode
 {
-    NSLog(@"[MeshNativeHelper meshClientGetLightLcMode] componentName:%@, mode:%d", componentName, mode);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetLightLcMode] componentName:%s, mode:%d\n", componentName.UTF8String, mode);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_light_lc_mode_set(componentName.UTF8String, mode, meshClientLightLcModeStatusCb);
@@ -1856,7 +1905,7 @@ void meshClientLightLcModeStatusCb(const char *device_name, int mode)
 void meshClientLightLcOccupancyModeStatusCb(const char *device_name, int mode)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientLightLcOccupancyModeStatusCb] error: invalid parameters, device_name=0x%p", device_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientLightLcOccupancyModeStatusCb] error: invalid parameters, device_name=0x%p\n", device_name);
         return;
     }
     [nativeCallbackDelegate onLightLcOccupancyModeStatusCb:[NSString stringWithUTF8String:(const char *)device_name]
@@ -1865,7 +1914,7 @@ void meshClientLightLcOccupancyModeStatusCb(const char *device_name, int mode)
 
 +(int) meshClientGetLightLcOccupancyMode:(NSString *)componentName
 {
-    NSLog(@"[MeshNativeHelper meshClientGetLightLcOccupancyMode] componentName:%@", componentName);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetLightLcOccupancyMode] componentName:%s\n", componentName.UTF8String);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_light_lc_occupancy_mode_get(componentName.UTF8String, meshClientLightLcOccupancyModeStatusCb);
@@ -1875,7 +1924,7 @@ void meshClientLightLcOccupancyModeStatusCb(const char *device_name, int mode)
 
 +(int) meshClientSetLightLcOccupancyMode:(NSString *)componentName mode:(int)mode
 {
-    NSLog(@"[MeshNativeHelper meshClientSetLightLcOccupancyMode] componentName:%@, mode:%d", componentName, mode);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSetLightLcOccupancyMode] componentName:%s, mode:%d\n", componentName.UTF8String, mode);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_light_lc_occupancy_mode_set(componentName.UTF8String, mode, meshClientLightLcOccupancyModeStatusCb);
@@ -1887,9 +1936,10 @@ void meshClientLightLcOccupancyModeStatusCb(const char *device_name, int mode)
 void meshClientLightLcPropertyStatusCb(const char *device_name, int property_id, int value)
 {
     if (device_name == NULL || *device_name == '\0') {
-        NSLog(@"[MeshNativeHelper meshClientLightLcPropertyStatusCb] error: invalid parameters, device_name=0x%p", device_name);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientLightLcPropertyStatusCb] error: invalid parameters, device_name=0x%p\n", device_name);
         return;
     }
+    WICED_BT_TRACE("[MeshNativeHelper meshClientLightLcPropertyStatusCb] device_name=%s, property_id=%d, value=%d\n", device_name, property_id, value);
     [nativeCallbackDelegate onLightLcPropertyStatusCb:[NSString stringWithUTF8String:(const char *)device_name]
                                            propertyId:property_id
                                                 value:value];
@@ -1897,7 +1947,7 @@ void meshClientLightLcPropertyStatusCb(const char *device_name, int property_id,
 
 +(int) meshClientGetLightLcProperty:(NSString *)componentName propertyId:(int)propertyId
 {
-    NSLog(@"[MeshNativeHelper meshClientGetLightLcProperty] componentName:%@, propertyId:0x%X", componentName, propertyId);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientGetLightLcProperty] componentName:%s, propertyId:0x%X\n", componentName.UTF8String, propertyId);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_light_lc_property_get(componentName.UTF8String, propertyId, meshClientLightLcPropertyStatusCb);
@@ -1907,7 +1957,7 @@ void meshClientLightLcPropertyStatusCb(const char *device_name, int property_id,
 
 +(int) meshClientSetLightLcProperty:(NSString *)componentName propertyId:(int)propertyId value:(int)value
 {
-    NSLog(@"[MeshNativeHelper meshClientSetLightLcProperty] componentName:%@, propertyId:0x%X, value:0x%X", componentName, propertyId, value);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSetLightLcProperty] componentName:%s, propertyId:0x%X, value:0x%X\n", componentName.UTF8String, propertyId, value);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_light_lc_property_set(componentName.UTF8String, propertyId, value, meshClientLightLcPropertyStatusCb);
@@ -1917,7 +1967,7 @@ void meshClientLightLcPropertyStatusCb(const char *device_name, int property_id,
 
 +(int) meshClientSetLightLcOnOffSet:(NSString *)componentName onoff:(uint8_t)onoff reliable:(BOOL)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    NSLog(@"[MeshNativeHelper meshClientSetLightLcOnOffSet] componentName:%@, onoff:%d, reliable:%d", componentName, onoff, reliable);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSetLightLcOnOffSet] componentName:%s, onoff:%d, reliable:%d\n", componentName.UTF8String, onoff, reliable);
     int ret;
     EnterCriticalSection();
     ret = mesh_client_light_lc_on_off_set(componentName.UTF8String, onoff, reliable, transitionTime, delay);
@@ -2062,7 +2112,7 @@ void mesh_native_helper_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_l
         memcpy(p_fw_id, dfuFwId, dfuFwIdLen);
     }
     if (dfuValidationDataLen) {
-        memcpy(p_validation_data_len, dfuValidationData, dfuValidationDataLen);
+        memcpy(p_validation_data, dfuValidationData, dfuValidationDataLen);
     }
 }
 
@@ -2073,13 +2123,13 @@ uint32_t mesh_native_helper_read_file_size(const char *p_path)
     unsigned long long fileSize = 0;
 
     if (p_path == NULL || !strlen(p_path)) {
-        NSLog(@"[MeshNativeHelper mesh_native_helper_read_file_size] error: input file path is NULL");
+        WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_read_file_size] error: input file path is NULL\n");
         return 0;
     }
 
     filePath = [NSString stringWithUTF8String:(const char *)p_path];
     if (![fileManager fileExistsAtPath:filePath] || ![fileManager isReadableFileAtPath:filePath]) {
-        NSLog(@"[MeshNativeHelper mesh_native_helper_read_file_size] error: file \"%@\" not exists or not readable", filePath);
+        WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_read_file_size] error: file \"%s\" not exists or not readable\n", filePath.UTF8String);
         return 0;
     }
 
@@ -2095,31 +2145,56 @@ void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uin
     NSData *data = nil;
 
     if (p_path == NULL || !strlen(p_path)) {
-        NSLog(@"[MeshNativeHelper mesh_native_helper_read_file_chunk] error: input file path is NULL");
+        WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_read_file_chunk] error: input file path is NULL\n");
+        return;
+    }
+    if (offset < 0x200) {
+        WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_read_file_chunk] error: invalid offset: 0x%04x < 0x200\n", offset);
         return;
     }
 
     filePath = [NSString stringWithUTF8String:(const char *)p_path];
     if (![fileManager fileExistsAtPath:filePath] || ![fileManager isReadableFileAtPath:filePath]) {
-        NSLog(@"[MeshNativeHelper mesh_native_helper_read_file_chunk] error: file \"%@\" not exists or not readable", filePath);
+        WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_read_file_chunk] error: file \"%s\" not exists or not readable\n", filePath.UTF8String);
         return;
     }
 
     handle = [NSFileHandle fileHandleForReadingAtPath:filePath];
     if (handle == nil) {
-        NSLog(@"[MeshNativeHelper mesh_native_helper_read_file_chunk] error: unable to open file \"%@\" for reading", filePath);
+        WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_read_file_chunk] error: unable to open file \"%s\" for reading\n", filePath.UTF8String);
         return;
     }
 
     @try {
-        [handle seekToFileOffset:(unsigned long long)offset];
+        [handle seekToFileOffset:(unsigned long long)(offset - 0x200)];
         data = [handle readDataOfLength:data_len];
         [data getBytes:p_data length:data.length];
     } @catch (NSException *exception) {
-        NSLog(@"[MeshNativeHelper mesh_native_helper_read_file_chunk] error: unable exception: %@", [exception description]);
+        WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_read_file_chunk] error: unable exception: %s\n", [[exception description] UTF8String]);
     } @finally {
         [handle closeFile];
     }
+}
+
++(Boolean) isMeshClientProvisionKeyRefreshing
+{
+    extern mesh_core_provision_cb_t provision_cb;
+    WICED_BT_TRACE("[MeshNativeHelper isMeshClientProvisionerBusying] provision_cb.state=%d\n", provision_cb.state);
+    return (provision_cb.state > 12) ? true : false;
+}
+
++(void) meshClientLogInit:(Boolean) is_console_enabled
+{
+    mesh_trace_log_init(is_console_enabled ? TRUE : FALSE);
+}
+
++(void) meshClientLog:(NSString *)message
+{
+    if (message == nil || message.length == 0) {
+        return;
+    }
+
+    Log("%s\n", message.UTF8String);
 }
 
 @end

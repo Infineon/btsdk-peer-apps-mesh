@@ -113,7 +113,7 @@ class SignUpViewController: UIViewController {
                 self?.activeIndcator.stopAnimating()
 
                 if status != 0 {
-                    print("onSignUpButtonUp, NetworkManager.shared.accountRegister status=\(status)")
+                    meshLog("onSignUpButtonUp, NetworkManager.shared.accountRegister status=\(status)")
                     self?.errorInfoTextFiled.text = "Invalid Account"
                     self?.errorInfoView.isHidden = false
                     return

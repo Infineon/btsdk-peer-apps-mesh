@@ -9,7 +9,7 @@
 * applications to perform a firmware upgrade.
 *
 *//*****************************************************************************
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -46,7 +46,10 @@
 #include "wiced_bt_gatt.h"
 
 /**
-* \defgroup group_ota_wiced_firmware_upgrade   WICED OTA Firmware Upgrade
+* \defgroup    wicedsys                             System
+*
+* \addtogroup  group_ota_wiced_firmware_upgrade     OTA Firmware Upgrade
+* \ingroup     wicedsys
 * @{
 *
 *  The WICED OTA Firmware Upgrade Service is used by peer applications to
@@ -129,7 +132,26 @@
 #define OTA_FW_UPGRADE_STATUS_ABORTED                           2   /* OTA firmware upgrade process was aborted or failed verification */
 #define OTA_FW_UPGRADE_STATUS_COMPLETED                         3   /* OTA firmware upgrade completed, will reboot */
 #define OTA_FW_UPGRADE_STATUS_VERIFICATION_START                4   /**< OTA firmware upgrade starts verification */
+
+/* OTA firmware upgrade callback events */
+#define OTA_FW_UPGRADE_EVENT_STARTED                            1   /* Client started OTA firmware upgrade process */
+#define OTA_FW_UPGRADE_EVENT_DATA                               2   /* OTA firmware upgrade data received */
+#define OTA_FW_UPGRADE_EVENT_COMPLETED                          3   /* OTA firmware upgrade completed */
 /** \} group_ota_fw_upgrade_macros */
+
+/**
+* \addtogroup group_ota_fw_upgrade_structs
+* \{
+*/
+/* OTA firmware upgrade event data */
+typedef struct
+{
+    uint32_t offset;                                /**< Data offset */
+    uint32_t data_len;                              /**< Data length */
+    uint8_t  *p_data;                               /**< Pointer to data buffer */
+} wiced_bt_ota_fw_upgrad_event_data_t;
+
+/** \} group_ota_fw_upgrade_structs */
 
 #ifdef __cplusplus
 extern "C" {
@@ -162,6 +184,14 @@ typedef void (wiced_ota_firmware_upgrade_status_callback_t)(uint8_t status);
 *
 ******************************************************************************/
 typedef wiced_bt_gatt_status_t (wiced_ota_firmware_upgrade_send_data_callback_t)(wiced_bool_t is_notification, uint16_t conn_id, uint16_t attr_handle, uint16_t val_len, uint8_t *p_val);
+
+/** A callback used in Transfer-Only mode to pass event/data to upper layer
+*
+* \param   event  : OTA event that needs to be processed (see @ref OTA_FW_UPGRADE_EVENT "OTA firmware upgrade callback events")
+* \param   p_data : Pointer to OTA event data
+*
+******************************************************************************/
+typedef void (wiced_ota_firmware_event_callback_t)(uint16_t event, void *p_data);
 /** \} group_ota_fw_upgrade_cback_functions */
 
 /**
@@ -266,6 +296,16 @@ wiced_bool_t wiced_ota_fw_upgrade_is_gatt_handle(uint16_t handle);
 *
 ******************************************************************************/
 wiced_bool_t wiced_ota_fw_upgrade_get_new_fw_info(uint16_t *company_id, uint8_t *fw_id_len, uint8_t *fw_id);
+
+/******************************************************************************
+* Function Name: wiced_ota_fw_upgrade_set_transfer_mode
+***************************************************************************//**
+* \brief Set OTA for data transfer only
+*
+* \details Transfer only mode can be used by other module such as DFU
+*
+******************************************************************************/
+wiced_bool_t wiced_ota_fw_upgrade_set_transfer_mode(wiced_bool_t transfer_only, wiced_ota_firmware_event_callback_t *p_event_callback);
 
 #ifdef __cplusplus
 }

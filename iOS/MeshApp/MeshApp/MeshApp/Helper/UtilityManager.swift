@@ -21,7 +21,7 @@ public class UtilityManager: NSObject {
 
     // Note, if the VC's modalPresentationStyle is set to the style that it doesn't support, then will cause the crash issue.
     public static func navigateToViewController(sender: UIViewController, targetVCClass: AnyClass, modalPresentationStyle: UIModalPresentationStyle = .fullScreen, storyboard: String = "Main") {
-        print("navigateToViewController, targetVCClass=\"\(String(describing:targetVCClass))\"")
+        meshLog("navigateToViewController, targetVCClass=\"\(String(describing:targetVCClass))\"")
         let vc = UIStoryboard(name: storyboard, bundle: nil).instantiateViewController(withIdentifier: String(describing:targetVCClass))
         vc.modalPresentationStyle = modalPresentationStyle
         sender.present(vc, animated: true, completion: nil)
@@ -30,10 +30,10 @@ public class UtilityManager: NSObject {
     public static func navigateToViewController(targetClass: AnyClass, storyboard: String = "Main", parentVC: UIViewController? = nil) {
         let vc = UIStoryboard(name: storyboard, bundle: nil).instantiateViewController(withIdentifier: String(describing: targetClass))
         guard vc.isKind(of: targetClass) else {
-            print("error: navigateToViewController, failed to initialize instance: \(String(describing: targetClass))")
+            meshLog("error: navigateToViewController, failed to initialize instance: \(String(describing: targetClass))")
             return
         }
-        print("navigateToViewController: initialize instance: \(String(describing: targetClass)) success")
+        meshLog("navigateToViewController: initialize instance: \(String(describing: targetClass)) success")
         if let parentVC = parentVC {
             parentVC.navigationController?.pushViewController(vc, animated: true)
             return
@@ -44,7 +44,7 @@ public class UtilityManager: NSObject {
                 return
             }
         }
-        print("error: failed to navigateToViewController: \(String(describing: targetClass))")
+        meshLog("error: failed to navigateToViewController: \(String(describing: targetClass))")
     }
 
     public static func showAlertDialogue(parentVC: UIViewController?, message: String, title: String = "Error",
@@ -323,7 +323,7 @@ public class UtilityManager: NSObject {
         for (i, char) in hexstr.enumerated() {  // i index started from 1.
             subHexStr.append(char)
             if i % 2 != 0 {
-                print("\(subHexStr)")
+                meshLog("\(subHexStr)")
                 if let value = UInt8(subHexStr, radix: 16) {
                     data[index] = value
                     index += 1

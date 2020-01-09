@@ -1,5 +1,5 @@
 /*
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -82,7 +82,7 @@ void ECC_PM_B_NAF(Point *q, Point *p, DWORD *n, uint32_t keyLength);
 
 #define ECC_PM(q, p, n, keyLength)  ECC_PM_B_NAF(q, p, n, keyLength)
 
-#if defined (CYW20819A1)
+#if (defined (CYW20819A1) || defined(CYW20719B2) || defined(CYW20721B2))
 #define p_256_init_curve(x) InitCurve(x)
 #endif
 void p_256_init_curve(uint32_t keyLength);

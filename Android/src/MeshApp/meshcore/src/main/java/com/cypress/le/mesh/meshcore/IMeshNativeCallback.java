@@ -47,6 +47,7 @@ public interface IMeshNativeCallback {
     void meshClientHslStateCb(String deviceName, int lightness, int hue, int saturation);
     void meshClientCtlStateCb(String deviceName, int presentLightness, short presentTemperature, int targetLightness, short targetTemperature, int remainingTime);
     void meshClientLightnessStateCb(String deviceName, int target, int present, int remainingTime);
+    void meshClientDfuStartCb();
     void meshClientDfuStatusCb(byte status, byte progress);
     void meshClientSensorStatusCb(String componentName, int propertyId, byte[] data);
     void meshClientVendorStatusCb(short source, short companyId, short modelId, byte opcode, byte[] data, short dataLen);

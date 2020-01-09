@@ -124,7 +124,7 @@ public class OtaManager: NSObject {
 
     public func dumpOtaStatus() {
         OtaUpgrader.shared.dumpOtaUpgradeStatus()
-        print("dumpOtaStatus, isOtaScanning:\(isOtaScanning), shouldBlockingOtherGattProcess:\(OtaManager.shared.shouldBlockingOtherGattProcess)")
+        meshLog("dumpOtaStatus, isOtaScanning:\(isOtaScanning), shouldBlockingOtherGattProcess:\(OtaManager.shared.shouldBlockingOtherGattProcess)")
     }
 
     static public func getOtaDeviceTypeString(by deviceType: OtaDeviceType) -> String {
@@ -152,7 +152,7 @@ public class OtaManager: NSObject {
     public func didUpdateHomeKitDevices() {
         for home in mHomeManager?.homes ?? [] {
             for accessory in home.accessories {
-                print("home: \(home.name), \(accessory), service.count=\(accessory.services.count)")
+                meshLog("home: \(home.name), \(accessory), service.count=\(accessory.services.count)")
                 if validAccessoryFilter(accessory) {
                     self.addOtaDevice(device: OtaHomeKitDevice(accessory: accessory))
                 }
@@ -160,7 +160,7 @@ public class OtaManager: NSObject {
         }
 
         for accessory in mHMAccessoryBrowser?.discoveredAccessories ?? [] {
-            print("discoveredAccessories, \(accessory), service.count=\(accessory.services.count)")
+            meshLog("discoveredAccessories, \(accessory), service.count=\(accessory.services.count)")
             if validAccessoryFilter(accessory) {
                 if validAccessoryFilter(accessory) {
                     self.addOtaDevice(device: OtaHomeKitDevice(accessory: accessory))
@@ -239,7 +239,7 @@ public class OtaManager: NSObject {
 
     func getOtaUpgraderInstance() -> OtaUpgraderProtocol? {
         guard let _ = self.activeOtaDevice else {
-            print("error: OtaManager, getActiveOtaUpgraderInstance, activeOtaDeviceDelegate is nil")
+            meshLog("error: OtaManager, getActiveOtaUpgraderInstance, activeOtaDeviceDelegate is nil")
             return nil
         }
 
@@ -254,7 +254,7 @@ extension OtaManager {
     ///
 
     open func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        print("OtaManager, centralManager didDiscover peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected), isOtaScanning:\(self.isOtaScanning)")
+        meshLog("OtaManager, centralManager didDiscover peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected), isOtaScanning:\(self.isOtaScanning)")
         guard self.isOtaScanning else {
             return
         }
@@ -264,7 +264,7 @@ extension OtaManager {
             return
         }
 
-        print("OtaManager, centralManager didDiscover peripheral, \(peripheral), rssi=\(RSSI), \(advertisementData)")
+        meshLog("OtaManager, centralManager didDiscover peripheral, \(peripheral), rssi=\(RSSI), \(advertisementData)")
         if MeshNativeHelper.isMeshProxyServiceAdvertisementData(advertisementData) {
             // all provisioined mesh devices are reterived through mesh network, so bypass all active provsioned mesh devices.
             return
@@ -276,29 +276,29 @@ extension OtaManager {
     }
 
     open func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        print("OtaManager, centralManager didConnect peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
+        meshLog("OtaManager, centralManager didConnect peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
         self.activeOtaDevice?.otaDevice = peripheral
         // For mesh device, the connect event should be processed in the meshClientConnectComponent() callback function.
         if self.isOtaUpgrading, let otaDevice = self.activeOtaDevice, otaDevice.getDeviceType() != .mesh {
-            print("OtaManager, centralManager didConnect peripheral:\(peripheral), otaDevice:\(otaDevice)")
+            meshLog("OtaManager, centralManager didConnect peripheral:\(peripheral), otaDevice:\(otaDevice)")
             self.getOtaUpgraderInstance()?.didUpdateConnectionState(isConnected: true, error: nil)
         }
     }
 
     open func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        print("OtaManager, centralManager didFailToConnect peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
+        meshLog("OtaManager, centralManager didFailToConnect peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
         self.activeOtaDevice?.otaDevice = nil
         if self.isOtaUpgrading {
-            print("OtaManager, centralManager didFailToConnect peripheral, \(peripheral), \(String(describing: error))")
+            meshLog("OtaManager, centralManager didFailToConnect peripheral, \(peripheral), \(String(describing: error))")
             self.getOtaUpgraderInstance()?.didUpdateConnectionState(isConnected: false, error: error)
         }
     }
 
     open func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        print("OtaManager, centralManager didDisconnectPeripheral peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
+        meshLog("OtaManager, centralManager didDisconnectPeripheral peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
         self.activeOtaDevice?.otaDevice = nil
         if self.isOtaUpgrading, self.isOtaDeviceConnected {
-            print("OtaManager, centralManager didDisconnectPeripheral peripheral, \(peripheral), \(String(describing: error))")
+            meshLog("OtaManager, centralManager didDisconnectPeripheral peripheral, \(peripheral), \(String(describing: error))")
             self.getOtaUpgraderInstance()?.didUpdateConnectionState(isConnected: false, error: error)
         }
     }
@@ -308,12 +308,12 @@ extension OtaManager {
     ///
 
     open func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        print("OtaManager, peripheral didDiscoverServices, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
+        meshLog("OtaManager, peripheral didDiscoverServices, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
         guard self.isOtaUpgrading, self.isOtaDeviceConnected else {
             return
         }
 
-        print("OtaManager, peripheral didDiscoverServices, \(peripheral), error:\(String(describing: error))")
+        meshLog("OtaManager, peripheral didDiscoverServices, \(peripheral), error:\(String(describing: error))")
         guard error == nil, let services = peripheral.services, services.count > 0 else {
             self.getOtaUpgraderInstance()?.didUpdateOtaServiceCharacteristicState(isDiscovered: false, error: error)
             self.activeOtaDevice?.disconnect()
@@ -321,28 +321,28 @@ extension OtaManager {
         }
 
         for (i,srv) in services.enumerated() {
-            print("OtaManager, peripheral didDiscoverServices, \(i): \(srv.uuid.description)")
+            meshLog("OtaManager, peripheral didDiscoverServices, \(i): \(srv.uuid.description)")
         }
 
         if let service: CBService = services.filter({OtaConstants.UUID_GATT_OTA_SERVICES.contains($0.uuid)}).first {
             self.activeOtaDevice?.otaService = service
-            print("OtaManager, peripheral didDiscoverServices, GATT OTA Service found. OTA Version: OTA_VERSION_\(service.uuid == OtaConstants.BLE_V2.UUID_SERVICE_UPGRADE ? OtaConstants.OTA_VERSION_2 : OtaConstants.OTA_VERSION_1)")
+            meshLog("OtaManager, peripheral didDiscoverServices, GATT OTA Service found. OTA Version: OTA_VERSION_\(service.uuid == OtaConstants.BLE_V2.UUID_SERVICE_UPGRADE ? OtaConstants.OTA_VERSION_2 : OtaConstants.OTA_VERSION_1)")
 
             peripheral.discoverCharacteristics(nil, for: service)
         } else {
-            print("OtaManager, peripheral didDiscoverServices, GATT OTA Service not found")
+            meshLog("OtaManager, peripheral didDiscoverServices, GATT OTA Service not found")
             self.getOtaUpgraderInstance()?.didUpdateOtaServiceCharacteristicState(isDiscovered: false, error: nil)
             self.activeOtaDevice?.disconnect()
         }
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-        print("OtaManager, peripheral didDiscoverCharacteristicsFor, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
+        meshLog("OtaManager, peripheral didDiscoverCharacteristicsFor, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
         guard let activeOtaDevice = self.activeOtaDevice, self.isOtaUpgrading, self.isOtaDeviceConnected else {
             return
         }
 
-        print("OtaManager, peripheral didDiscoverCharacteristicsFor service:\(service), error:\(String(describing: error))")
+        meshLog("OtaManager, peripheral didDiscoverCharacteristicsFor service:\(service), error:\(String(describing: error))")
         guard error == nil else {
             self.getOtaUpgraderInstance()?.didUpdateOtaServiceCharacteristicState(isDiscovered: false, error: error)
             self.activeOtaDevice?.disconnect()
@@ -352,32 +352,32 @@ extension OtaManager {
         if let characteristics = service.characteristics {
             let supportControlPointUuids = [OtaConstants.BLE.UUID_CHARACTERISTIC_CONTROL_POINT, OtaConstants.BLE_V2.UUID_CHARACTERISTIC_CONTROL_POINT]
             if let characteristic: CBCharacteristic = characteristics.filter({supportControlPointUuids.contains($0.uuid)}).first {
-                print("OtaManager, peripheral didDiscoverCharacteristicsFor service, OTA Control Point characteristic found")
+                meshLog("OtaManager, peripheral didDiscoverCharacteristicsFor service, OTA Control Point characteristic found")
                 self.activeOtaDevice?.otaControlPointCharacteristic = characteristic
             }
 
             let supportDataUuids = [OtaConstants.BLE.UUID_CHARACTERISTIC_DATA, OtaConstants.BLE_V2.UUID_CHARACTERISTIC_DATA]
             if let characteristic: CBCharacteristic = characteristics.filter({supportDataUuids.contains($0.uuid)}).first {
-                print("OtaManager, peripheral didDiscoverCharacteristicsFor service, OTA Data characteristic found")
+                meshLog("OtaManager, peripheral didDiscoverCharacteristicsFor service, OTA Data characteristic found")
                 self.activeOtaDevice?.otaDataCharacteristic = characteristic
             }
 
             let supportAppInfoUuids = [OtaConstants.BLE.UUID_CHARACTERISTIC_APP_INFO, OtaConstants.BLE_V2.UUID_CHARACTERISTIC_APP_INFO]
             if let characteristic: CBCharacteristic = characteristics.filter({supportAppInfoUuids.contains($0.uuid)}).first {
-                print("OtaManager, peripheral didDiscoverCharacteristicsFor service, OTA App Info characteristic found")
+                meshLog("OtaManager, peripheral didDiscoverCharacteristicsFor service, OTA App Info characteristic found")
                 self.activeOtaDevice?.otaAppInfoCharacteristic = characteristic
             }
         }
 
         if activeOtaDevice.otaControlPointCharacteristic != nil, activeOtaDevice.otaDataCharacteristic != nil {
-            print("OtaManager, peripheral didDiscoverCharacteristicsFor service, all OTA characteristic found in the service")
+            meshLog("OtaManager, peripheral didDiscoverCharacteristicsFor service, all OTA characteristic found in the service")
             if let appInfoCharacteristic = activeOtaDevice.otaAppInfoCharacteristic as? CBCharacteristic {
                 peripheral.readValue(for: appInfoCharacteristic)
             } else {
                 self.getOtaUpgraderInstance()?.didUpdateOtaServiceCharacteristicState(isDiscovered: true, error: nil)
             }
         } else {
-            print("error: OtaManager, peripheral didDiscoverCharacteristicsFor service, no characteristic found in the service")
+            meshLog("error: OtaManager, peripheral didDiscoverCharacteristicsFor service, no characteristic found in the service")
             self.getOtaUpgraderInstance()?.didUpdateOtaServiceCharacteristicState(isDiscovered: false, error: nil)
         }
     }
@@ -388,28 +388,28 @@ extension OtaManager {
             return
         }
 
-        print("OtaManager, peripheral didUpdateNotificationStateFor characteristic, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
+        meshLog("OtaManager, peripheral didUpdateNotificationStateFor characteristic, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
         guard self.isOtaUpgrading, self.isOtaDeviceConnected else {
             return
         }
 
-        print("OtaManager, peripheral didUpdateNotificationStateFor characteristic=\(characteristic)")
+        meshLog("OtaManager, peripheral didUpdateNotificationStateFor characteristic=\(characteristic)")
         guard let activeOtaDevice = self.activeOtaDevice else {
-            print("error: OtaManager, peripheral didUpdateNotificationStateFor characteristic, activeOtaDevice is nil")
+            meshLog("error: OtaManager, peripheral didUpdateNotificationStateFor characteristic, activeOtaDevice is nil")
             return
         }
         guard activeOtaDevice.otaControlPointCharacteristic as? CBCharacteristic == characteristic else {
-            print("warnnig: OtaManager, peripheral didUpdateNotificationStateFor characteristic, not Control Point characteristic")
+            meshLog("warnnig: OtaManager, peripheral didUpdateNotificationStateFor characteristic, not Control Point characteristic")
             return
         }
         guard error == nil else {
-            print("error: OtaManager, peripheral didUpdateNotificationStateFor characteristic, failed to enable notification, error:\(String(describing: error))")
+            meshLog("error: OtaManager, peripheral didUpdateNotificationStateFor characteristic, failed to enable notification, error:\(String(describing: error))")
             self.getOtaUpgraderInstance()?.didUpdateNotificationState(isEnabled: false, error: error)
             activeOtaDevice.disconnect()
             return
         }
         guard characteristic.isNotifying else {
-            print("error: OtaManager, peripheral didUpdateNotificationStateFor characteristic, notification not enabled, isNotifying=\(characteristic.isNotifying)")
+            meshLog("error: OtaManager, peripheral didUpdateNotificationStateFor characteristic, notification not enabled, isNotifying=\(characteristic.isNotifying)")
             self.getOtaUpgraderInstance()?.didUpdateNotificationState(isEnabled: false, error: error)
             activeOtaDevice.disconnect()
             return
@@ -422,30 +422,30 @@ extension OtaManager {
         guard self.isOtaUpgrading, self.isOtaDeviceConnected else {
             return
         }
-        print("OtaManager, peripheral didDiscoverDescriptorsFor characteristic=\(characteristic)")
+        meshLog("OtaManager, peripheral didDiscoverDescriptorsFor characteristic=\(characteristic)")
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor descriptor: CBDescriptor, error: Error?) {
         guard self.isOtaDeviceConnected else {
             return
         }
-        print("OtaManager, peripheral didUpdateValueFor descriptor=\(descriptor)")
+        meshLog("OtaManager, peripheral didUpdateValueFor descriptor=\(descriptor)")
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: Error?) {
         guard self.isOtaUpgrading, self.isOtaDeviceConnected else {
             return
         }
-        print("OtaManager, peripheral didWriteValueFor descriptor=\(descriptor)")
+        meshLog("OtaManager, peripheral didWriteValueFor descriptor=\(descriptor)")
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        print("OtaManager, peripheral didUpdateValueFor characteristic, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
+        meshLog("OtaManager, peripheral didUpdateValueFor characteristic, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
         guard self.isOtaUpgrading, self.isOtaDeviceConnected else {
             return
         }
         guard let activeOtaDevice = self.activeOtaDevice else {
-            print("error: OtaManager, peripheral didUpdateValueFor characteristic, activeOtaDevice is nil")
+            meshLog("error: OtaManager, peripheral didUpdateValueFor characteristic, activeOtaDevice is nil")
             return
         }
 
@@ -470,7 +470,7 @@ extension OtaManager {
         }
 
         guard let activeOtaDevice = self.activeOtaDevice else {
-            print("error: OtaManager, peripheral didWriteValueFor characteristic, activeOtaDevice is nil")
+            meshLog("error: OtaManager, peripheral didWriteValueFor characteristic, activeOtaDevice is nil")
             return
         }
 
@@ -488,32 +488,32 @@ extension OtaManager {
 // Manage devices and operations through HomeKit protocol.
 extension OtaManager: HMAccessoryBrowserDelegate, HMHomeManagerDelegate {
     public func accessoryBrowser(_ browser: HMAccessoryBrowser, didFindNewAccessory accessory: HMAccessory) {
-        print("OtaDeviceManager, accessoryBrowser, HMAccessoryBrowser, didFindNewAccessory accessory: \(accessory)")
+        meshLog("OtaDeviceManager, accessoryBrowser, HMAccessoryBrowser, didFindNewAccessory accessory: \(accessory)")
         didUpdateHomeKitDevices()
     }
 
     public func accessoryBrowser(_ browser: HMAccessoryBrowser, didRemoveNewAccessory accessory: HMAccessory) {
-        print("OtaDeviceManager, accessoryBrowser, HMAccessoryBrowser, didRemoveNewAccessory accessory: \(accessory)")
+        meshLog("OtaDeviceManager, accessoryBrowser, HMAccessoryBrowser, didRemoveNewAccessory accessory: \(accessory)")
         didUpdateHomeKitDevices()
     }
 
     public func homeManager(_ manager: HMHomeManager, didAdd home: HMHome) {
-        print("OtaDeviceManager, homeManager, didAdd home: \(home.name)")
+        meshLog("OtaDeviceManager, homeManager, didAdd home: \(home.name)")
         didUpdateHomeKitDevices()
     }
 
     public func homeManager(_ manager: HMHomeManager, didRemove home: HMHome) {
-        print("OtaDeviceManager, homeManager, didRemove home: \(home.name)")
+        meshLog("OtaDeviceManager, homeManager, didRemove home: \(home.name)")
         didUpdateHomeKitDevices()
     }
 
     public func homeManagerDidUpdateHomes(_ manager: HMHomeManager) {
-        print("OtaDeviceManager, homeManager, DidUpdateHomes")
+        meshLog("OtaDeviceManager, homeManager, DidUpdateHomes")
         didUpdateHomeKitDevices()
     }
 
     public func homeManagerDidUpdatePrimaryHome(_ manager: HMHomeManager) {
-        print("OtaDeviceManager, homeManager, DidUpdatePrimaryHome")
+        meshLog("OtaDeviceManager, homeManager, DidUpdatePrimaryHome")
         didUpdateHomeKitDevices()
     }
 }

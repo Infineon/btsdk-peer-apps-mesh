@@ -40,6 +40,7 @@ static jmethodID meshClientLightnessStateCb;
 static jmethodID meshClientCtlStateCb;
 static jmethodID meshClientNodeConnectStateCb;
 static jmethodID meshClientDbStateCb;
+static jmethodID meshDfuStartCb;
 static jmethodID meshClientDfuStatusCb;
 static jmethodID meshClientLinkStatusCb;
 static jmethodID meshClientNetworkOpenedCb;
@@ -68,6 +69,9 @@ static uint32_t timer_id = 1;
 extern pthread_mutex_t cs;
 void create_prov_uuid();
 wiced_bool_t get_firmware_info_from_file(char* sFilePath, mesh_dfu_fw_id_t *fwID, mesh_dfu_validation_data_t *vaDATA);
+void mesh_native_lib_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len);
+static mesh_dfu_fw_id_t fw_id = {0};
+static mesh_dfu_validation_data_t va_data = {0};
 
 void unprovisioned_device(uint8_t *p_uuid, uint16_t oob, uint8_t *name, uint8_t name_len);
 typedef struct
@@ -328,6 +332,19 @@ void meshClientProvisionCompleted(uint8_t is_success, uint8_t *p_uuid) {
     (*env)->CallStaticVoidMethod(env, cls2, meshClientProvisionCompletedCb, isSuccess, data);
 }
 
+void mesh_client_dfu_callback(uint8_t event, uint8_t *p_event_data, uint32_t event_data_length)
+{
+    JNIEnv *env = AttachJava();
+    jclass cls2 = (*env)->FindClass(env,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
+
+    Log("%s: event = %d, len = %d\n", __func__, event, event_data_length);
+    switch (event) {
+        case DFU_EVENT_START_OTA:
+            (*env)->CallStaticVoidMethod(env, cls2, meshDfuStartCb);
+            break;
+    }
+}
+
 void mesh_client_dfu_status(uint8_t status, uint8_t progress)
 {
     Log("mesh_client_dfu_status status:%x progress:%d", status, progress);
@@ -547,6 +564,7 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientNetworkCreate(JNIEn
     mesh_name[mesh_name_length] = 0;
 	// ++++
     pthread_mutex_lock(&cs);
+    create_prov_uuid();
     return_val = mesh_client_network_create(provisioner_name,provisioner_uuid,mesh_name);
     pthread_mutex_unlock(&cs);
 	// ----
@@ -1526,6 +1544,7 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientNetworkImport(JNIEn
     const char *p_jstr = (*env)->GetStringUTFChars(env, jsonStr_, 0);
 
     pthread_mutex_lock(&cs);
+    create_prov_uuid();
     network_name = mesh_client_network_import(p_prov_name, provisioner_uuid, p_jstr, meshClientNetworkOpened);
     pthread_mutex_unlock(&cs);
 
@@ -1553,16 +1572,40 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientNetworkExport(JNIEn
     free(json_str);
     return jsonStr;
 }
+
 void create_prov_uuid()
 {
     FILE *fp = fopen("prov_uuid.bin", "rb");
     if (fp == NULL)
     {
-        provisioner_uuid[32] = 0;
         Log("create prov_uuid.bin");
         fp = fopen("prov_uuid.bin", "wb");
         for (int i = 0; i < 8; i++)
-            sprintf(&provisioner_uuid[i * 4], "%04X", rand());
+        {
+            sprintf(&provisioner_uuid[i * 4], "%04X", rand()<<1);
+        }
+
+        // Generate version 4 UUID (Random) per rfc4122:
+        // - Set the two most significant bits(bits 6 and 7) of the
+        //   clock_seq_hi_and_reserved to zero and one, respectively.
+        // - Set the four most significant bits(bits 12 through 15) of the
+        //   time_hi_and_version field to the 4 - bit version number.
+        // - Set all the other bits to randomly(or pseudo - randomly) chosen values.
+        provisioner_uuid[32] = 0;
+
+        provisioner_uuid[12] = 4+0x30;
+
+        if (provisioner_uuid[16] < 0x3A)
+            provisioner_uuid[16] = (char)(provisioner_uuid[16] - 0x30);
+        else
+            provisioner_uuid[16] = (char)(provisioner_uuid[16] - 0x30 - 0x7);
+        provisioner_uuid[16] = (char)((provisioner_uuid[16] & 0x3) | 0x8);
+        if (provisioner_uuid[16] < 10)
+            provisioner_uuid[16] = (char)(provisioner_uuid[16] + 0x30);
+        else
+            provisioner_uuid[16] = (char)(provisioner_uuid[16] + 0x30 + 0x07);
+
+        Log("provisioner_uuid :%s", provisioner_uuid);
         fwrite(provisioner_uuid, 1, 33, fp);
     }else{
         Log("prov_uuid.bin already exists");
@@ -1765,6 +1808,9 @@ JNI_OnLoad(JavaVM *vm, void *reserved)
     meshClientLinkStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLinkStatusCb", "(BISB)V");
     if(meshClientLinkStatusCb == NULL) Log("meshClientLinkStatusCb is null");
 
+    meshDfuStartCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDfuStartCb", "()V");
+    if(meshDfuStartCb == NULL) Log("meshDfuStartCb is null");
+
     meshClientDfuStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDfuStatusCb", "(BB)V");
     if(meshClientDfuStatusCb == NULL) Log("meshClientDfuStatusCb is null");
 
@@ -1909,17 +1955,18 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuGetStatus(JNIEnv
 JNIEXPORT jint JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuStart(JNIEnv *env, jclass type,
                                                                       jbyte dfuMethod,
+                                                                      jboolean ota_supported,
                                                                       jstring componentName_) {
     int res;
-    mesh_dfu_fw_id_t fw_id;
-    mesh_dfu_validation_data_t va_data;
+//    mesh_dfu_fw_id_t fw_id;
+//    mesh_dfu_validation_data_t va_data;
     const char *componentName = (*env)->GetStringUTFChars(env, componentName_, 0);
     Log("meshClientDfuStart %s",fw_metadata_file_name);
     pthread_mutex_lock(&cs);
 
     if (!get_firmware_info_from_file(fw_metadata_file_name, &fw_id, &va_data))
         return MESH_CLIENT_ERR_NOT_FOUND;
-    res = mesh_client_dfu_start(dfuMethod, componentName, fw_id.fw_id, fw_id.fw_id_len, va_data.data, va_data.len);
+    res = mesh_client_dfu_start(dfuMethod, componentName, fw_id.fw_id, fw_id.fw_id_len, va_data.data, va_data.len, ota_supported, mesh_client_dfu_callback);
     pthread_mutex_unlock(&cs);
     (*env)->ReleaseStringUTFChars(env, componentName_, componentName);
     return res;
@@ -1935,25 +1982,35 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuStop(JNIEnv *env
 }
 
 JNIEXPORT void JNICALL
+Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuOtaFinished(JNIEnv *env, jclass type, jbyte status) {
+    Log("meshClientDfuOtaFinished: status = %d\n", status);
+    pthread_mutex_lock(&cs);
+    mesh_client_dfu_ota_finish(status);
+    pthread_mutex_unlock(&cs);
+}
+
+JNIEXPORT void JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientSetDfuFiles(JNIEnv *env, jclass type,
                                                                          jstring fw_fileName_,
                                                                          jstring metadata_file_)
 {
     const char *fw_fileName = (*env)->GetStringUTFChars(env, fw_fileName_, 0);
-    const char *metadata_file = (*env)->GetStringUTFChars(env, metadata_file_, 0);
-
     strcpy(fw_file_name, fw_fileName);
-    strcpy(fw_metadata_file_name, metadata_file);
 
     pthread_mutex_lock(&cs);
     setDfuFilePath(fw_file_name);
     pthread_mutex_unlock(&cs);
 
     Log("fw file :%s",fw_fileName);
-    Log("metadata file :%s",metadata_file);
-
     (*env)->ReleaseStringUTFChars(env, fw_fileName_, fw_fileName);
-    (*env)->ReleaseStringUTFChars(env, metadata_file_, metadata_file);
+
+    if(metadata_file_ != NULL)
+    {
+        const char *metadata_file = (*env)->GetStringUTFChars(env, metadata_file_, 0);
+        strcpy(fw_metadata_file_name, metadata_file);
+        Log("metadata file :%s",metadata_file);
+        (*env)->ReleaseStringUTFChars(env, metadata_file_, metadata_file);
+    }
 }
 
 wiced_bool_t get_firmware_info_from_file(char* sFilePath, mesh_dfu_fw_id_t *fwID, mesh_dfu_validation_data_t *vaDATA)
@@ -1995,6 +2052,19 @@ wiced_bool_t get_firmware_info_from_file(char* sFilePath, mesh_dfu_fw_id_t *fwID
     fclose(pFile);
     return TRUE;
 }
+
+void mesh_native_lib_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len)
+{
+    *p_fw_id_len = fw_id.fw_id_len;
+    *p_validation_data_len = va_data.len;
+    if (fw_id.fw_id_len) {
+        memcpy(p_fw_id, fw_id.fw_id, fw_id.fw_id_len);
+    }
+    if (va_data.len) {
+        memcpy(p_validation_data, va_data.data, va_data.len);
+    }
+}
+
 JNIEXPORT jint JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientNetworkConnectionChanged(JNIEnv *env,
                                                                                       jclass type,

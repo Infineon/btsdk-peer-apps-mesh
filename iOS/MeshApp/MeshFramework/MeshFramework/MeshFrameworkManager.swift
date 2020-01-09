@@ -11,6 +11,17 @@
 import Foundation
 import CoreBluetooth
 
+public func meshLog(_ items: Any..., seperator: String = "", terminator: String = "")
+{
+    if let logMsg = items.first as? String {
+        MeshNativeHelper.meshClientLog("[MeshApp] " + logMsg)
+    } else {
+        #if DEBUG
+        print(items, separator: seperator, terminator: terminator)
+        #endif
+    }
+}
+
 open class MeshFrameworkManager {
     public static let shared = MeshFrameworkManager()
     private let lock = NSLock()
@@ -136,7 +147,7 @@ open class MeshFrameworkManager {
         if let rootStoragePath = rootStoragePath {
             let error = MeshStorageSettings.shared.setMeshRootStorage(rootStoragePath: rootStoragePath)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: initMeshLibrary, failed to setMeshRootStorage to \(rootStoragePath), error=\(error)")
+                meshLog("error: initMeshLibrary, failed to setMeshRootStorage to \(rootStoragePath), error=\(error)")
                 return error
             }
         } else {
@@ -144,17 +155,17 @@ open class MeshFrameworkManager {
             let documentsPath = NSHomeDirectory() + "/Documents"
             let error = MeshStorageSettings.shared.setMeshRootStorage(rootStoragePath: documentsPath)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: initMeshLibrary, failed to setMeshRootStorage to default documentDirectory, \(documentsPath), error=\(error)")
+                meshLog("error: initMeshLibrary, failed to setMeshRootStorage to default documentDirectory, \(documentsPath), error=\(error)")
                 return error
             }
         }
 
         let error = MeshStorageSettings.shared.setUserStorage(for: user)
         guard error == MeshErrorCode.MESH_SUCCESS, let fileStorage = MeshStorageSettings.shared.currentUserStoragePath else {
-            print("error: initMeshLibrary, failed to setUserStorage path for user, \(user), error=\(error)")
+            meshLog("error: initMeshLibrary, failed to setUserStorage path for user, \(user), error=\(error)")
             return error
         }
-        print("initMeshStorage, success for user:\(user), storage: \(fileStorage)")
+        meshLog("initMeshStorage, success for user:\(user), storage: \(fileStorage)")
         // Do not remove the below code.
         // It's aimed to initialize the Bluetooth CBCentralManager earler, so to avoid later not initialized error.
         //let _ = MeshGattClient.shared.centralManager.isScanning
@@ -181,7 +192,7 @@ open class MeshFrameworkManager {
             let uniqueUuid = UUID(uuidString: self.uniqueId)
             let error = Int(MeshNativeHelper.setFileStorageAtPath(filesStorage, provisionerUuid: uniqueUuid))
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: initMeshLibrary, failed to setFileStorageAtPath path, \(filesStorage), error=\(error)")
+                meshLog("error: initMeshLibrary, failed to setFileStorageAtPath path, \(filesStorage), error=\(error)")
                 return error
             }
         }
@@ -275,14 +286,14 @@ open class MeshFrameworkManager {
      */
     open func openMeshNetwork(provisioinerName: String, networkName: String, completion: @escaping OpenMeshNetworkCallback) {
         guard !provisioinerName.isEmpty, !networkName.isEmpty else {
-            print("error: MeshFrameworkManager, openMeshNetwork, invalid arguments, provisioinerName:\(provisioinerName), networkName:\(networkName)")
+            meshLog("error: MeshFrameworkManager, openMeshNetwork, invalid arguments, provisioinerName:\(provisioinerName), networkName:\(networkName)")
             completion(nil, MeshErrorCode.MESH_ERROR_NETWORK_CLOSED, MeshErrorCode.MESH_ERROR_INVALID_ARGS)
             return
         }
         lock.lock()
         guard openMeshNetworkCb == nil else {
             lock.unlock()
-            print("error: MeshFrameworkManager, openMeshNetwork, mesh network is busy on opening \"\(String(describing: openingNetworkName))\"")
+            meshLog("error: MeshFrameworkManager, openMeshNetwork, mesh network is busy on opening \"\(String(describing: openingNetworkName))\"")
             completion(nil, MeshErrorCode.MESH_ERROR_NETWORK_CLOSED, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -297,7 +308,7 @@ open class MeshFrameworkManager {
                                                     userInfo: nil, repeats: false)
         let error = Int(MeshNativeHelper.meshClientNetworkOpen(provisioinerName, meshName: networkName))
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: MeshFrameworkManager, openMeshNetwork, call meshClientNetworkOpen failed, error=\(error)")
+            meshLog("error: MeshFrameworkManager, openMeshNetwork, call meshClientNetworkOpen failed, error=\(error)")
             openMeshNetworkTimer?.invalidate()
             openMeshNetworkTimer = nil
             completion(networkName, MeshErrorCode.MESH_ERROR_NETWORK_CLOSED, error)
@@ -309,7 +320,7 @@ open class MeshFrameworkManager {
         // waiting for network open status callback.
     }
     @objc private func openMeshNetworkTimeoutHandler() {
-        print("error: MeshFrameworkManager, openMeshNetwork, waiting for \(MeshConstants.MESH_CLIENT_NETWORK_OPEN_TIMETOUT) seconds timeout error")
+        meshLog("error: MeshFrameworkManager, openMeshNetwork, waiting for \(MeshConstants.MESH_CLIENT_NETWORK_OPEN_TIMETOUT) seconds timeout error")
         openMeshNetworkTimer?.invalidate()
         openMeshNetworkTimer = nil
         openMeshNetworkCb?(openingNetworkName, MeshErrorCode.MESH_ERROR_NETWORK_CLOSED, MeshErrorCode.MESH_ERROR_PRECEDURE_TIMEOUT)
@@ -394,14 +405,14 @@ open class MeshFrameworkManager {
      */
     open func meshClientNetworkImport(provisioinerName: String, jsonString: String, completion: @escaping OpenMeshNetworkCallback) -> String? {
         guard !provisioinerName.isEmpty, !jsonString.isEmpty else {
-            print("error: MeshFrameworkManager, meshClientNetworkImport, invalid arguments, provisioinerName:\(provisioinerName), jsonString:\(jsonString)")
+            meshLog("error: MeshFrameworkManager, meshClientNetworkImport, invalid arguments, provisioinerName:\(provisioinerName), jsonString:\(jsonString)")
             completion(nil, MeshErrorCode.MESH_ERROR_NETWORK_CLOSED, MeshErrorCode.MESH_ERROR_INVALID_ARGS)
             return nil
         }
         lock.lock()
         guard openMeshNetworkCb == nil else {
             lock.unlock()
-            print("error: MeshFrameworkManager, openMeshNetwork, mesh network is busy on opening \"\(String(describing: openingNetworkName))\"")
+            meshLog("error: MeshFrameworkManager, openMeshNetwork, mesh network is busy on opening \"\(String(describing: openingNetworkName))\"")
             completion(nil, MeshErrorCode.MESH_ERROR_NETWORK_CLOSED, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return nil
         }
@@ -413,7 +424,7 @@ open class MeshFrameworkManager {
                                                     target: self, selector: #selector(openMeshNetworkTimeoutHandler),
                                                     userInfo: nil, repeats: false)
         guard let openingMeshNetworkName = MeshNativeHelper.meshClientNetworkImport(provisioinerName, jsonString: jsonString) else {
-            print("error: MeshFrameworkManager, openMeshNetwork, call meshClientNetworkImport failed, return nil")
+            meshLog("error: MeshFrameworkManager, meshClientNetworkImport failed, return openingMeshNetworkName is nil")
             openMeshNetworkTimer?.invalidate()
             openMeshNetworkTimer = nil
             completion(nil, MeshErrorCode.MESH_ERROR_NETWORK_CLOSED, MeshErrorCode.MESH_ERROR_INVALID_STATE)
@@ -501,7 +512,7 @@ open class MeshFrameworkManager {
     open func runHandlerWithMeshNetworkConnected(scanDuration: Int = MeshConstants.MESH_DEFAULT_SCAN_DURATION, handler: @escaping (_ error: Int) -> ()) {
         // the mesh network must be opened firstly before connecting to the mesh network
         guard let _ = MeshFrameworkManager.shared.openedNetworkName else {
-            print("error: MeshFrameworkManager, runHandlerWithMeshNetworkConnected, no mesh network opened yet.")
+            meshLog("error: MeshFrameworkManager, runHandlerWithMeshNetworkConnected, no mesh network opened yet.")
             handler(MeshErrorCode.MESH_ERROR_NETWORK_CLOSED)
             return
         }
@@ -513,7 +524,7 @@ open class MeshFrameworkManager {
 
         MeshFrameworkManager.shared.connectMeshNetwork(scanDuration: scanDuration) { (isConnected: Bool, connId: Int, addr: Int, isOverGatt: Bool, error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS, MeshFrameworkManager.shared.isMeshNetworkConnected() else {
-                print("error: MeshFrameworkManager, runHandlerWithMeshNetworkConnected, connectMeshNetwork failed, isConnected:\(isConnected), error:\(error)")
+                meshLog("error: MeshFrameworkManager, runHandlerWithMeshNetworkConnected, connectMeshNetwork failed, isConnected:\(isConnected), error:\(error)")
                 handler(MeshErrorCode.MESH_ERROR_NOT_CONNECTED)
                 return
             }
@@ -697,7 +708,7 @@ open class MeshFrameworkManager {
             getMeshComponentInfoTimer = nil
             return
         }
-        print("error: MeshFrameworkManager, getMeshComponentInfo for device: \(componentName) timeout")
+        meshLog("error: MeshFrameworkManager, getMeshComponentInfo for device: \(componentName) timeout")
 
         if let completion = getMeshComponentInfoCb[componentName] {
             getMeshComponentInfoCb.removeValue(forKey: componentName)
@@ -940,11 +951,11 @@ open class MeshFrameworkManager {
     private var provisionUuid: UUID?
     open func meshClientProvision(deviceName: String, uuid: UUID, groupName: String,
                                   identifyDuration: Int = MeshConstants.MESH_CLIENT_PROVISION_IDENTIFY_DURATION) -> Int {
-        print("meshClientProvision, deviceName=\(deviceName), uuid=\(uuid.description), groupName=\(groupName), identifyDuration=\(identifyDuration)")
+        meshLog("meshClientProvision, deviceName=\(deviceName), uuid=\(uuid.description), groupName=\(groupName), identifyDuration=\(identifyDuration)")
         lock.lock()
         if let _ = provisionUuid {
             lock.unlock()
-            print("error: meshClientProvision, called again before previously provisioning is completed")
+            meshLog("error: meshClientProvision, called again before previously provisioning is completed")
             return MeshErrorCode.MESH_ERROR_API_IS_BUSYING
         }
         provisionUuid = uuid
@@ -952,7 +963,7 @@ open class MeshFrameworkManager {
 
         var error = setMeshDeviceConfiguration()
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientProvision, failed to setMeshDeviceConfiguration, error=\(error)")
+            meshLog("error: meshClientProvision, failed to setMeshDeviceConfiguration, error=\(error)")
             lock.lock()
             provisionUuid = nil
             lock.unlock()
@@ -961,7 +972,7 @@ open class MeshFrameworkManager {
 
         error = setMeshPublicationConfiguration()
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientProvision, failed to setMeshPublicationConfiguration, error=\(error)")
+            meshLog("error: meshClientProvision, failed to setMeshPublicationConfiguration, error=\(error)")
             lock.lock()
             provisionUuid = nil
             lock.unlock()
@@ -974,7 +985,7 @@ open class MeshFrameworkManager {
 
         error = Int(MeshNativeHelper.meshClientProvision(deviceName, groupName: groupName, uuid: uuid, identifyDuration: UInt8(identifyDuration)))
         if error != MeshErrorCode.MESH_SUCCESS {
-            print("error: meshClientProvision, failed to call meshClientProvision, error=\(error)")
+            meshLog("error: meshClientProvision, failed to call meshClientProvision, error=\(error)")
             provisionTimer?.invalidate()
             provisionTimer = nil
             lock.lock()
@@ -988,7 +999,7 @@ open class MeshFrameworkManager {
         if let uuid = provisionUuid {
             provisionUuid = nil
             lock.unlock()
-            print("error: meshClientProvisionTimeoutCompleted, timeout")
+            meshLog("error: meshClientProvisionTimeoutCompleted, timeout")
             meshClientProvisionCompletedCb(UInt8(MeshConstants.MESH_CLIENT_PROVISION_STATUS_FAILED), uuid: uuid)
             return
         }
@@ -1010,7 +1021,7 @@ open class MeshFrameworkManager {
     }
     open func meshClientOnOffGet(deviceName: String, completion: @escaping MeshOnOffStatusCallback) {
         guard meshClientOnOffStatusCb[deviceName] == nil else {
-            print("error: meshClientOnOffGet, command has been sent to device:\(deviceName), busying")
+            meshLog("error: meshClientOnOffGet, command has been sent to device:\(deviceName), busying")
             completion(deviceName, false, false, 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1018,7 +1029,7 @@ open class MeshFrameworkManager {
         meshClientOnOffStatusCb[deviceName] = completion
         let error = Int(MeshNativeHelper.meshClient(onOffGet: deviceName))
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientOnOffGet, failed to call meshClient(onOffGet with deviceName:\(deviceName), error:\(error)")
+            meshLog("error: meshClientOnOffGet, failed to call meshClient(onOffGet with deviceName:\(deviceName), error:\(error)")
             completion(deviceName, false, false, 0, error)
             return
         }
@@ -1051,7 +1062,7 @@ open class MeshFrameworkManager {
                                  delay: Int = MeshConstants.MESH_DEFAULT_ONOFF_DELAY,
                                  completion: @escaping MeshOnOffStatusCallback) {
         guard meshClientOnOffStatusCb[deviceName] == nil else {
-            print("error: meshClientOnOffSet, command has been sent to device:\(deviceName), busying")
+            meshLog("error: meshClientOnOffSet, command has been sent to device:\(deviceName), busying")
             completion(deviceName, false, false, 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1065,14 +1076,14 @@ open class MeshFrameworkManager {
         }
         let error = Int(MeshNativeHelper.meshClient(onOffSet: deviceName, onoff: isOn ? 1 : 0, reliable: reliable, transitionTime: transitionTime, delay: UInt16(delay)))
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientOnOffSet, failed to call meshClient(onOffSet with deviceName:\(deviceName), error:\(error)")
+            meshLog("error: meshClientOnOffSet, failed to call meshClient(onOffSet with deviceName:\(deviceName), error:\(error)")
             completion(deviceName, false, false, 0, error)
             return
         }
 
         // for unreliable command sent, the completion routine will be executed immediately, because no completion callback will be called.
         guard isReliable else {
-            print("meshClientOnOffSet, send unreliable meshClient(onOffSet command successfully to deviceName:\(deviceName)")
+            meshLog("meshClientOnOffSet, send unreliable meshClient(onOffSet command successfully to deviceName:\(deviceName)")
             completion(deviceName, isOn, true, transitionTime, MeshErrorCode.MESH_SUCCESS)
             return
         }
@@ -1237,12 +1248,12 @@ open class MeshFrameworkManager {
 
     open func meshClientAdvertisementDataReport(peripheral: CBPeripheral, advertisementData: [String : Any], rssi: NSNumber) {
         guard  let rawAdvData = MeshNativeHelper.getConvertedRawMeshAdvertisementData(peripheral, advertisementData: advertisementData, rssi: rssi) else {
-            print("error: MeshFrameworkManager, meshClientAdvertisementDataReport, invalid advertisementData=\(advertisementData) received, failed to convert")
+            meshLog("error: MeshFrameworkManager, meshClientAdvertisementDataReport, invalid advertisementData=\(advertisementData) received, failed to convert")
             return
         }
         let bdAddr = MeshNativeHelper.getMeshPeripheralMappedBdAddr(peripheral)
         MeshNativeHelper.meshBdAddrDictAppend(bdAddr, peripheral: peripheral)
-        print("MeshFrameworkManager, meshClientAdvertisementDataReport, count:\(rawAdvData.count), \(rawAdvData.dumpHexBytes())")
+        MeshNativeHelper.meshClientLog("[MeshFrameworkManager meshClientAdvertisementDataReport] bdAddr: \(bdAddr.dumpHexBytes()), name:\(peripheral.name ?? "nil"), rssi:\(rssi.int8Value), advData count:\(rawAdvData.count), advData:\(rawAdvData.dumpHexBytes())")
         MeshNativeHelper.meshClientAdvertReport(bdAddr, addrType: MeshConstants.MESH_DEFAULT_PERIPHERAL_BDADDR_TYPE,
                                                 rssi: rssi.int8Value, advData: rawAdvData)
     }
@@ -1256,14 +1267,14 @@ open class MeshFrameworkManager {
         lock.lock()
         if let _ = componentConnectCb {
             lock.unlock()
-            print("error: MeshFrameworkManager, meshClientConnectComponent, connectComponent is busying")
+            meshLog("error: MeshFrameworkManager, meshClientConnectComponent, connectComponent is busying")
             completion(MeshConstants.MESH_CLIENT_NODE_WARNING_UNREACHABLE, componentName, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
         componentConnectCb = completion
         componentConnectName = componentName
         componentConnectTimer?.invalidate()
-        componentConnectTimer = Timer.scheduledTimer(timeInterval: TimeInterval(MeshConstants.MESH_CLIENT_CONNECT_TIMETOUT),
+        componentConnectTimer = Timer.scheduledTimer(timeInterval: TimeInterval(scanDuration + MeshConstants.MESH_CLIENT_CONNECT_TIMETOUT),
                                                      target: self, selector: #selector(componentConnectTimeoutCompleted),
                                                      userInfo: nil, repeats: false)
         lock.unlock()
@@ -1276,7 +1287,7 @@ open class MeshFrameworkManager {
             componentConnectTimer?.invalidate()
             componentConnectTimer = nil
             lock.unlock()
-            print("error: MeshFrameworkManager, meshClientConnectComponent, componentName:\(componentName), error=\(error)")
+            meshLog("error: MeshFrameworkManager, meshClientConnectComponent, componentName:\(componentName), error=\(error)")
             completion(MeshConstants.MESH_CLIENT_NODE_WARNING_UNREACHABLE, componentName, error)
             return
         }
@@ -1285,7 +1296,7 @@ open class MeshFrameworkManager {
     }
     @objc func componentConnectTimeoutCompleted() {
         lock.lock()
-        print("error: MeshFrameworkManager, meshClientConnectComponent, componentConnectTimeoutCompleted, componentName:\(String(describing: componentConnectName))")
+        meshLog("error: MeshFrameworkManager, meshClientConnectComponent, componentConnectTimeoutCompleted, componentName:\(String(describing: componentConnectName))")
         if let completion = componentConnectCb, let componentName = componentConnectName {
             componentConnectCb = nil
             componentConnectName = nil
@@ -1397,7 +1408,7 @@ open class MeshFrameworkManager {
         self.lock.lock()
         guard let componentName = timer.userInfo as? String, componentName == meshClientDfuComponentName else {
             self.lock.unlock()
-            print("error: MeshFrameworkManager, meshClientDfuGetStatus, unknown timer timeout")
+            meshLog("error: MeshFrameworkManager, meshClientDfuGetStatus, unknown timer timeout")
             return
         }
         meshClientDfuComponentName = nil
@@ -1405,7 +1416,7 @@ open class MeshFrameworkManager {
         self.meshClientDfuStatusCb = nil
         self.lock.unlock()
 
-        print("error: MeshFrameworkManager, meshClientDfuGetStatus for device: \(componentName) timeout")
+        meshLog("error: MeshFrameworkManager, meshClientDfuGetStatus for device: \(componentName) timeout")
         if let callback = completion {
             callback(UInt8(MeshErrorCode.MESH_ERROR_PRECEDURE_NOT_COMPELTE), 0, MeshErrorCode.MESH_ERROR_PRECEDURE_TIMEOUT)
         } else {
@@ -1420,7 +1431,7 @@ open class MeshFrameworkManager {
         self.lock.lock()
         guard meshClientDfuComponentName == nil else {
             self.lock.unlock()
-            print("error: MeshFrameworkManager, meshClientDfuGetStatus for device: \(String(describing: meshClientDfuComponentName)) has been sent, busying")
+            meshLog("error: MeshFrameworkManager, meshClientDfuGetStatus for device: \(String(describing: meshClientDfuComponentName)) has been sent, busying")
             return MeshErrorCode.MESH_ERROR_API_IS_BUSYING
         }
         meshClientDfuComponentName = componentName
@@ -1445,7 +1456,7 @@ open class MeshFrameworkManager {
         self.lock.lock()
         guard meshClientDfuComponentName == nil else {
             self.lock.unlock()
-            print("error: MeshFrameworkManager, meshClientDfuGetStatus for device: \(String(describing: meshClientDfuComponentName)) has been sent, busying")
+            meshLog("error: MeshFrameworkManager, meshClientDfuGetStatus for device: \(String(describing: meshClientDfuComponentName)) has been sent, busying")
             completion(UInt8(MeshErrorCode.MESH_ERROR_INVALID_STATE), 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1476,6 +1487,10 @@ open class MeshFrameworkManager {
 
     open func meshClientDfuStop() -> Int {
         return Int(MeshNativeHelper.meshClientDfuStop())
+    }
+
+    open func meshClientDfuOtaFinish(status: Int) {
+        MeshNativeHelper.meshClientDfuOtaFinish(Int32(status))
     }
 
     //
@@ -1562,9 +1577,10 @@ open class MeshFrameworkManager {
         }
 
         // C/Objective-C int type size is same as the Int32 in swift.
-        let propertyIdsInt32 = propertyIdsData.withUnsafeBytes { (pointer: UnsafePointer<Int32>) -> [Int32] in
+        let propertyIdsInt32 = propertyIdsData.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) -> [Int32] in
             let elementSize = Int32.bitWidth / Int8.bitWidth
-            let buffer = UnsafeBufferPointer(start: pointer, count: propertyIdsData.count / elementSize)
+            let unsafePointer = bytes.baseAddress!
+            let buffer = UnsafeBufferPointer(start: unsafePointer.assumingMemoryBound(to: Int32.self), count: propertyIdsData.count / elementSize)
             return Array<Int32>(buffer)
         }
         guard propertyIdsInt32.count > 0 else {
@@ -1592,9 +1608,10 @@ open class MeshFrameworkManager {
         }
 
         // C/Objective-C int type size is same as the Int32 in swift.
-        let propertyListInt32 = propertyListData.withUnsafeBytes { (pointer: UnsafePointer<Int32>) -> [Int32] in
+        let propertyListInt32 = propertyListData.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) -> [Int32] in
             let elementSize = Int32.bitWidth / Int8.bitWidth
-            let buffer = UnsafeBufferPointer(start: pointer, count: propertyListData.count / elementSize)
+            let unsafePointer = bytes.baseAddress!
+            let buffer = UnsafeBufferPointer(start: unsafePointer.assumingMemoryBound(to: Int32.self), count: propertyListData.count / elementSize)
             return Array<Int32>(buffer)
         }
         guard propertyListInt32.count > 0 else {
@@ -1651,7 +1668,7 @@ open class MeshFrameworkManager {
      */
     open func meshClientSensorGet(componentName: String, propertyId: Int, completion: @escaping MeshSensorStatusChangedCallback) {
         guard meshSensorStatusChangedCallback[componentName] == nil else {
-            print("error: meshClientSensorGet, command has been sent to device:\(componentName), busying")
+            meshLog("error: meshClientSensorGet, command has been sent to device:\(componentName), busying")
             completion(componentName, propertyId, nil, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1665,7 +1682,7 @@ open class MeshFrameworkManager {
         meshSensorStatusChangedCallback[componentName] = completion
         let error = MeshFrameworkManager.shared.meshClientSensorGet(componentName: componentName, propertyId: propertyId)
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientSensorGet, failed to call meshClientSensorGet with componentName:\(componentName), error:\(error)")
+            meshLog("error: meshClientSensorGet, failed to call meshClientSensorGet with componentName:\(componentName), error:\(error)")
             completion(componentName, propertyId, nil, error)
             return
         }
@@ -1682,7 +1699,7 @@ open class MeshFrameworkManager {
             timer.invalidate()
             return
         }
-        print("error: MeshFrameworkManager, meshClientSensorGet, meshClientSensorGetTimeoutHandler, componentName:\(componentName), propertyId;\(propertyId)")
+        meshLog("error: MeshFrameworkManager, meshClientSensorGet, meshClientSensorGetTimeoutHandler, componentName:\(componentName), propertyId;\(propertyId)")
 
         meshClientSensorGetTimeoutTimer[componentName]?.invalidate()
         meshClientSensorGetTimeoutTimer.removeValue(forKey: componentName)
@@ -1722,7 +1739,7 @@ open class MeshFrameworkManager {
      */
     open func meshClientGetPublicationTarget(componentName: String, isClient: Bool, method: String) -> String? {
         guard !componentName.isEmpty, !method.isEmpty else {
-            print("error: meshClientGetPublicationTarget, invalid arguments, componentName:\(componentName) or method:\(method)")
+            meshLog("error: meshClientGetPublicationTarget, invalid arguments, componentName:\(componentName) or method:\(method)")
             return nil
         }
 
@@ -1741,7 +1758,7 @@ open class MeshFrameworkManager {
      */
     open func meshClientGetPublicationPeriod(componentName: String, isClient: Bool, method: String) -> Int {
         guard !componentName.isEmpty, !method.isEmpty else {
-            print("error: meshClientGetPublicationTarget, invalid arguments, componentName:\(componentName) or method:\(method)")
+            meshLog("error: meshClientGetPublicationTarget, invalid arguments, componentName:\(componentName) or method:\(method)")
             return 0
         }
 
@@ -1769,7 +1786,7 @@ open class MeshFrameworkManager {
             timer.invalidate()
             return
         }
-        print("error: MeshFrameworkManager, meshClientLightLcModeStatusTimeoutHandler, timeout, componentName:\(componentName)")
+        meshLog("error: MeshFrameworkManager, meshClientLightLcModeStatusTimeoutHandler, timeout, componentName:\(componentName)")
 
         meshClientLightLcModeStatusCbTimer[componentName]?.invalidate()
         meshClientLightLcModeStatusCbTimer.removeValue(forKey: componentName)
@@ -1782,7 +1799,7 @@ open class MeshFrameworkManager {
 
     open func meshClientGetLightLcMode(componentName: String, completion: @escaping MeshClientLightLcModeStatusCallback) {
         guard meshClientLightLcModeStatusCb[componentName] == nil else {
-            print("error: meshClientGetLightLcMode, command has been sent to device:\(componentName), busying")
+            meshLog("error: meshClientGetLightLcMode, command has been sent to device:\(componentName), busying")
             completion(componentName, 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1795,7 +1812,7 @@ open class MeshFrameworkManager {
         meshClientLightLcModeStatusCb[componentName] = completion
         let error = MeshFrameworkManager.shared.meshClientGetLightLcMode(componentName: componentName)
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientSensorGet, failed to call meshClientGetLightLcMode with componentName:\(componentName), error:\(error)")
+            meshLog("error: meshClientSensorGet, failed to call meshClientGetLightLcMode with componentName:\(componentName), error:\(error)")
             completion(componentName, 0, error)
             return
         }
@@ -1804,7 +1821,7 @@ open class MeshFrameworkManager {
 
     open func meshClientSetLightLcMode(componentName: String, mode: Int, completion: @escaping MeshClientLightLcModeStatusCallback) {
         guard meshClientLightLcModeStatusCb[componentName] == nil else {
-            print("error: meshClientSetLightLcMode, command has been sent to device:\(componentName), busying")
+            meshLog("error: meshClientSetLightLcMode, command has been sent to device:\(componentName), busying")
             completion(componentName, 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1817,7 +1834,7 @@ open class MeshFrameworkManager {
         meshClientLightLcModeStatusCb[componentName] = completion
         let error = MeshFrameworkManager.shared.meshClientSetLightLcMode(componentName: componentName, mode: mode)
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientSensorGet, failed to call meshClientSetLightLcMode with componentName:\(componentName), error:\(error)")
+            meshLog("error: meshClientSensorGet, failed to call meshClientSetLightLcMode with componentName:\(componentName), error:\(error)")
             completion(componentName, 0, error)
             return
         }
@@ -1841,7 +1858,7 @@ open class MeshFrameworkManager {
             timer.invalidate()
             return
         }
-        print("error: MeshFrameworkManager, meshClientLightLcOccupancyModeStatusTimeoutHandler, timeout, componentName:\(componentName)")
+        meshLog("error: MeshFrameworkManager, meshClientLightLcOccupancyModeStatusTimeoutHandler, timeout, componentName:\(componentName)")
 
         meshClientLightLcOccupancyModeStatusCbTimer[componentName]?.invalidate()
         meshClientLightLcOccupancyModeStatusCbTimer.removeValue(forKey: componentName)
@@ -1854,7 +1871,7 @@ open class MeshFrameworkManager {
 
     open func meshClientGetLightLcOccupancyMode(componentName: String, completion: @escaping MeshClientLightLcOccupancyModeStatusCallback) {
         guard meshClientLightLcOccupancyModeStatusCb[componentName] == nil else {
-            print("error: meshClientGetLightLcOccupancyMode, command has been sent to device:\(componentName), busying")
+            meshLog("error: meshClientGetLightLcOccupancyMode, command has been sent to device:\(componentName), busying")
             completion(componentName, 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1867,7 +1884,7 @@ open class MeshFrameworkManager {
         meshClientLightLcOccupancyModeStatusCb[componentName] = completion
         let error = MeshFrameworkManager.shared.meshClientGetLightLcOccupancyMode(componentName: componentName)
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientSensorGet, failed to call meshClientGetLightLcOccupancyMode with componentName:\(componentName), error:\(error)")
+            meshLog("error: meshClientSensorGet, failed to call meshClientGetLightLcOccupancyMode with componentName:\(componentName), error:\(error)")
             completion(componentName, 0, error)
             return
         }
@@ -1876,7 +1893,7 @@ open class MeshFrameworkManager {
 
     open func meshClientSetLightLcOccupancyMode(componentName: String, mode: Int, completion: @escaping MeshClientLightLcOccupancyModeStatusCallback) {
         guard meshClientLightLcOccupancyModeStatusCb[componentName] == nil else {
-            print("error: meshClientSetLightLcOccupancyMode, command has been sent to device:\(componentName), busying")
+            meshLog("error: meshClientSetLightLcOccupancyMode, command has been sent to device:\(componentName), busying")
             completion(componentName, 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1889,7 +1906,7 @@ open class MeshFrameworkManager {
         meshClientLightLcOccupancyModeStatusCb[componentName] = completion
         let error = MeshFrameworkManager.shared.meshClientSetLightLcOccupancyMode(componentName: componentName, mode: mode)
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientSensorGet, failed to call meshClientSetLightLcOccupancyMode with componentName:\(componentName), error:\(error)")
+            meshLog("error: meshClientSensorGet, failed to call meshClientSetLightLcOccupancyMode with componentName:\(componentName), error:\(error)")
             completion(componentName, 0, error)
             return
         }
@@ -1913,7 +1930,7 @@ open class MeshFrameworkManager {
             timer.invalidate()
             return
         }
-        print("error: MeshFrameworkManager, meshClientLightLcPropertyStatusTimeoutHandler, timeout, componentName:\(componentName)")
+        meshLog("error: MeshFrameworkManager, meshClientLightLcPropertyStatusTimeoutHandler, timeout, componentName:\(componentName)")
 
         meshClientLightLcPropertyStatusCbTimer[componentName]?.invalidate()
         meshClientLightLcPropertyStatusCbTimer.removeValue(forKey: componentName)
@@ -1926,7 +1943,7 @@ open class MeshFrameworkManager {
 
     open func meshClientGetLightLcProperty(componentName: String, propertyId: Int, completion: @escaping MeshClientLightLcPropertyStatusCallback) {
         guard meshClientLightLcPropertyStatusCb[componentName] == nil else {
-            print("error: meshClientGetLightLcProperty, command has been sent to device:\(componentName), busying")
+            meshLog("error: meshClientGetLightLcProperty, command has been sent to device:\(componentName), busying")
             completion(componentName, 0, 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1939,7 +1956,7 @@ open class MeshFrameworkManager {
         meshClientLightLcPropertyStatusCb[componentName] = completion
         let error = MeshFrameworkManager.shared.meshClientGetLightLcProperty(componentName: componentName, propertyId: propertyId)
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientSensorGet, failed to call meshClientGetLightLcProperty with componentName:\(componentName), error:\(error)")
+            meshLog("error: meshClientSensorGet, failed to call meshClientGetLightLcProperty with componentName:\(componentName), error:\(error)")
             completion(componentName, 0, 0, error)
             return
         }
@@ -1948,7 +1965,7 @@ open class MeshFrameworkManager {
 
     open func meshClientSetLightLcProperty(componentName: String, propertyId: Int, value: Int, completion: @escaping MeshClientLightLcPropertyStatusCallback) {
         guard meshClientLightLcPropertyStatusCb[componentName] == nil else {
-            print("error: meshClientSetLightLcProperty, command has been sent to device:\(componentName), busying")
+            meshLog("error: meshClientSetLightLcProperty, command has been sent to device:\(componentName), busying")
             completion(componentName, 0, 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
             return
         }
@@ -1961,7 +1978,7 @@ open class MeshFrameworkManager {
         meshClientLightLcPropertyStatusCb[componentName] = completion
         let error = MeshFrameworkManager.shared.meshClientSetLightLcProperty(componentName: componentName, propertyId: propertyId, value: value)
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: meshClientSensorGet, failed to call meshClientSetLightLcProperty with componentName:\(componentName), error:\(error)")
+            meshLog("error: meshClientSensorGet, failed to call meshClientSetLightLcProperty with componentName:\(componentName), error:\(error)")
             completion(componentName, 0, 0, error)
             return
         }
@@ -1987,7 +2004,7 @@ extension MeshFrameworkManager {
         if let db = pesistentDb {
             return db
         } else {
-            print("error: MeshFrameworkManager, failed to create pesistentDatabase in UserDefaults. use UserDefaults.standard instand")
+            meshLog("error: MeshFrameworkManager, failed to create pesistentDatabase in UserDefaults. use UserDefaults.standard instand")
             return UserDefaults.standard
         }
     }
@@ -2008,8 +2025,14 @@ extension MeshFrameworkManager {
     }
 
     open func generateUniqueId() -> String {
-        uniqueId = UUID().description
+        uniqueId = MeshNativeHelper.generateRfcUuid().description
+        meshLog("MeshFrameworkManager: generate app uniqueId: \(uniqueId)")
         return uniqueId
+    }
+
+    open func updateUniqueId(uuid: UUID) {
+        uniqueId = uuid.description
+        meshLog("MeshFrameworkManager: updated with new app uniqueId: \(uniqueId)")
     }
 
     open func generateProvisionerName(uniqueId: String) -> String {
@@ -2072,10 +2095,14 @@ extension MeshFrameworkManager {
     open func meshClientGetNodeElements(networkName: String, by name: String) -> Int {
         let ret = MeshNativeHelper.meshClientGetNodeElements(networkName, elementName: name)
         if ret < 0 {
-            print("error: MeshFramework, meshClientGetNodeElements, \((ret == -2) ? "element Name: \(name) not found" : "network \(networkName).json file not exist")")
+            meshLog("error: MeshFramework, meshClientGetNodeElements, \((ret == -2) ? "element Name: \(name) not found" : "network \(networkName).json file not exist")")
             return 0
         }
         return Int(ret)
+    }
+
+    open func isMeshClientProvisionKeyRefreshing() -> Bool {
+        return MeshNativeHelper.isMeshClientProvisionKeyRefreshing()
     }
 }
 
@@ -2084,11 +2111,11 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Mesh library calls this routine to get the support from host to write provisioning data to the Mesh Provisioning Data In characteristic of the remote device.
      */
     public func onProvGattPktReceivedCallback(_ connId: UInt16, data: Data) {
-        print("IMeshNativeCallback, onProvGattPktReceivedCallback, connId: \(connId), data: \(data.dumpHexBytes())")
+        meshLog("IMeshNativeCallback, onProvGattPktReceivedCallback, connId: \(connId), data: \(data.dumpHexBytes())")
         if let peripheral = MeshNativeHelper.getCurrentConnectedPeripheral() {
             MeshGattClient.shared.writeData(for: peripheral, serviceUUID: MeshUUIDConstants.UUID_SERVICE_MESH_PROVISIONING, data: data)
         } else {
-            print("error: MeshFrameworkManager, onProvGattPktReceivedCallback, invalid current peripheral nil")
+            meshLog("error: MeshFrameworkManager, onProvGattPktReceivedCallback, invalid current peripheral nil")
         }
     }
 
@@ -2096,11 +2123,11 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Mesh library calls this routine to get the support from host to write proxy data to the Mesh Proxy Data In characteristic of the remote device.
      */
     public func onProxyGattPktReceivedCallback(_ connId: UInt16, data: Data) {
-        print("IMeshNativeCallback, onProxyGattPktReceivedCallback, connId:\(connId), data: \(data.dumpHexBytes())")
+        meshLog("IMeshNativeCallback, onProxyGattPktReceivedCallback, connId:\(connId), data: \(data.dumpHexBytes())")
         if let peripheral = MeshNativeHelper.getCurrentConnectedPeripheral() {
             MeshGattClient.shared.writeData(for: peripheral, serviceUUID: MeshUUIDConstants.UUID_SERVICE_MESH_PROXY, data: data)
         } else {
-            print("error: IMeshNativeCallback, onProxyGattPktReceivedCallback, invalid current peripheral nil")
+            meshLog("error: IMeshNativeCallback, onProxyGattPktReceivedCallback, invalid current peripheral nil")
         }
     }
 
@@ -2108,7 +2135,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Mesh library calls this routine to notify uppler layer (such as: App) that an unprovisioned mesh device has been found, and with some parsed mesh data for the device.
      */
     public func onDeviceFound(_ uuid: UUID, oob: UInt16, uriHash: UInt32, name: String?) {
-        print("IMeshNativeCallback, onDeviceFound, uuid:\(uuid.uuidString), oob:\(oob), uriHash:\(uriHash), name:\(String(describing: name))")
+        meshLog("IMeshNativeCallback, onDeviceFound, uuid:\(uuid.uuidString), oob:\(oob), uriHash:\(uriHash), name:\(String(describing: name))")
         guard let deviceName = name, deviceName.count > 0 else { return }
         MeshGattClient.shared.onUnprovisionedDeviceFound(uuid: uuid, oob: oob, uriHash: uriHash, name: deviceName)
         // The MeshNotificationConstants.MESH_CLIENT_DEVICE_FOUND notification is sent in MeshGattClient.shared.onUnprovisionedDeviceFound.
@@ -2119,14 +2146,14 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Obsoleted. Left for supporting old mesh library.
      */
     public func onResetStatus(_ status: UInt8, devName: String) {
-        print("IMeshNativeCallback, onResetStatus, status:\(status), deviceName:\(devName)")
+        meshLog("IMeshNativeCallback, onResetStatus, status:\(status), deviceName:\(devName)")
     }
 
     /**
      * Mesh library calls this routine to notify uppler layer (such as: App) that mesh client has connected or disconnected to or from the openned mesh network.
      */
     public func onLinkStatus(_ isConnected: UInt8, connId: UInt32, addr: UInt16, isOverGatt: UInt8) {
-        print("IMeshNativeCallback, onLinkStatus, isConnected:\(isConnected), connId:\(connId), addr:\(addr), isOverGatt:\(isOverGatt)")
+        meshLog("IMeshNativeCallback, onLinkStatus, isConnected:\(isConnected), connId:\(connId), addr:\(addr), isOverGatt:\(isOverGatt)")
         for completion in meshNetworkLinkStatusUpdatedCb {
             completion((isConnected != 0), Int(connId), Int(addr), (isOverGatt == MeshConstants.MESH_DEFAULT_USE_GATT_PROXY), MeshErrorCode.MESH_SUCCESS)
         }
@@ -2144,10 +2171,13 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Mesh library calls this routine to notify mesh client that the json database of the opened mesh network has be updated.
      */
     public func onDatabaseChangedCb(_ meshName: String) {
-        print("IMeshNativeCallback, onDatabaseChangedCb, meshName: \(meshName)")
+        meshLog("IMeshNativeCallback, onDatabaseChangedCb, meshName: \(meshName)")
         NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_NETWORK_DATABASE_CHANGED),
                                         object: nil,
                                         userInfo: [MeshNotificationConstants.USER_INFO_DB_CHANGED_MESH_NAME: meshName])
+
+        removeMeshComponentTimer?.invalidate()
+        removeMeshComponentTimer = nil
 
         if let completion = meshDatabaseChangedCb {
             meshDatabaseChangedCb = nil
@@ -2160,7 +2190,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * This callback routine will invoked after mesh client call the getMeshComponentInfo() API.
      */
     public func meshClientComponentInfoStatusCb(_ status: UInt8, componentName: String, componentInfo: String?) {
-        print("IMeshNativeCallback, meshClientComponentInfoStatusCb, status: \(status), componentName:\(componentName), componentInfo:\(String(describing: componentInfo))")
+        meshLog("IMeshNativeCallback, meshClientComponentInfoStatusCb, status: \(status), componentName:\(componentName), componentInfo:\(String(describing: componentInfo))")
         if let completion = getMeshComponentInfoCb[componentName] {
             getMeshComponentInfoCb.removeValue(forKey: componentName)
             completion(componentName, componentInfo, Int(status))
@@ -2177,7 +2207,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * This callback routine will invoked after mesh client call the openMeshNetwork() or meshClientNetworkImport() API.
      */
     public func meshClientNetworkOpenCb(_ status: UInt8) {
-        print("IMeshNativeCallback, meshClientNetworkOpenCb, status=\(status), openingNetworkName=\(String(describing: openingNetworkName))")
+        meshLog("IMeshNativeCallback, meshClientNetworkOpenCb, status=\(status), openingNetworkName=\(String(describing: openingNetworkName))")
         if status == MeshErrorCode.MESH_SUCCESS, let networkName = openingNetworkName, let openingProvisioner = openingProvisionerName {
             openedNetworkName = networkName                 // MeshFrameworkManager maintained opened mesh network name.
             openedProvisionerName = openingProvisioner      // MeshFrameworkManager maintained opened mesh network provisioner.
@@ -2212,11 +2242,11 @@ extension MeshFrameworkManager: IMeshNativeCallback {
                 provisionTimer = nil
             }
             lock.unlock()
-            print("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision configuration success")
+            meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision configuration success")
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_END:
-            print("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision completed")
+            meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision completed")
         default:
-            print("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus)")
+            meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus)")
             if Int(provisionStatus) == MeshConstants.MESH_CLIENT_PROVISION_STATUS_FAILED {
                 lock.lock()
                 provisionUuid = nil
@@ -2236,7 +2266,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
 
 
     public func meshClient(onOffStateCb deviceName: String, target: UInt8, present: UInt8, remainingTime: UInt32) {
-        print("IMeshNativeCallback, meshClientOnOffStateCb, deviceName:\(deviceName), target:\(target), present:\(present), remainingTime:\(remainingTime)")
+        meshLog("IMeshNativeCallback, meshClientOnOffStateCb, deviceName:\(deviceName), target:\(target), present:\(present), remainingTime:\(remainingTime)")
         if let completion = meshClientOnOffStatusCb[deviceName] {
             meshClientOnOffStatusCb.removeValue(forKey: deviceName)
             completion(deviceName, (target == 0) ? false : true, (present == 0) ? false : true, remainingTime, MeshErrorCode.MESH_SUCCESS)
@@ -2251,7 +2281,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
     }
 
     public func meshClientLevelStateCb(_ deviceName: String, target: Int16, present: Int16, remainingTime: UInt32) {
-        print("IMeshNativeCallback, meshClientLevelStateCb, deviceName:\(deviceName), target:\(target), present:\(present), remaining_time:\(remainingTime)")
+        meshLog("IMeshNativeCallback, meshClientLevelStateCb, deviceName:\(deviceName), target:\(target), present:\(present), remaining_time:\(remainingTime)")
 
         NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LEVEL_STATUS),
                                         object: nil,
@@ -2262,7 +2292,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
     }
 
     public func meshClientHslStateCb(_ deviceName: String, lightness: UInt16, hue: UInt16, saturation: UInt16) {
-        print("IMeshNativeCallback, meshClientHslStateCb, deviceName:\(deviceName), lightness:\(lightness), hue:\(hue), saturation:\(saturation)")
+        meshLog("IMeshNativeCallback, meshClientHslStateCb, deviceName:\(deviceName), lightness:\(lightness), hue:\(hue), saturation:\(saturation)")
 
         NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_HSL_STATUS),
                                         object: nil,
@@ -2273,7 +2303,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
     }
 
     public func meshClientCtlStateCb(_ deviceName: String, presentLightness: UInt16, presentTemperature: UInt16, targetLightness: UInt16, targetTemperature: UInt16, remainingTime: UInt32) {
-        print("IMeshNativeCallback, meshClientCtlStateCb, deviceName:\(deviceName), presentLightness:\(presentLightness), presentTemperature:\(presentTemperature), targetLightness:\(targetLightness)")
+        meshLog("IMeshNativeCallback, meshClientCtlStateCb, deviceName:\(deviceName), presentLightness:\(presentLightness), presentTemperature:\(presentTemperature), targetLightness:\(targetLightness)")
 
         NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_CTL_STATUS),
                                         object: nil,
@@ -2285,7 +2315,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
     }
 
     public func meshClientLightnessStateCb(_ deviceName: String, target: UInt16, present: UInt16, remainingTime: UInt32) {
-        print("IMeshNativeCallback, meshClientLightnessStateCb, deviceName:\(deviceName), target:\(target), present:\(present), remainingTime:\(remainingTime)")
+        meshLog("IMeshNativeCallback, meshClientLightnessStateCb, deviceName:\(deviceName), target:\(target), present:\(present), remainingTime:\(remainingTime)")
 
         NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LIGHTNESS_STATUS),
                                         object: nil,
@@ -2296,7 +2326,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
     }
 
     public func onMeshClientSensorStatusChanged(_ deviceName: String, propertyId: UInt32, data: Data) {
-        print("IMeshNativeCallback, onMeshClientSensorStatusChanged, deviceName:\(deviceName), propertyId:\(propertyId), data: \(data.dumpHexBytes())")
+        meshLog("IMeshNativeCallback, onMeshClientSensorStatusChanged, deviceName:\(deviceName), propertyId:\(propertyId), data: \(data.dumpHexBytes())")
         if let completion = meshSensorStatusChangedCallback[deviceName] {
             meshSensorStatusChangedCallback.removeValue(forKey: deviceName)
             completion(deviceName, Int(propertyId), data, MeshErrorCode.MESH_SUCCESS)
@@ -2313,7 +2343,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Mesh library calls this routine to get the support from host to start BLE devices scanning.
      */
     public func meshClientAdvScanStartCb() -> Bool {
-        print("IMeshNativeCallback, meshClientAdvScanStartCb")
+        meshLog("IMeshNativeCallback, meshClientAdvScanStartCb")
         MeshGattClient.shared.startScan()
         return true
     }
@@ -2322,7 +2352,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Mesh library calls this routine to get the support from host to stop BLE devices scanning.
      */
     public func meshClientAdvScanStopCb() {
-        print("IMeshNativeCallback, meshClientAdvScanStopCb")
+        meshLog("IMeshNativeCallback, meshClientAdvScanStopCb")
         MeshGattClient.shared.stopScan()
     }
 
@@ -2330,14 +2360,15 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Mesh library calls this routine to get the support from host to connect to the specific mesh device based on the BLE address.
      */
     public func meshClientConnect(_ bdaddr: Data) -> Bool {
-        print("IMeshNativeCallback, meshClientConnect, bdaddr: \(bdaddr.dumpHexBytes())")
+        meshLog("IMeshNativeCallback, meshClientConnect, bdaddr: \(bdaddr.dumpHexBytes())")
         if let peripheral = MeshNativeHelper.meshBdAddrDictGetCBPeripheral(bdaddr) {
             usleep(200000)  //sleep for 200 ms
             MeshGattClient.shared.connect(peripheral: peripheral)
             return true
         }
 
-        print("error: IMeshNativeCallback, meshClientConnect, invalid unknown bdaddr: \(bdaddr.dumpHexBytes())")
+        meshLog("error: IMeshNativeCallback, meshClientConnect, invalid unknown bdaddr: \(bdaddr.dumpHexBytes())")
+        MeshFrameworkManager.shared.meshClientConnectionStateChanged(connId: 0)
         return false
     }
 
@@ -2346,23 +2377,24 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * The value of connId is 0 if not connected, and always 1 when connected.
      */
     public func meshClientDisconnect(_ connId: UInt16) -> Bool {
-        print("IMeshNativeCallback, meshClientDisconnect, connId:\(connId)")
+        meshLog("IMeshNativeCallback, meshClientDisconnect, connId:\(connId)")
         if let peripheral = MeshNativeHelper.getCurrentConnectedPeripheral() {
             usleep(200000)  //sleep for 200 ms
             MeshGattClient.shared.disconnect(peripheral: peripheral)
         } else {
-            print("warnnig: IMeshNativeCallback, meshClientDisconnect, connId:\(connId), getCurrentConnectedPeripheral is nil, no peripheral connected")
+            meshLog("warnnig: IMeshNativeCallback, meshClientDisconnect, connId:\(connId), getCurrentConnectedPeripheral is nil, no peripheral connected")
+            MeshFrameworkManager.shared.meshClientConnectionStateChanged(connId: 0)
         }
         return true
     }
 
     public func meshClientNodeConnectStateCb(_ status: UInt8, componentName: String) {
-        print("IMeshNativeCallback, meshClientNodeConnectStateCb, status:\(status), componentName:\(componentName)")
+        meshLog("IMeshNativeCallback, meshClientNodeConnectStateCb, status:\(status), componentName:\(componentName)")
         if status == MeshConstants.MESH_CLIENT_NODE_CONNECTED {
-            print("info: meshClientNodeConnectStateCb, mesh device:\(componentName) connected")
+            meshLog("info: meshClientNodeConnectStateCb, mesh device:\(componentName) connected")
             unreachableMeshDevices.removeAll(where: {$0 == componentName})
         } else {
-            print("warning: meshClientNodeConnectStateCb, mesh device:\(componentName) unreachable")
+            meshLog("warning: meshClientNodeConnectStateCb, mesh device:\(componentName) unreachable")
             if unreachableMeshDevices.filter({$0 == componentName}).count == 0 {
                 unreachableMeshDevices.append(componentName)
             }
@@ -2398,7 +2430,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      Currently, only ADV scan type is supported and cannot be changed, so it always return true.
      */
     public func meshClientSetScanTypeCb(_ scanType: UInt8) -> Bool {
-        print("IMeshNativeCallback, meshClientSetScanTypeCb, scanType=\(scanType)")
+        meshLog("IMeshNativeCallback, meshClientSetScanTypeCb, scanType=\(scanType)")
         return true
     }
 
@@ -2407,7 +2439,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * This API will be triggerred after calling meshClientDfuGetStatus API successfully.
      */
     public func meshClientDfuStatusCb(_ status: UInt8, progress: UInt8) {
-        print("IMeshNativeCallback, meshClientDfuStatusCb, status: \(status), progress: \(progress)")
+        meshLog("IMeshNativeCallback, meshClientDfuStatusCb, status: \(status), progress: \(progress)")
         var dfuComponentName: String = ""
         var dfuCompletion: MeshClientDfuStatusCallback? = nil
         self.lock.lock()
@@ -2436,7 +2468,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * This API will be triggerred after calling meshClientVendorDataSet API successfully.
      */
     public func onMeshClientVendorSpecificDataChanged(_ deviceName: String, companyId: UInt16, modelId: UInt16, opcode: UInt8, data: Data) {
-        print("IMeshNativeCallback, onMeshClientVendorSpecificDataChanged, deviceName: \(deviceName), companyId: \(companyId), modelId: \(modelId), opcode: \(opcode), data: \(data.dumpHexBytes())")
+        meshLog("IMeshNativeCallback, onMeshClientVendorSpecificDataChanged, deviceName: \(deviceName), companyId: \(companyId), modelId: \(modelId), opcode: \(opcode), data: \(data.dumpHexBytes())")
 
         NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_VENDOR_SPECIFIC_DATA_CHANGED),
                                         object: nil,
@@ -2452,7 +2484,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * This API will be triggerred after calling meshClientGetLightLcMode or meshClientSetLightLcMode API successfully.
      */
     public func onLightLcModeStatusCb(_ deviceName: String, mode: Int32) {
-        print("IMeshNativeCallback, onLightLcModeStatusCb, deviceName: \(deviceName), mode: \(mode)")
+        meshLog("IMeshNativeCallback, onLightLcModeStatusCb, deviceName: \(deviceName), mode: \(mode)")
         meshClientLightLcModeStatusCbTimer[deviceName]?.invalidate()
         meshClientLightLcModeStatusCbTimer.removeValue(forKey: deviceName)
         if let completion = meshClientLightLcModeStatusCb[deviceName] {
@@ -2471,7 +2503,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * This API will be triggerred after calling meshClientGetLightLcOccupancyMode or meshClientSetLightLcOccupancyMode API successfully.
      */
     public func onLightLcOccupancyModeStatusCb(_ deviceName: String, mode: Int32) {
-        print("IMeshNativeCallback, onLightLcOccupancyModeStatusCb, deviceName: \(deviceName), mode: \(mode)")
+        meshLog("IMeshNativeCallback, onLightLcOccupancyModeStatusCb, deviceName: \(deviceName), mode: \(mode)")
         meshClientLightLcOccupancyModeStatusCbTimer[deviceName]?.invalidate()
         meshClientLightLcOccupancyModeStatusCbTimer.removeValue(forKey: deviceName)
         if let completion = meshClientLightLcOccupancyModeStatusCb[deviceName] {
@@ -2490,7 +2522,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * This API will be triggerred after calling meshClientGetLightLcProperty or meshClientSetLightLcProperty API successfully.
      */
     public func onLightLcPropertyStatusCb(_ deviceName: String, propertyId: Int32, value: Int32) {
-        print("IMeshNativeCallback, onLightLcPropertyStatusCb, deviceName: \(deviceName), propertyId: \(propertyId), value: \(value)")
+        meshLog("IMeshNativeCallback, onLightLcPropertyStatusCb, deviceName: \(deviceName), propertyId: \(propertyId), value: \(value)")
         meshClientLightLcPropertyStatusCbTimer[deviceName]?.invalidate()
         meshClientLightLcPropertyStatusCbTimer.removeValue(forKey: deviceName)
         if let completion = meshClientLightLcPropertyStatusCb[deviceName] {
@@ -2503,6 +2535,15 @@ extension MeshFrameworkManager: IMeshNativeCallback {
                                         userInfo: [MeshNotificationConstants.USER_INFO_KEY_DEVICE_NAME: deviceName,
                                                    MeshNotificationConstants.USER_INFO_KEY_LIGHT_LC_PROPERTY_ID: Int(propertyId),
                                                    MeshNotificationConstants.USER_INFO_KEY_LIGHT_LC_PROPERTY_VALUE: Int(value)])
+    }
+
+    public func onDfuEventReceived(_ event: UInt8, data: Data) {
+        meshLog("IMeshNativeCallback, onDfuEventStartOta, event: \(event), data: \(data.dumpHexBytes())")
+        OtaUpgrader.shared.onDfuEventReceived(event: Int(event), data: data)
+    }
+
+    public func updateProvisionerUuid(_ uuid: UUID) {
+        MeshFrameworkManager.shared.updateUniqueId(uuid: uuid)
     }
 }
 

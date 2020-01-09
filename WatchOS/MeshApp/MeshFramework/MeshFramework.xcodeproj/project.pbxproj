@@ -7,39 +7,74 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1828D3B62384FD960006479C /* p_256_curvepara.c in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3AF2384FD960006479C /* p_256_curvepara.c */; };
+		1828D3B72384FD960006479C /* ccm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3B02384FD960006479C /* ccm.cpp */; };
+		1828D3B82384FD960006479C /* aes_cmac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3B12384FD960006479C /* aes_cmac.cpp */; };
+		1828D3B92384FD960006479C /* aes_cmac.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3B22384FD960006479C /* aes_cmac.h */; };
+		1828D3BA2384FD960006479C /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3B32384FD960006479C /* aes.cpp */; };
+		1828D3BB2384FD960006479C /* p_256_ecc_pp.c in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3B42384FD960006479C /* p_256_ecc_pp.c */; };
+		1828D3BC2384FD960006479C /* wiced_bt_app_common.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3B52384FD960006479C /* wiced_bt_app_common.h */; };
+		1828D3E62384FE2F0006479C /* p_256_multprecision.c in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3E52384FE2E0006479C /* p_256_multprecision.c */; };
+		1828D3EF2384FEB40006479C /* wiced_mesh_client.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3E92384FEB40006479C /* wiced_mesh_client.h */; };
+		1828D3F02384FEB40006479C /* wiced_bt_mesh_db.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3EA2384FEB40006479C /* wiced_bt_mesh_db.h */; };
+		1828D3F12384FEB40006479C /* wiced_mesh_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3EB2384FEB40006479C /* wiced_mesh_client.c */; };
+		1828D3F22384FEB40006479C /* meshdb.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3EC2384FEB40006479C /* meshdb.h */; };
+		1828D3F32384FEB40006479C /* wiced_bt_mesh_db.c in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3ED2384FEB40006479C /* wiced_bt_mesh_db.c */; };
+		1828D3F42384FEB40006479C /* meshdb.c in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3EE2384FEB40006479C /* meshdb.c */; };
+		1828D3FE2384FEE40006479C /* wiced_bt_uuid.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3F52384FEE30006479C /* wiced_bt_uuid.h */; };
+		1828D3FF2384FEE40006479C /* wiced_bt_dev.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3F62384FEE30006479C /* wiced_bt_dev.h */; };
+		1828D4002384FEE40006479C /* wiced_bt_cfg.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3F72384FEE30006479C /* wiced_bt_cfg.h */; };
+		1828D4012384FEE40006479C /* wiced_bt_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3F82384FEE30006479C /* wiced_bt_types.h */; };
+		1828D4022384FEE40006479C /* wiced_result.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3F92384FEE30006479C /* wiced_result.h */; };
+		1828D4032384FEE40006479C /* wiced_bt_gatt_util.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3FA2384FEE30006479C /* wiced_bt_gatt_util.h */; };
+		1828D4042384FEE40006479C /* wiced_bt_gatt.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3FB2384FEE30006479C /* wiced_bt_gatt.h */; };
+		1828D4052384FEE40006479C /* wiced.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3FC2384FEE30006479C /* wiced.h */; };
+		1828D4062384FEE40006479C /* wiced_bt_ble.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D3FD2384FEE30006479C /* wiced_bt_ble.h */; };
+		1828D40C2384FF0A0006479C /* hcidefs.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4072384FF0A0006479C /* hcidefs.h */; };
+		1828D40D2384FF0A0006479C /* l2cdefs.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4082384FF0A0006479C /* l2cdefs.h */; };
+		1828D40E2384FF0A0006479C /* gattdefs.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4092384FF0A0006479C /* gattdefs.h */; };
+		1828D40F2384FF0A0006479C /* bt_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D40A2384FF0A0006479C /* bt_types.h */; };
+		1828D4102384FF0A0006479C /* data_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D40B2384FF0A0006479C /* data_types.h */; };
+		1828D4162384FF3B0006479C /* typedef.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4112384FF3B0006479C /* typedef.h */; };
+		1828D4172384FF3B0006479C /* brcm_fw_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4122384FF3B0006479C /* brcm_fw_types.h */; };
+		1828D41A2384FF3B0006479C /* rtc.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4152384FF3B0006479C /* rtc.h */; };
+		1828D4222384FF6E0006479C /* wiced_hal_wdog.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D41C2384FF6E0006479C /* wiced_hal_wdog.h */; };
+		1828D4252384FF6E0006479C /* wiced_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D41F2384FF6E0006479C /* wiced_timer.h */; };
+		1828D4262384FF6E0006479C /* wiced_hal_rand.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4202384FF6E0006479C /* wiced_hal_rand.h */; };
+		1828D4322384FF9E0006479C /* wiced_bt_ota_firmware_upgrade.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4272384FF9E0006479C /* wiced_bt_ota_firmware_upgrade.h */; };
+		1828D4332384FF9E0006479C /* wiced_bt_mesh_client.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4282384FF9E0006479C /* wiced_bt_mesh_client.h */; };
+		1828D4342384FF9E0006479C /* hci_control_api.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4292384FF9E0006479C /* hci_control_api.h */; };
+		1828D4352384FF9E0006479C /* wiced_bt_mesh_app.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D42A2384FF9E0006479C /* wiced_bt_mesh_app.h */; };
+		1828D4362384FF9E0006479C /* wiced_bt_mesh_event.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D42B2384FF9E0006479C /* wiced_bt_mesh_event.h */; };
+		1828D4372384FF9E0006479C /* wiced_bt_mesh_core.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D42C2384FF9E0006479C /* wiced_bt_mesh_core.h */; };
+		1828D4382384FF9E0006479C /* wiced_firmware_upgrade.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D42D2384FF9E0006479C /* wiced_firmware_upgrade.h */; };
+		1828D4392384FF9E0006479C /* wiced_bt_mesh_cfg.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D42E2384FF9E0006479C /* wiced_bt_mesh_cfg.h */; };
+		1828D43A2384FF9E0006479C /* wiced_bt_mesh_model_defs.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D42F2384FF9E0006479C /* wiced_bt_mesh_model_defs.h */; };
+		1828D43B2384FF9E0006479C /* wiced_bt_mesh_models.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4302384FF9E0006479C /* wiced_bt_mesh_models.h */; };
+		1828D43C2384FF9E0006479C /* wiced_bt_mesh_provision.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D4312384FF9E0006479C /* wiced_bt_mesh_provision.h */; };
+		1828D45423854DD30006479C /* bt_target.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45223854DD30006479C /* bt_target.h */; };
+		1828D45523854DD30006479C /* clock_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45323854DD30006479C /* clock_timer.h */; };
+		1828D45923854DEE0006479C /* wiced_bt_trace.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45623854DED0006479C /* wiced_bt_trace.h */; };
+		1828D45A23854DEE0006479C /* wiced_hal_nvram.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45723854DED0006479C /* wiced_hal_nvram.h */; };
+		1828D45B23854DEE0006479C /* wiced_memory.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45823854DEE0006479C /* wiced_memory.h */; };
 		185902102227CBFE0043D949 /* OtaDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859020C2227CBFE0043D949 /* OtaDevice.swift */; };
 		185902112227CBFE0043D949 /* OtaConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859020D2227CBFE0043D949 /* OtaConstants.swift */; };
 		185902122227CBFE0043D949 /* OtaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859020E2227CBFE0043D949 /* OtaManager.swift */; };
 		185902132227CBFE0043D949 /* OtaUpgrader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859020F2227CBFE0043D949 /* OtaUpgrader.swift */; };
+		186BF726238F74630046247C /* ccm.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF71C238F74630046247C /* ccm.h */; };
+		186BF727238F74630046247C /* p_256_ecc_pp.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF71D238F74630046247C /* p_256_ecc_pp.h */; };
+		186BF728238F74630046247C /* mode_hdr.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF71E238F74630046247C /* mode_hdr.h */; };
+		186BF729238F74630046247C /* ecdh.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF71F238F74630046247C /* ecdh.h */; };
+		186BF72A238F74630046247C /* brg_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF720238F74630046247C /* brg_types.h */; };
+		186BF72B238F74630046247C /* p_256_multprecision.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF721238F74630046247C /* p_256_multprecision.h */; };
+		186BF72C238F74630046247C /* platform.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF722238F74630046247C /* platform.h */; };
+		186BF72D238F74630046247C /* p_256_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF723238F74630046247C /* p_256_types.h */; };
+		186BF72E238F74630046247C /* brg_endian.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF724238F74630046247C /* brg_endian.h */; };
+		186BF72F238F74630046247C /* aes.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF725238F74630046247C /* aes.h */; };
 		18A6922A21B8ED9200E4B3DC /* MeshNativeHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6922721B8ED9200E4B3DC /* MeshNativeHelper.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		18A6922B21B8ED9200E4B3DC /* MeshNativeHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 18A6922821B8ED9200E4B3DC /* MeshNativeHelper.m */; };
 		18A6922C21B8ED9200E4B3DC /* IMeshNativeCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6922921B8ED9200E4B3DC /* IMeshNativeCallback.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		18A6925021B8EDD300E4B3DC /* trace.c in Sources */ = {isa = PBXBuildFile; fileRef = 18A6923021B8EDD300E4B3DC /* trace.c */; };
-		18A6925121B8EDD300E4B3DC /* wiced_bt_trace.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923321B8EDD300E4B3DC /* wiced_bt_trace.h */; };
-		18A6925221B8EDD300E4B3DC /* aes_cmac.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923421B8EDD300E4B3DC /* aes_cmac.h */; };
-		18A6925321B8EDD300E4B3DC /* clock_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923521B8EDD300E4B3DC /* clock_timer.h */; };
-		18A6925421B8EDD300E4B3DC /* wiced_hal_nvram.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923621B8EDD300E4B3DC /* wiced_hal_nvram.h */; };
-		18A6925521B8EDD300E4B3DC /* data_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923721B8EDD300E4B3DC /* data_types.h */; };
-		18A6925621B8EDD300E4B3DC /* wiced_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923821B8EDD300E4B3DC /* wiced_timer.h */; };
-		18A6925721B8EDD300E4B3DC /* wiced_memory.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923921B8EDD300E4B3DC /* wiced_memory.h */; };
-		18A6925821B8EDD300E4B3DC /* p_256_multprecision.c in Sources */ = {isa = PBXBuildFile; fileRef = 18A6923A21B8EDD300E4B3DC /* p_256_multprecision.c */; };
-		18A6925921B8EDD300E4B3DC /* bt_target.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923B21B8EDD300E4B3DC /* bt_target.h */; };
-		18A6925A21B8EDD300E4B3DC /* brg_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923C21B8EDD300E4B3DC /* brg_types.h */; };
-		18A6925B21B8EDD300E4B3DC /* ccm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 18A6923D21B8EDD300E4B3DC /* ccm.cpp */; };
-		18A6925C21B8EDD300E4B3DC /* p_256_ecc_pp.c in Sources */ = {isa = PBXBuildFile; fileRef = 18A6923E21B8EDD300E4B3DC /* p_256_ecc_pp.c */; };
-		18A6925D21B8EDD300E4B3DC /* brg_endian.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6923F21B8EDD300E4B3DC /* brg_endian.h */; };
-		18A6925E21B8EDD300E4B3DC /* aes.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924021B8EDD300E4B3DC /* aes.h */; };
-		18A6925F21B8EDD300E4B3DC /* ecdh.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924121B8EDD300E4B3DC /* ecdh.h */; };
-		18A6926021B8EDD300E4B3DC /* wiced_bt_app_common.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924221B8EDD300E4B3DC /* wiced_bt_app_common.h */; };
-		18A6926121B8EDD300E4B3DC /* aes_cmac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 18A6924321B8EDD300E4B3DC /* aes_cmac.cpp */; };
-		18A6926221B8EDD300E4B3DC /* p_256_multprecision.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924421B8EDD300E4B3DC /* p_256_multprecision.h */; };
-		18A6926321B8EDD300E4B3DC /* p_256_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924521B8EDD300E4B3DC /* p_256_types.h */; };
-		18A6926421B8EDD300E4B3DC /* mode_hdr.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924621B8EDD300E4B3DC /* mode_hdr.h */; };
-		18A6926521B8EDD300E4B3DC /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 18A6924721B8EDD300E4B3DC /* aes.cpp */; };
-		18A6926621B8EDD300E4B3DC /* platform.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924821B8EDD300E4B3DC /* platform.h */; };
-		18A6926721B8EDD300E4B3DC /* p_256_ecc_pp.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924921B8EDD300E4B3DC /* p_256_ecc_pp.h */; };
-		18A6926821B8EDD300E4B3DC /* p_256_curvepara.c in Sources */ = {isa = PBXBuildFile; fileRef = 18A6924A21B8EDD300E4B3DC /* p_256_curvepara.c */; };
-		18A6926921B8EDD300E4B3DC /* ccm.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924B21B8EDD300E4B3DC /* ccm.h */; };
 		18A6926A21B8EDD300E4B3DC /* mesh_main.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924C21B8EDD300E4B3DC /* mesh_main.h */; };
 		18A6926B21B8EDD300E4B3DC /* trace.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A6924D21B8EDD300E4B3DC /* trace.h */; };
 		18A6926C21B8EDD300E4B3DC /* mesh_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 18A6924E21B8EDD300E4B3DC /* mesh_main.c */; };
@@ -54,84 +89,77 @@
 		18A692D021B8FCCC00E4B3DC /* MeshGattClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18A692C221B8FCCC00E4B3DC /* MeshGattClient.swift */; };
 		18A692D221B8FD8200E4B3DC /* MeshFramework.h in Headers */ = {isa = PBXBuildFile; fileRef = 18A692D121B8FD8200E4B3DC /* MeshFramework.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		18A692D421B903A000E4B3DC /* PlatformManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18A692D321B903A000E4B3DC /* PlatformManager.swift */; };
-		18CB458322F19970007B2DFD /* wiced.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB455622F19970007B2DFD /* wiced.h */; };
-		18CB458522F19970007B2DFD /* wiced_bt_trace.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB455922F19970007B2DFD /* wiced_bt_trace.h */; };
-		18CB458622F19970007B2DFD /* wiced_hal_nvram.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB455A22F19970007B2DFD /* wiced_hal_nvram.h */; };
-		18CB458722F19970007B2DFD /* wiced_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB455B22F19970007B2DFD /* wiced_timer.h */; };
-		18CB458822F19970007B2DFD /* wiced_memory.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB455C22F19970007B2DFD /* wiced_memory.h */; };
-		18CB458922F19970007B2DFD /* wiced_hal_rand.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB455D22F19970007B2DFD /* wiced_hal_rand.h */; };
-		18CB458A22F19970007B2DFD /* wiced_hal_wdog.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB455E22F19970007B2DFD /* wiced_hal_wdog.h */; };
-		18CB458B22F19970007B2DFD /* wiced_bt_gatt.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB455F22F19970007B2DFD /* wiced_bt_gatt.h */; };
-		18CB458C22F19971007B2DFD /* brcm_fw_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456122F19970007B2DFD /* brcm_fw_types.h */; };
-		18CB458D22F19971007B2DFD /* clock_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456222F19970007B2DFD /* clock_timer.h */; };
-		18CB458E22F19971007B2DFD /* bt_target.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456322F19970007B2DFD /* bt_target.h */; };
-		18CB458F22F19971007B2DFD /* rtc.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456422F19970007B2DFD /* rtc.h */; };
-		18CB459022F19971007B2DFD /* typedef.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456522F19970007B2DFD /* typedef.h */; };
-		18CB459222F19971007B2DFD /* wiced_bt_cfg.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456722F19970007B2DFD /* wiced_bt_cfg.h */; };
-		18CB459322F19971007B2DFD /* wiced_bt_mesh_client.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456922F19970007B2DFD /* wiced_bt_mesh_client.h */; };
-		18CB459422F19971007B2DFD /* wiced_firmware_upgrade.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456A22F19970007B2DFD /* wiced_firmware_upgrade.h */; };
-		18CB459522F19971007B2DFD /* wiced_bt_mesh_provision.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456B22F19970007B2DFD /* wiced_bt_mesh_provision.h */; };
-		18CB459622F19971007B2DFD /* wiced_bt_mesh_cfg.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456C22F19970007B2DFD /* wiced_bt_mesh_cfg.h */; };
-		18CB459722F19971007B2DFD /* wiced_bt_mesh_core.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456D22F19970007B2DFD /* wiced_bt_mesh_core.h */; };
-		18CB459822F19971007B2DFD /* wiced_bt_mesh_event.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456E22F19970007B2DFD /* wiced_bt_mesh_event.h */; };
-		18CB459922F19971007B2DFD /* hci_control_api.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB456F22F19970007B2DFD /* hci_control_api.h */; };
-		18CB459A22F19971007B2DFD /* wiced_bt_mesh_model_defs.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457022F19970007B2DFD /* wiced_bt_mesh_model_defs.h */; };
-		18CB459B22F19971007B2DFD /* wiced_bt_ota_firmware_upgrade.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457122F19970007B2DFD /* wiced_bt_ota_firmware_upgrade.h */; };
-		18CB459C22F19971007B2DFD /* wiced_bt_mesh_app.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457222F19970007B2DFD /* wiced_bt_mesh_app.h */; };
-		18CB459D22F19971007B2DFD /* wiced_bt_mesh_models.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457322F19970007B2DFD /* wiced_bt_mesh_models.h */; };
-		18CB459E22F19971007B2DFD /* wiced_result.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457422F19970007B2DFD /* wiced_result.h */; };
-		18CB459F22F19971007B2DFD /* wiced_bt_uuid.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457522F19970007B2DFD /* wiced_bt_uuid.h */; };
-		18CB45A022F19971007B2DFD /* wiced_bt_gatt_util.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457622F19970007B2DFD /* wiced_bt_gatt_util.h */; };
-		18CB45A122F19971007B2DFD /* wiced_bt_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457722F19970007B2DFD /* wiced_bt_types.h */; };
-		18CB45A222F19971007B2DFD /* wiced_bt_ble.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457822F19970007B2DFD /* wiced_bt_ble.h */; };
-		18CB45A422F19971007B2DFD /* bt_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457B22F19970007B2DFD /* bt_types.h */; };
-		18CB45A522F19971007B2DFD /* gattdefs.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457C22F19970007B2DFD /* gattdefs.h */; };
-		18CB45A622F19971007B2DFD /* data_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457D22F19970007B2DFD /* data_types.h */; };
-		18CB45A722F19971007B2DFD /* hcidefs.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457E22F19970007B2DFD /* hcidefs.h */; };
-		18CB45A822F19971007B2DFD /* l2cdefs.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB457F22F19970007B2DFD /* l2cdefs.h */; };
-		18CB45A922F19971007B2DFD /* wiced_bt_dev.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB458022F19970007B2DFD /* wiced_bt_dev.h */; };
-		18CB45B122F1B1E5007B2DFD /* wiced_mesh_client.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB45AB22F1B1E5007B2DFD /* wiced_mesh_client.h */; };
-		18CB45B222F1B1E5007B2DFD /* wiced_bt_mesh_db.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB45AC22F1B1E5007B2DFD /* wiced_bt_mesh_db.h */; };
-		18CB45B322F1B1E5007B2DFD /* meshdb.c in Sources */ = {isa = PBXBuildFile; fileRef = 18CB45AD22F1B1E5007B2DFD /* meshdb.c */; };
-		18CB45B422F1B1E5007B2DFD /* wiced_mesh_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 18CB45AE22F1B1E5007B2DFD /* wiced_mesh_client.c */; };
-		18CB45B522F1B1E5007B2DFD /* wiced_bt_mesh_db.c in Sources */ = {isa = PBXBuildFile; fileRef = 18CB45AF22F1B1E5007B2DFD /* wiced_bt_mesh_db.c */; };
-		18CB45B622F1B1E5007B2DFD /* meshdb.h in Headers */ = {isa = PBXBuildFile; fileRef = 18CB45B022F1B1E5007B2DFD /* meshdb.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1828D3AF2384FD960006479C /* p_256_curvepara.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = p_256_curvepara.c; sourceTree = "<group>"; };
+		1828D3B02384FD960006479C /* ccm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ccm.cpp; sourceTree = "<group>"; };
+		1828D3B12384FD960006479C /* aes_cmac.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aes_cmac.cpp; sourceTree = "<group>"; };
+		1828D3B22384FD960006479C /* aes_cmac.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aes_cmac.h; sourceTree = "<group>"; };
+		1828D3B32384FD960006479C /* aes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aes.cpp; sourceTree = "<group>"; };
+		1828D3B42384FD960006479C /* p_256_ecc_pp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = p_256_ecc_pp.c; sourceTree = "<group>"; };
+		1828D3B52384FD960006479C /* wiced_bt_app_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_app_common.h; sourceTree = "<group>"; };
+		1828D3E52384FE2E0006479C /* p_256_multprecision.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = p_256_multprecision.c; sourceTree = "<group>"; };
+		1828D3E92384FEB40006479C /* wiced_mesh_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_mesh_client.h; path = "../../../../../../../../../dev-kit/libraries/btsdk-mesh/mesh_client_lib/wiced_mesh_client.h"; sourceTree = "<group>"; };
+		1828D3EA2384FEB40006479C /* wiced_bt_mesh_db.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_db.h; path = "../../../../../../../../../dev-kit/libraries/btsdk-mesh/mesh_client_lib/wiced_bt_mesh_db.h"; sourceTree = "<group>"; };
+		1828D3EB2384FEB40006479C /* wiced_mesh_client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = wiced_mesh_client.c; path = "../../../../../../../../../dev-kit/libraries/btsdk-mesh/mesh_client_lib/wiced_mesh_client.c"; sourceTree = "<group>"; };
+		1828D3EC2384FEB40006479C /* meshdb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = meshdb.h; path = "../../../../../../../../../dev-kit/libraries/btsdk-mesh/mesh_client_lib/meshdb.h"; sourceTree = "<group>"; };
+		1828D3ED2384FEB40006479C /* wiced_bt_mesh_db.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = wiced_bt_mesh_db.c; path = "../../../../../../../../../dev-kit/libraries/btsdk-mesh/mesh_client_lib/wiced_bt_mesh_db.c"; sourceTree = "<group>"; };
+		1828D3EE2384FEB40006479C /* meshdb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = meshdb.c; path = "../../../../../../../../../dev-kit/libraries/btsdk-mesh/mesh_client_lib/meshdb.c"; sourceTree = "<group>"; };
+		1828D3F52384FEE30006479C /* wiced_bt_uuid.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_uuid.h; path = "../../../../../../../../dev-kit/baselib/20819A1/include/wiced_bt_uuid.h"; sourceTree = "<group>"; };
+		1828D3F62384FEE30006479C /* wiced_bt_dev.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_dev.h; path = "../../../../../../../../dev-kit/baselib/20819A1/include/wiced_bt_dev.h"; sourceTree = "<group>"; };
+		1828D3F72384FEE30006479C /* wiced_bt_cfg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_cfg.h; path = "../../../../../../../../dev-kit/baselib/20819A1/include/wiced_bt_cfg.h"; sourceTree = "<group>"; };
+		1828D3F82384FEE30006479C /* wiced_bt_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_types.h; path = "../../../../../../../../dev-kit/baselib/20819A1/include/wiced_bt_types.h"; sourceTree = "<group>"; };
+		1828D3F92384FEE30006479C /* wiced_result.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_result.h; path = "../../../../../../../../dev-kit/baselib/20819A1/include/wiced_result.h"; sourceTree = "<group>"; };
+		1828D3FA2384FEE30006479C /* wiced_bt_gatt_util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_gatt_util.h; path = "../../../../../../../../dev-kit/baselib/20819A1/include/wiced_bt_gatt_util.h"; sourceTree = "<group>"; };
+		1828D3FB2384FEE30006479C /* wiced_bt_gatt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_gatt.h; path = "../../../../../../../../dev-kit/baselib/20819A1/include/wiced_bt_gatt.h"; sourceTree = "<group>"; };
+		1828D3FC2384FEE30006479C /* wiced.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced.h; path = "../../../../../../../../dev-kit/baselib/20819A1/include/wiced.h"; sourceTree = "<group>"; };
+		1828D3FD2384FEE30006479C /* wiced_bt_ble.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_ble.h; path = "../../../../../../../../dev-kit/baselib/20819A1/include/wiced_bt_ble.h"; sourceTree = "<group>"; };
+		1828D4072384FF0A0006479C /* hcidefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hcidefs.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/stack/hcidefs.h"; sourceTree = "<group>"; };
+		1828D4082384FF0A0006479C /* l2cdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = l2cdefs.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/stack/l2cdefs.h"; sourceTree = "<group>"; };
+		1828D4092384FF0A0006479C /* gattdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gattdefs.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/stack/gattdefs.h"; sourceTree = "<group>"; };
+		1828D40A2384FF0A0006479C /* bt_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bt_types.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/stack/bt_types.h"; sourceTree = "<group>"; };
+		1828D40B2384FF0A0006479C /* data_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = data_types.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/stack/data_types.h"; sourceTree = "<group>"; };
+		1828D4112384FF3B0006479C /* typedef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = typedef.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/internal/typedef.h"; sourceTree = "<group>"; };
+		1828D4122384FF3B0006479C /* brcm_fw_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = brcm_fw_types.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/internal/brcm_fw_types.h"; sourceTree = "<group>"; };
+		1828D4152384FF3B0006479C /* rtc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rtc.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/internal/rtc.h"; sourceTree = "<group>"; };
+		1828D41C2384FF6E0006479C /* wiced_hal_wdog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_hal_wdog.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/hal/wiced_hal_wdog.h"; sourceTree = "<group>"; };
+		1828D41F2384FF6E0006479C /* wiced_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_timer.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/hal/wiced_timer.h"; sourceTree = "<group>"; };
+		1828D4202384FF6E0006479C /* wiced_hal_rand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_hal_rand.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/hal/wiced_hal_rand.h"; sourceTree = "<group>"; };
+		1828D4272384FF9E0006479C /* wiced_bt_ota_firmware_upgrade.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_ota_firmware_upgrade.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_ota_firmware_upgrade.h"; sourceTree = "<group>"; };
+		1828D4282384FF9E0006479C /* wiced_bt_mesh_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_client.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_client.h"; sourceTree = "<group>"; };
+		1828D4292384FF9E0006479C /* hci_control_api.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hci_control_api.h; path = "../../../../../../../../../dev-kit/btsdk-include/hci_control_api.h"; sourceTree = "<group>"; };
+		1828D42A2384FF9E0006479C /* wiced_bt_mesh_app.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_app.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_app.h"; sourceTree = "<group>"; };
+		1828D42B2384FF9E0006479C /* wiced_bt_mesh_event.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_event.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_event.h"; sourceTree = "<group>"; };
+		1828D42C2384FF9E0006479C /* wiced_bt_mesh_core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_core.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_core.h"; sourceTree = "<group>"; };
+		1828D42D2384FF9E0006479C /* wiced_firmware_upgrade.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_firmware_upgrade.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_firmware_upgrade.h"; sourceTree = "<group>"; };
+		1828D42E2384FF9E0006479C /* wiced_bt_mesh_cfg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_cfg.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_cfg.h"; sourceTree = "<group>"; };
+		1828D42F2384FF9E0006479C /* wiced_bt_mesh_model_defs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_model_defs.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_model_defs.h"; sourceTree = "<group>"; };
+		1828D4302384FF9E0006479C /* wiced_bt_mesh_models.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_models.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_models.h"; sourceTree = "<group>"; };
+		1828D4312384FF9E0006479C /* wiced_bt_mesh_provision.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_provision.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_provision.h"; sourceTree = "<group>"; };
+		1828D45223854DD30006479C /* bt_target.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bt_target.h; sourceTree = "<group>"; };
+		1828D45323854DD30006479C /* clock_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = clock_timer.h; sourceTree = "<group>"; };
+		1828D45623854DED0006479C /* wiced_bt_trace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_trace.h; sourceTree = "<group>"; };
+		1828D45723854DED0006479C /* wiced_hal_nvram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_hal_nvram.h; sourceTree = "<group>"; };
+		1828D45823854DEE0006479C /* wiced_memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_memory.h; sourceTree = "<group>"; };
 		1859020C2227CBFE0043D949 /* OtaDevice.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OtaDevice.swift; sourceTree = "<group>"; };
 		1859020D2227CBFE0043D949 /* OtaConstants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OtaConstants.swift; sourceTree = "<group>"; };
 		1859020E2227CBFE0043D949 /* OtaManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OtaManager.swift; sourceTree = "<group>"; };
 		1859020F2227CBFE0043D949 /* OtaUpgrader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OtaUpgrader.swift; sourceTree = "<group>"; };
+		186BF71C238F74630046247C /* ccm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ccm.h; sourceTree = "<group>"; };
+		186BF71D238F74630046247C /* p_256_ecc_pp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = p_256_ecc_pp.h; sourceTree = "<group>"; };
+		186BF71E238F74630046247C /* mode_hdr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mode_hdr.h; sourceTree = "<group>"; };
+		186BF71F238F74630046247C /* ecdh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ecdh.h; sourceTree = "<group>"; };
+		186BF720238F74630046247C /* brg_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = brg_types.h; sourceTree = "<group>"; };
+		186BF721238F74630046247C /* p_256_multprecision.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = p_256_multprecision.h; sourceTree = "<group>"; };
+		186BF722238F74630046247C /* platform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = platform.h; sourceTree = "<group>"; };
+		186BF723238F74630046247C /* p_256_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = p_256_types.h; sourceTree = "<group>"; };
+		186BF724238F74630046247C /* brg_endian.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = brg_endian.h; sourceTree = "<group>"; };
+		186BF725238F74630046247C /* aes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aes.h; sourceTree = "<group>"; };
 		18A6922721B8ED9200E4B3DC /* MeshNativeHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MeshNativeHelper.h; path = ../../../../iOS/MeshApp/MeshFramework/meshcore/MeshNativeHelper.h; sourceTree = "<group>"; };
 		18A6922821B8ED9200E4B3DC /* MeshNativeHelper.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = MeshNativeHelper.m; path = ../../../../iOS/MeshApp/MeshFramework/meshcore/MeshNativeHelper.m; sourceTree = "<group>"; };
 		18A6922921B8ED9200E4B3DC /* IMeshNativeCallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IMeshNativeCallback.h; path = ../../../../iOS/MeshApp/MeshFramework/meshcore/IMeshNativeCallback.h; sourceTree = "<group>"; };
 		18A6923021B8EDD300E4B3DC /* trace.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = trace.c; sourceTree = "<group>"; };
-		18A6923321B8EDD300E4B3DC /* wiced_bt_trace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_trace.h; sourceTree = "<group>"; };
-		18A6923421B8EDD300E4B3DC /* aes_cmac.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aes_cmac.h; sourceTree = "<group>"; };
-		18A6923521B8EDD300E4B3DC /* clock_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = clock_timer.h; sourceTree = "<group>"; };
-		18A6923621B8EDD300E4B3DC /* wiced_hal_nvram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_hal_nvram.h; sourceTree = "<group>"; };
-		18A6923721B8EDD300E4B3DC /* data_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = data_types.h; sourceTree = "<group>"; };
-		18A6923821B8EDD300E4B3DC /* wiced_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_timer.h; sourceTree = "<group>"; };
-		18A6923921B8EDD300E4B3DC /* wiced_memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_memory.h; sourceTree = "<group>"; };
-		18A6923A21B8EDD300E4B3DC /* p_256_multprecision.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = p_256_multprecision.c; sourceTree = "<group>"; };
-		18A6923B21B8EDD300E4B3DC /* bt_target.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bt_target.h; sourceTree = "<group>"; };
-		18A6923C21B8EDD300E4B3DC /* brg_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = brg_types.h; sourceTree = "<group>"; };
-		18A6923D21B8EDD300E4B3DC /* ccm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ccm.cpp; sourceTree = "<group>"; };
-		18A6923E21B8EDD300E4B3DC /* p_256_ecc_pp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = p_256_ecc_pp.c; sourceTree = "<group>"; };
-		18A6923F21B8EDD300E4B3DC /* brg_endian.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = brg_endian.h; sourceTree = "<group>"; };
-		18A6924021B8EDD300E4B3DC /* aes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aes.h; sourceTree = "<group>"; };
-		18A6924121B8EDD300E4B3DC /* ecdh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ecdh.h; sourceTree = "<group>"; };
-		18A6924221B8EDD300E4B3DC /* wiced_bt_app_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_app_common.h; sourceTree = "<group>"; };
-		18A6924321B8EDD300E4B3DC /* aes_cmac.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aes_cmac.cpp; sourceTree = "<group>"; };
-		18A6924421B8EDD300E4B3DC /* p_256_multprecision.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = p_256_multprecision.h; sourceTree = "<group>"; };
-		18A6924521B8EDD300E4B3DC /* p_256_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = p_256_types.h; sourceTree = "<group>"; };
-		18A6924621B8EDD300E4B3DC /* mode_hdr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mode_hdr.h; sourceTree = "<group>"; };
-		18A6924721B8EDD300E4B3DC /* aes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aes.cpp; sourceTree = "<group>"; };
-		18A6924821B8EDD300E4B3DC /* platform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = platform.h; sourceTree = "<group>"; };
-		18A6924921B8EDD300E4B3DC /* p_256_ecc_pp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = p_256_ecc_pp.h; sourceTree = "<group>"; };
-		18A6924A21B8EDD300E4B3DC /* p_256_curvepara.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = p_256_curvepara.c; sourceTree = "<group>"; };
-		18A6924B21B8EDD300E4B3DC /* ccm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ccm.h; sourceTree = "<group>"; };
 		18A6924C21B8EDD300E4B3DC /* mesh_main.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mesh_main.h; sourceTree = "<group>"; };
 		18A6924D21B8EDD300E4B3DC /* trace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = trace.h; sourceTree = "<group>"; };
 		18A6924E21B8EDD300E4B3DC /* mesh_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mesh_main.c; sourceTree = "<group>"; };
@@ -148,48 +176,6 @@
 		18A692D321B903A000E4B3DC /* PlatformManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformManager.swift; sourceTree = "<group>"; };
 		18C0841D21B7DB5000A166F8 /* MeshFramework.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MeshFramework.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		18C0842121B7DB5000A166F8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		18CB455622F19970007B2DFD /* wiced.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced.h; sourceTree = "<group>"; };
-		18CB455922F19970007B2DFD /* wiced_bt_trace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_trace.h; sourceTree = "<group>"; };
-		18CB455A22F19970007B2DFD /* wiced_hal_nvram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_hal_nvram.h; sourceTree = "<group>"; };
-		18CB455B22F19970007B2DFD /* wiced_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_timer.h; sourceTree = "<group>"; };
-		18CB455C22F19970007B2DFD /* wiced_memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_memory.h; sourceTree = "<group>"; };
-		18CB455D22F19970007B2DFD /* wiced_hal_rand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_hal_rand.h; sourceTree = "<group>"; };
-		18CB455E22F19970007B2DFD /* wiced_hal_wdog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_hal_wdog.h; sourceTree = "<group>"; };
-		18CB455F22F19970007B2DFD /* wiced_bt_gatt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_gatt.h; sourceTree = "<group>"; };
-		18CB456122F19970007B2DFD /* brcm_fw_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = brcm_fw_types.h; sourceTree = "<group>"; };
-		18CB456222F19970007B2DFD /* clock_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = clock_timer.h; sourceTree = "<group>"; };
-		18CB456322F19970007B2DFD /* bt_target.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bt_target.h; sourceTree = "<group>"; };
-		18CB456422F19970007B2DFD /* rtc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = rtc.h; sourceTree = "<group>"; };
-		18CB456522F19970007B2DFD /* typedef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = typedef.h; sourceTree = "<group>"; };
-		18CB456722F19970007B2DFD /* wiced_bt_cfg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_cfg.h; sourceTree = "<group>"; };
-		18CB456922F19970007B2DFD /* wiced_bt_mesh_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_mesh_client.h; sourceTree = "<group>"; };
-		18CB456A22F19970007B2DFD /* wiced_firmware_upgrade.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_firmware_upgrade.h; sourceTree = "<group>"; };
-		18CB456B22F19970007B2DFD /* wiced_bt_mesh_provision.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_mesh_provision.h; sourceTree = "<group>"; };
-		18CB456C22F19970007B2DFD /* wiced_bt_mesh_cfg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_mesh_cfg.h; sourceTree = "<group>"; };
-		18CB456D22F19970007B2DFD /* wiced_bt_mesh_core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_mesh_core.h; sourceTree = "<group>"; };
-		18CB456E22F19970007B2DFD /* wiced_bt_mesh_event.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_mesh_event.h; sourceTree = "<group>"; };
-		18CB456F22F19970007B2DFD /* hci_control_api.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hci_control_api.h; sourceTree = "<group>"; };
-		18CB457022F19970007B2DFD /* wiced_bt_mesh_model_defs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_mesh_model_defs.h; sourceTree = "<group>"; };
-		18CB457122F19970007B2DFD /* wiced_bt_ota_firmware_upgrade.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_ota_firmware_upgrade.h; sourceTree = "<group>"; };
-		18CB457222F19970007B2DFD /* wiced_bt_mesh_app.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_mesh_app.h; sourceTree = "<group>"; };
-		18CB457322F19970007B2DFD /* wiced_bt_mesh_models.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_mesh_models.h; sourceTree = "<group>"; };
-		18CB457422F19970007B2DFD /* wiced_result.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_result.h; sourceTree = "<group>"; };
-		18CB457522F19970007B2DFD /* wiced_bt_uuid.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_uuid.h; sourceTree = "<group>"; };
-		18CB457622F19970007B2DFD /* wiced_bt_gatt_util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_gatt_util.h; sourceTree = "<group>"; };
-		18CB457722F19970007B2DFD /* wiced_bt_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_types.h; sourceTree = "<group>"; };
-		18CB457822F19970007B2DFD /* wiced_bt_ble.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_ble.h; sourceTree = "<group>"; };
-		18CB457B22F19970007B2DFD /* bt_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bt_types.h; sourceTree = "<group>"; };
-		18CB457C22F19970007B2DFD /* gattdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gattdefs.h; sourceTree = "<group>"; };
-		18CB457D22F19970007B2DFD /* data_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = data_types.h; sourceTree = "<group>"; };
-		18CB457E22F19970007B2DFD /* hcidefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hcidefs.h; sourceTree = "<group>"; };
-		18CB457F22F19970007B2DFD /* l2cdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = l2cdefs.h; sourceTree = "<group>"; };
-		18CB458022F19970007B2DFD /* wiced_bt_dev.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_dev.h; sourceTree = "<group>"; };
-		18CB45AB22F1B1E5007B2DFD /* wiced_mesh_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_mesh_client.h; sourceTree = "<group>"; };
-		18CB45AC22F1B1E5007B2DFD /* wiced_bt_mesh_db.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_mesh_db.h; sourceTree = "<group>"; };
-		18CB45AD22F1B1E5007B2DFD /* meshdb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = meshdb.c; sourceTree = "<group>"; };
-		18CB45AE22F1B1E5007B2DFD /* wiced_mesh_client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = wiced_mesh_client.c; sourceTree = "<group>"; };
-		18CB45AF22F1B1E5007B2DFD /* wiced_bt_mesh_db.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = wiced_bt_mesh_db.c; sourceTree = "<group>"; };
-		18CB45B022F1B1E5007B2DFD /* meshdb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = meshdb.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -243,31 +229,24 @@
 		18A6923221B8EDD300E4B3DC /* mesh_libs */ = {
 			isa = PBXGroup;
 			children = (
-				18A6924321B8EDD300E4B3DC /* aes_cmac.cpp */,
-				18A6923421B8EDD300E4B3DC /* aes_cmac.h */,
-				18A6924721B8EDD300E4B3DC /* aes.cpp */,
-				18A6924021B8EDD300E4B3DC /* aes.h */,
-				18A6923F21B8EDD300E4B3DC /* brg_endian.h */,
-				18A6923C21B8EDD300E4B3DC /* brg_types.h */,
-				18A6923B21B8EDD300E4B3DC /* bt_target.h */,
-				18A6923D21B8EDD300E4B3DC /* ccm.cpp */,
-				18A6924B21B8EDD300E4B3DC /* ccm.h */,
-				18A6923521B8EDD300E4B3DC /* clock_timer.h */,
-				18A6923721B8EDD300E4B3DC /* data_types.h */,
-				18A6924121B8EDD300E4B3DC /* ecdh.h */,
-				18A6924621B8EDD300E4B3DC /* mode_hdr.h */,
-				18A6924A21B8EDD300E4B3DC /* p_256_curvepara.c */,
-				18A6923E21B8EDD300E4B3DC /* p_256_ecc_pp.c */,
-				18A6924921B8EDD300E4B3DC /* p_256_ecc_pp.h */,
-				18A6923A21B8EDD300E4B3DC /* p_256_multprecision.c */,
-				18A6924421B8EDD300E4B3DC /* p_256_multprecision.h */,
-				18A6924521B8EDD300E4B3DC /* p_256_types.h */,
-				18A6924821B8EDD300E4B3DC /* platform.h */,
-				18A6924221B8EDD300E4B3DC /* wiced_bt_app_common.h */,
-				18A6923321B8EDD300E4B3DC /* wiced_bt_trace.h */,
-				18A6923621B8EDD300E4B3DC /* wiced_hal_nvram.h */,
-				18A6923921B8EDD300E4B3DC /* wiced_memory.h */,
-				18A6923821B8EDD300E4B3DC /* wiced_timer.h */,
+				1828D3B12384FD960006479C /* aes_cmac.cpp */,
+				1828D3B22384FD960006479C /* aes_cmac.h */,
+				1828D3B32384FD960006479C /* aes.cpp */,
+				186BF725238F74630046247C /* aes.h */,
+				186BF724238F74630046247C /* brg_endian.h */,
+				186BF720238F74630046247C /* brg_types.h */,
+				1828D3B02384FD960006479C /* ccm.cpp */,
+				186BF71C238F74630046247C /* ccm.h */,
+				186BF71F238F74630046247C /* ecdh.h */,
+				186BF71E238F74630046247C /* mode_hdr.h */,
+				1828D3AF2384FD960006479C /* p_256_curvepara.c */,
+				1828D3B42384FD960006479C /* p_256_ecc_pp.c */,
+				186BF71D238F74630046247C /* p_256_ecc_pp.h */,
+				1828D3E52384FE2E0006479C /* p_256_multprecision.c */,
+				186BF721238F74630046247C /* p_256_multprecision.h */,
+				186BF723238F74630046247C /* p_256_types.h */,
+				186BF722238F74630046247C /* platform.h */,
+				1828D3B52384FD960006479C /* wiced_bt_app_common.h */,
 			);
 			path = mesh_libs;
 			sourceTree = "<group>";
@@ -334,15 +313,15 @@
 				18CB455822F19970007B2DFD /* hal */,
 				18CB456022F19970007B2DFD /* internal */,
 				18CB457A22F19970007B2DFD /* stack */,
-				18CB457822F19970007B2DFD /* wiced_bt_ble.h */,
-				18CB456722F19970007B2DFD /* wiced_bt_cfg.h */,
-				18CB458022F19970007B2DFD /* wiced_bt_dev.h */,
-				18CB457622F19970007B2DFD /* wiced_bt_gatt_util.h */,
-				18CB455F22F19970007B2DFD /* wiced_bt_gatt.h */,
-				18CB457722F19970007B2DFD /* wiced_bt_types.h */,
-				18CB457522F19970007B2DFD /* wiced_bt_uuid.h */,
-				18CB457422F19970007B2DFD /* wiced_result.h */,
-				18CB455622F19970007B2DFD /* wiced.h */,
+				1828D3FD2384FEE30006479C /* wiced_bt_ble.h */,
+				1828D3F72384FEE30006479C /* wiced_bt_cfg.h */,
+				1828D3F62384FEE30006479C /* wiced_bt_dev.h */,
+				1828D3FA2384FEE30006479C /* wiced_bt_gatt_util.h */,
+				1828D3FB2384FEE30006479C /* wiced_bt_gatt.h */,
+				1828D3F82384FEE30006479C /* wiced_bt_types.h */,
+				1828D3F52384FEE30006479C /* wiced_bt_uuid.h */,
+				1828D3F92384FEE30006479C /* wiced_result.h */,
+				1828D3FC2384FEE30006479C /* wiced.h */,
 			);
 			name = include;
 			path = ../../../../../iOS/MeshApp/MeshFramework/meshcore/libwicedmesh/include;
@@ -351,12 +330,12 @@
 		18CB455822F19970007B2DFD /* hal */ = {
 			isa = PBXGroup;
 			children = (
-				18CB455922F19970007B2DFD /* wiced_bt_trace.h */,
-				18CB455A22F19970007B2DFD /* wiced_hal_nvram.h */,
-				18CB455B22F19970007B2DFD /* wiced_timer.h */,
-				18CB455C22F19970007B2DFD /* wiced_memory.h */,
-				18CB455D22F19970007B2DFD /* wiced_hal_rand.h */,
-				18CB455E22F19970007B2DFD /* wiced_hal_wdog.h */,
+				1828D45623854DED0006479C /* wiced_bt_trace.h */,
+				1828D45723854DED0006479C /* wiced_hal_nvram.h */,
+				1828D4202384FF6E0006479C /* wiced_hal_rand.h */,
+				1828D41C2384FF6E0006479C /* wiced_hal_wdog.h */,
+				1828D45823854DEE0006479C /* wiced_memory.h */,
+				1828D41F2384FF6E0006479C /* wiced_timer.h */,
 			);
 			path = hal;
 			sourceTree = "<group>";
@@ -364,11 +343,11 @@
 		18CB456022F19970007B2DFD /* internal */ = {
 			isa = PBXGroup;
 			children = (
-				18CB456122F19970007B2DFD /* brcm_fw_types.h */,
-				18CB456222F19970007B2DFD /* clock_timer.h */,
-				18CB456322F19970007B2DFD /* bt_target.h */,
-				18CB456422F19970007B2DFD /* rtc.h */,
-				18CB456522F19970007B2DFD /* typedef.h */,
+				1828D4122384FF3B0006479C /* brcm_fw_types.h */,
+				1828D45223854DD30006479C /* bt_target.h */,
+				1828D45323854DD30006479C /* clock_timer.h */,
+				1828D4152384FF3B0006479C /* rtc.h */,
+				1828D4112384FF3B0006479C /* typedef.h */,
 			);
 			path = internal;
 			sourceTree = "<group>";
@@ -376,17 +355,17 @@
 		18CB456822F19970007B2DFD /* common */ = {
 			isa = PBXGroup;
 			children = (
-				18CB456F22F19970007B2DFD /* hci_control_api.h */,
-				18CB457222F19970007B2DFD /* wiced_bt_mesh_app.h */,
-				18CB456C22F19970007B2DFD /* wiced_bt_mesh_cfg.h */,
-				18CB456922F19970007B2DFD /* wiced_bt_mesh_client.h */,
-				18CB456D22F19970007B2DFD /* wiced_bt_mesh_core.h */,
-				18CB456E22F19970007B2DFD /* wiced_bt_mesh_event.h */,
-				18CB457022F19970007B2DFD /* wiced_bt_mesh_model_defs.h */,
-				18CB457322F19970007B2DFD /* wiced_bt_mesh_models.h */,
-				18CB456B22F19970007B2DFD /* wiced_bt_mesh_provision.h */,
-				18CB457122F19970007B2DFD /* wiced_bt_ota_firmware_upgrade.h */,
-				18CB456A22F19970007B2DFD /* wiced_firmware_upgrade.h */,
+				1828D4292384FF9E0006479C /* hci_control_api.h */,
+				1828D42A2384FF9E0006479C /* wiced_bt_mesh_app.h */,
+				1828D42E2384FF9E0006479C /* wiced_bt_mesh_cfg.h */,
+				1828D4282384FF9E0006479C /* wiced_bt_mesh_client.h */,
+				1828D42C2384FF9E0006479C /* wiced_bt_mesh_core.h */,
+				1828D42B2384FF9E0006479C /* wiced_bt_mesh_event.h */,
+				1828D42F2384FF9E0006479C /* wiced_bt_mesh_model_defs.h */,
+				1828D4302384FF9E0006479C /* wiced_bt_mesh_models.h */,
+				1828D4312384FF9E0006479C /* wiced_bt_mesh_provision.h */,
+				1828D4272384FF9E0006479C /* wiced_bt_ota_firmware_upgrade.h */,
+				1828D42D2384FF9E0006479C /* wiced_firmware_upgrade.h */,
 			);
 			path = common;
 			sourceTree = "<group>";
@@ -394,11 +373,11 @@
 		18CB457A22F19970007B2DFD /* stack */ = {
 			isa = PBXGroup;
 			children = (
-				18CB457B22F19970007B2DFD /* bt_types.h */,
-				18CB457C22F19970007B2DFD /* gattdefs.h */,
-				18CB457D22F19970007B2DFD /* data_types.h */,
-				18CB457E22F19970007B2DFD /* hcidefs.h */,
-				18CB457F22F19970007B2DFD /* l2cdefs.h */,
+				1828D40A2384FF0A0006479C /* bt_types.h */,
+				1828D40B2384FF0A0006479C /* data_types.h */,
+				1828D4092384FF0A0006479C /* gattdefs.h */,
+				1828D4072384FF0A0006479C /* hcidefs.h */,
+				1828D4082384FF0A0006479C /* l2cdefs.h */,
 			);
 			path = stack;
 			sourceTree = "<group>";
@@ -406,12 +385,12 @@
 		18CB45AA22F1B1E5007B2DFD /* mesh_client_lib */ = {
 			isa = PBXGroup;
 			children = (
-				18CB45AD22F1B1E5007B2DFD /* meshdb.c */,
-				18CB45B022F1B1E5007B2DFD /* meshdb.h */,
-				18CB45AF22F1B1E5007B2DFD /* wiced_bt_mesh_db.c */,
-				18CB45AC22F1B1E5007B2DFD /* wiced_bt_mesh_db.h */,
-				18CB45AE22F1B1E5007B2DFD /* wiced_mesh_client.c */,
-				18CB45AB22F1B1E5007B2DFD /* wiced_mesh_client.h */,
+				1828D3EE2384FEB40006479C /* meshdb.c */,
+				1828D3EC2384FEB40006479C /* meshdb.h */,
+				1828D3ED2384FEB40006479C /* wiced_bt_mesh_db.c */,
+				1828D3EA2384FEB40006479C /* wiced_bt_mesh_db.h */,
+				1828D3EB2384FEB40006479C /* wiced_mesh_client.c */,
+				1828D3E92384FEB40006479C /* wiced_mesh_client.h */,
 			);
 			path = mesh_client_lib;
 			sourceTree = "<group>";
@@ -423,69 +402,62 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				186BF72F238F74630046247C /* aes.h in Headers */,
+				186BF729238F74630046247C /* ecdh.h in Headers */,
 				18A6922C21B8ED9200E4B3DC /* IMeshNativeCallback.h in Headers */,
-				18CB45A822F19971007B2DFD /* l2cdefs.h in Headers */,
+				1828D3F02384FEB40006479C /* wiced_bt_mesh_db.h in Headers */,
+				1828D43B2384FF9E0006479C /* wiced_bt_mesh_models.h in Headers */,
+				1828D4342384FF9E0006479C /* hci_control_api.h in Headers */,
+				1828D4002384FEE40006479C /* wiced_bt_cfg.h in Headers */,
+				186BF72C238F74630046247C /* platform.h in Headers */,
 				18A6922A21B8ED9200E4B3DC /* MeshNativeHelper.h in Headers */,
-				18CB458622F19970007B2DFD /* wiced_hal_nvram.h in Headers */,
-				18CB458722F19970007B2DFD /* wiced_timer.h in Headers */,
-				18CB45A022F19971007B2DFD /* wiced_bt_gatt_util.h in Headers */,
+				1828D4392384FF9E0006479C /* wiced_bt_mesh_cfg.h in Headers */,
+				1828D45523854DD30006479C /* clock_timer.h in Headers */,
+				1828D4032384FEE40006479C /* wiced_bt_gatt_util.h in Headers */,
 				18A692D221B8FD8200E4B3DC /* MeshFramework.h in Headers */,
-				18CB458922F19970007B2DFD /* wiced_hal_rand.h in Headers */,
-				18CB458B22F19970007B2DFD /* wiced_bt_gatt.h in Headers */,
-				18A6926921B8EDD300E4B3DC /* ccm.h in Headers */,
-				18CB458A22F19970007B2DFD /* wiced_hal_wdog.h in Headers */,
-				18A6925F21B8EDD300E4B3DC /* ecdh.h in Headers */,
-				18CB458F22F19971007B2DFD /* rtc.h in Headers */,
-				18A6926621B8EDD300E4B3DC /* platform.h in Headers */,
-				18CB45B622F1B1E5007B2DFD /* meshdb.h in Headers */,
-				18CB459F22F19971007B2DFD /* wiced_bt_uuid.h in Headers */,
-				18A6925D21B8EDD300E4B3DC /* brg_endian.h in Headers */,
-				18CB45A722F19971007B2DFD /* hcidefs.h in Headers */,
-				18A6925721B8EDD300E4B3DC /* wiced_memory.h in Headers */,
-				18CB459622F19971007B2DFD /* wiced_bt_mesh_cfg.h in Headers */,
-				18A6925521B8EDD300E4B3DC /* data_types.h in Headers */,
-				18CB459022F19971007B2DFD /* typedef.h in Headers */,
-				18A6926021B8EDD300E4B3DC /* wiced_bt_app_common.h in Headers */,
-				18CB45B122F1B1E5007B2DFD /* wiced_mesh_client.h in Headers */,
-				18CB459222F19971007B2DFD /* wiced_bt_cfg.h in Headers */,
-				18A6926221B8EDD300E4B3DC /* p_256_multprecision.h in Headers */,
-				18A6926421B8EDD300E4B3DC /* mode_hdr.h in Headers */,
-				18CB459722F19971007B2DFD /* wiced_bt_mesh_core.h in Headers */,
-				18CB459822F19971007B2DFD /* wiced_bt_mesh_event.h in Headers */,
+				1828D40F2384FF0A0006479C /* bt_types.h in Headers */,
+				1828D45A23854DEE0006479C /* wiced_hal_nvram.h in Headers */,
+				1828D43C2384FF9E0006479C /* wiced_bt_mesh_provision.h in Headers */,
+				1828D40C2384FF0A0006479C /* hcidefs.h in Headers */,
+				1828D45B23854DEE0006479C /* wiced_memory.h in Headers */,
+				1828D41A2384FF3B0006479C /* rtc.h in Headers */,
+				1828D4042384FEE40006479C /* wiced_bt_gatt.h in Headers */,
+				1828D3B92384FD960006479C /* aes_cmac.h in Headers */,
+				1828D4372384FF9E0006479C /* wiced_bt_mesh_core.h in Headers */,
+				1828D40D2384FF0A0006479C /* l2cdefs.h in Headers */,
+				186BF72B238F74630046247C /* p_256_multprecision.h in Headers */,
+				1828D4332384FF9E0006479C /* wiced_bt_mesh_client.h in Headers */,
+				1828D4262384FF6E0006479C /* wiced_hal_rand.h in Headers */,
+				1828D3FE2384FEE40006479C /* wiced_bt_uuid.h in Headers */,
+				186BF727238F74630046247C /* p_256_ecc_pp.h in Headers */,
+				1828D45923854DEE0006479C /* wiced_bt_trace.h in Headers */,
+				1828D4022384FEE40006479C /* wiced_result.h in Headers */,
+				186BF72D238F74630046247C /* p_256_types.h in Headers */,
+				1828D40E2384FF0A0006479C /* gattdefs.h in Headers */,
+				1828D4322384FF9E0006479C /* wiced_bt_ota_firmware_upgrade.h in Headers */,
 				18A6926A21B8EDD300E4B3DC /* mesh_main.h in Headers */,
-				18CB459322F19971007B2DFD /* wiced_bt_mesh_client.h in Headers */,
-				18A6925621B8EDD300E4B3DC /* wiced_timer.h in Headers */,
-				18CB459B22F19971007B2DFD /* wiced_bt_ota_firmware_upgrade.h in Headers */,
-				18CB45B222F1B1E5007B2DFD /* wiced_bt_mesh_db.h in Headers */,
+				1828D3EF2384FEB40006479C /* wiced_mesh_client.h in Headers */,
+				1828D4352384FF9E0006479C /* wiced_bt_mesh_app.h in Headers */,
 				18A6926B21B8EDD300E4B3DC /* trace.h in Headers */,
-				18CB45A222F19971007B2DFD /* wiced_bt_ble.h in Headers */,
-				18A6925321B8EDD300E4B3DC /* clock_timer.h in Headers */,
-				18CB458522F19970007B2DFD /* wiced_bt_trace.h in Headers */,
-				18CB459D22F19971007B2DFD /* wiced_bt_mesh_models.h in Headers */,
-				18A6925E21B8EDD300E4B3DC /* aes.h in Headers */,
-				18CB45A922F19971007B2DFD /* wiced_bt_dev.h in Headers */,
-				18CB459922F19971007B2DFD /* hci_control_api.h in Headers */,
-				18CB458322F19970007B2DFD /* wiced.h in Headers */,
-				18CB45A622F19971007B2DFD /* data_types.h in Headers */,
-				18CB458E22F19971007B2DFD /* bt_target.h in Headers */,
-				18CB45A422F19971007B2DFD /* bt_types.h in Headers */,
-				18A6925121B8EDD300E4B3DC /* wiced_bt_trace.h in Headers */,
-				18CB459522F19971007B2DFD /* wiced_bt_mesh_provision.h in Headers */,
-				18A6925421B8EDD300E4B3DC /* wiced_hal_nvram.h in Headers */,
-				18A6926321B8EDD300E4B3DC /* p_256_types.h in Headers */,
-				18CB45A522F19971007B2DFD /* gattdefs.h in Headers */,
-				18CB459C22F19971007B2DFD /* wiced_bt_mesh_app.h in Headers */,
-				18CB458C22F19971007B2DFD /* brcm_fw_types.h in Headers */,
-				18CB459E22F19971007B2DFD /* wiced_result.h in Headers */,
-				18CB459422F19971007B2DFD /* wiced_firmware_upgrade.h in Headers */,
-				18CB458822F19970007B2DFD /* wiced_memory.h in Headers */,
-				18CB459A22F19971007B2DFD /* wiced_bt_mesh_model_defs.h in Headers */,
-				18A6925A21B8EDD300E4B3DC /* brg_types.h in Headers */,
-				18CB45A122F19971007B2DFD /* wiced_bt_types.h in Headers */,
-				18A6925921B8EDD300E4B3DC /* bt_target.h in Headers */,
-				18A6925221B8EDD300E4B3DC /* aes_cmac.h in Headers */,
-				18A6926721B8EDD300E4B3DC /* p_256_ecc_pp.h in Headers */,
-				18CB458D22F19971007B2DFD /* clock_timer.h in Headers */,
+				1828D43A2384FF9E0006479C /* wiced_bt_mesh_model_defs.h in Headers */,
+				1828D4052384FEE40006479C /* wiced.h in Headers */,
+				1828D3FF2384FEE40006479C /* wiced_bt_dev.h in Headers */,
+				186BF72A238F74630046247C /* brg_types.h in Headers */,
+				186BF726238F74630046247C /* ccm.h in Headers */,
+				1828D4162384FF3B0006479C /* typedef.h in Headers */,
+				1828D45423854DD30006479C /* bt_target.h in Headers */,
+				1828D4362384FF9E0006479C /* wiced_bt_mesh_event.h in Headers */,
+				186BF72E238F74630046247C /* brg_endian.h in Headers */,
+				1828D4062384FEE40006479C /* wiced_bt_ble.h in Headers */,
+				186BF728238F74630046247C /* mode_hdr.h in Headers */,
+				1828D4172384FF3B0006479C /* brcm_fw_types.h in Headers */,
+				1828D4252384FF6E0006479C /* wiced_timer.h in Headers */,
+				1828D3F22384FEB40006479C /* meshdb.h in Headers */,
+				1828D4102384FF0A0006479C /* data_types.h in Headers */,
+				1828D4382384FF9E0006479C /* wiced_firmware_upgrade.h in Headers */,
+				1828D3BC2384FD960006479C /* wiced_bt_app_common.h in Headers */,
+				1828D4012384FEE40006479C /* wiced_bt_types.h in Headers */,
+				1828D4222384FF6E0006479C /* wiced_hal_wdog.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -578,30 +550,30 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				18CB45B322F1B1E5007B2DFD /* meshdb.c in Sources */,
 				18A692CE21B8FCCC00E4B3DC /* MeshDevice.swift in Sources */,
+				1828D3F12384FEB40006479C /* wiced_mesh_client.c in Sources */,
 				18A692CB21B8FCCC00E4B3DC /* MeshConstants.swift in Sources */,
 				185902112227CBFE0043D949 /* OtaConstants.swift in Sources */,
+				1828D3F42384FEB40006479C /* meshdb.c in Sources */,
 				18A692CD21B8FCCC00E4B3DC /* TrackingHelper.swift in Sources */,
+				1828D3B82384FD960006479C /* aes_cmac.cpp in Sources */,
+				1828D3E62384FE2F0006479C /* p_256_multprecision.c in Sources */,
 				18A6926D21B8EDD300E4B3DC /* mesh_app.c in Sources */,
-				18A6926521B8EDD300E4B3DC /* aes.cpp in Sources */,
 				18A692C921B8FCCC00E4B3DC /* MeshFrameworkManager.swift in Sources */,
 				18A692D421B903A000E4B3DC /* PlatformManager.swift in Sources */,
 				18A6922B21B8ED9200E4B3DC /* MeshNativeHelper.m in Sources */,
 				185902122227CBFE0043D949 /* OtaManager.swift in Sources */,
-				18A6925821B8EDD300E4B3DC /* p_256_multprecision.c in Sources */,
 				18A6925021B8EDD300E4B3DC /* trace.c in Sources */,
+				1828D3BB2384FD960006479C /* p_256_ecc_pp.c in Sources */,
 				18A692D021B8FCCC00E4B3DC /* MeshGattClient.swift in Sources */,
-				18A6925C21B8EDD300E4B3DC /* p_256_ecc_pp.c in Sources */,
 				185902132227CBFE0043D949 /* OtaUpgrader.swift in Sources */,
-				18A6925B21B8EDD300E4B3DC /* ccm.cpp in Sources */,
-				18A6926821B8EDD300E4B3DC /* p_256_curvepara.c in Sources */,
-				18CB45B422F1B1E5007B2DFD /* wiced_mesh_client.c in Sources */,
+				1828D3BA2384FD960006479C /* aes.cpp in Sources */,
 				18A6926C21B8EDD300E4B3DC /* mesh_main.c in Sources */,
+				1828D3B72384FD960006479C /* ccm.cpp in Sources */,
 				18A692CF21B8FCCC00E4B3DC /* MeshUtility.swift in Sources */,
 				18A692CA21B8FCCC00E4B3DC /* MeshStorageSettings.swift in Sources */,
-				18CB45B522F1B1E5007B2DFD /* wiced_bt_mesh_db.c in Sources */,
-				18A6926121B8EDD300E4B3DC /* aes_cmac.cpp in Sources */,
+				1828D3F32384FEB40006479C /* wiced_bt_mesh_db.c in Sources */,
+				1828D3B62384FD960006479C /* p_256_curvepara.c in Sources */,
 				185902102227CBFE0043D949 /* OtaDevice.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

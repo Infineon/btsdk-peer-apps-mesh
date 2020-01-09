@@ -53,10 +53,13 @@ extern void mesh_sensor_process_event(uint16_t addr, uint16_t event, void *p_dat
 extern void proxy_gatt_send_cb(uint32_t conn_id, uint32_t ref_data, const uint8_t *packet, uint32_t packet_len);
 static uint32_t mesh_nvram_access(wiced_bool_t write, int inx, uint8_t* value, uint16_t len, wiced_result_t *p_result);
 typedef wiced_bool_t (*wiced_model_message_handler_t)(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
+typedef void (wiced_ota_firmware_event_callback_t)(uint16_t event, void *p_data);
 static wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, wiced_bool_t *p_dont_save_rpl);
 static void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_active);
 wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
 extern void meshClientVendorSpecificDataStatus(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *p_data, uint16_t data_len);
+extern void mesh_native_lib_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len);
+
 // defines Friendship Mode
 #define MESH_FRIENDSHIP_NONE  0
 #define MESH_FRIENDSHIP_FRND  1
@@ -115,7 +118,7 @@ wiced_bt_mesh_core_config_model_t   mesh_element1_models[] =
     WICED_BT_MESH_MODEL_SENSOR_CLIENT,
     WICED_BT_MESH_MODEL_LIGHT_LC_CLIENT,
     WICED_BT_MESH_MODEL_FW_DISTRIBUTION_CLIENT,
-    WICED_BT_MESH_MODEL_FW_DISTRIBUTION_SERVER,
+    WICED_BT_MESH_MODEL_FW_DISTRIBUTOR,
 #ifdef MESH_VENDOR_MODEL_ID
     { MESH_VENDOR_COMPANY_ID, MESH_VENDOR_MODEL_ID, vendor_data_handler, NULL, NULL },
 #endif
@@ -338,6 +341,7 @@ void mesh_app_init(wiced_bool_t is_provisioned)
     wiced_bt_mesh_model_fw_provider_init();
     WICED_BT_TRACE("wiced_bt_mesh_model_fw_distribution_server_init\n");
     wiced_bt_mesh_model_fw_distribution_server_init();
+    wiced_bt_mesh_model_blob_transfer_server_init(0);
 
     wiced_bt_mesh_model_property_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_onoff_client_init(0, mesh_control_message_handler, is_provisioned);
@@ -439,8 +443,8 @@ static uint32_t mesh_nvram_access(wiced_bool_t write, int inx, uint8_t* value, u
 void setDfuFilePath(char* filepath)
 {
     Log("setting filepath");
-    filePath = malloc(strlen(filepath));
-    memcpy(filePath,filepath, strlen(filepath));
+    filePath = malloc(strlen(filepath)+1);
+    memcpy(filePath,filepath, strlen(filepath)+1);
 }
 
 uint32_t GetDfuImageSize()
@@ -452,7 +456,7 @@ uint32_t GetDfuImageSize()
     if (filePath == NULL)
         return 0;
 
-    if (fPatch = fopen(filePath, "rb"))
+    if (!(fPatch = fopen(filePath, "rb")))
         return 0;
 
     // Load OTA FW file into memory
@@ -466,8 +470,10 @@ void GetDfuImageChunk(uint8_t *p_data, uint32_t offset, uint16_t data_len)
 {
 
     FILE *fPatch;
-    if (fPatch = fopen(filePath, "rb"))
+    if (!(fPatch = fopen(filePath, "rb")))
         return;
+
+    offset -= 0x200;
 
     // Load OTA FW file into memory
     fseek(fPatch, offset, SEEK_SET);
@@ -518,8 +524,29 @@ void wiced_bt_fw_save_meta_data(uint8_t partition, uint8_t *p_data, uint32_t len
 #define PARTITION_UPGRADE   1
 wiced_bool_t wiced_bt_fw_read_meta_data(uint8_t partition, uint8_t *p_data, uint32_t *p_len)
 {
+    mesh_dfu_fw_id_t p_fw_id;
+    mesh_dfu_validation_data_t p_validation_data;
     wiced_bool_t got_data = WICED_FALSE;
 
+    if (partition != PARTITION_UPGRADE)
+        return WICED_FALSE;
+
+    mesh_native_lib_read_dfu_meta_data(p_fw_id.fw_id, (uint32_t *)&p_fw_id.fw_id_len, p_validation_data.data, (uint32_t *)&p_validation_data.len);
+
+    if (!p_fw_id.fw_id_len || !p_validation_data.len || (*p_len < (p_fw_id.fw_id_len + p_validation_data.len + 2))) {
+        return WICED_FALSE;
+    }
+
+    *p_len = p_fw_id.fw_id_len + p_validation_data.len + 2;
+    if (p_data) {
+        uint8_t *p = p_data;
+        *p++ = p_fw_id.fw_id_len;
+        memcpy(p, p_fw_id.fw_id, p_fw_id.fw_id_len);
+        p += p_fw_id.fw_id_len;
+        *p++ = p_validation_data.len;
+        memcpy(p, p_validation_data.data, p_validation_data.len);
+        got_data = WICED_TRUE;
+    }
     return got_data;
 }
 
@@ -601,4 +628,19 @@ uint32_t update_crc(uint32_t crc, uint8_t *buf, uint32_t len)
     }
 
     return c;
+}
+
+void wiced_bt_mesh_add_vendor_model(wiced_bt_mesh_add_vendor_model_data_t* p_data)
+{
+
+}
+
+wiced_bool_t wiced_firmware_upgrade_erase_nv(uint32_t start, uint32_t size)
+{
+    return WICED_TRUE;
+}
+
+wiced_bool_t wiced_ota_fw_upgrade_set_transfer_mode(wiced_bool_t transfer_only, wiced_ota_firmware_event_callback_t *p_event_callback)
+{
+    return WICED_TRUE;
 }

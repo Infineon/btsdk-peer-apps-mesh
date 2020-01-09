@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -292,14 +292,15 @@ extern uint8_t  wiced_bt_mesh_scheduler_events_max_num;
  * @name Definition for messages exchanged between an app and FW Distribution Model
  * @{ */
 #define WICED_BT_MESH_FW_DISTRIBUTION_STATUS                153  /**< Reply to  Get message */
+#define WICED_BT_MESH_FW_DISTRIBUTION_START_OTA             154  /**< Start OTA for upload */
 /** @} FW_DISTRIBUTION_EVENT */
 
 /**
  * @anchor FW_UPDATE_EVENT
  * @name Definition for messages exchanged between an app and FW Update Model
  * @{ */
-#define WICED_BT_MESH_FW_UPDATE_VALIDATE                    154  /**< Check FW valication data */
-#define WICED_BT_MESH_FW_UPDATE_APPLY                       155  /**< Applying new FW */
+#define WICED_BT_MESH_FW_UPDATE_VALIDATE                    155  /**< Check FW valication data */
+#define WICED_BT_MESH_FW_UPDATE_APPLY                       156  /**< Applying new FW */
 /** @} FW_UPDATE_EVENT */
 
 /**
@@ -908,13 +909,13 @@ extern wiced_bool_t wiced_bt_mesh_remote_provisioning_server_message_handler(wic
     { MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_BLOB_TRANSFER_SRV, wiced_bt_mesh_model_blob_transfer_server_message_handler, NULL, NULL }, \
     { MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_UPDATE_SRV, wiced_bt_mesh_model_fw_update_server_message_handler, NULL, NULL }
 
-#define WICED_BT_MESH_MODEL_FW_DISTRIBUTION_SERVER \
+#define WICED_BT_MESH_MODEL_FW_DISTRIBUTOR \
     { MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_DISTRIBUTION_SRV, wiced_bt_mesh_model_fw_distribution_server_message_handler, NULL, NULL }, \
     { MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_UPDATE_CLNT, wiced_bt_mesh_model_fw_update_client_message_handler, NULL, NULL }, \
     { MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_BLOB_TRANSFER_SRV, wiced_bt_mesh_model_blob_transfer_server_message_handler, NULL, NULL }, \
     { MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_BLOB_TRANSFER_CLNT, wiced_bt_mesh_model_blob_transfer_client_message_handler, NULL, NULL }
 
-#define WICED_BT_MESH_MODEL_DFU_SERVER \
+#define WICED_BT_MESH_MODEL_FW_DISTRIBUTOR_UPDATE_SERVER \
     { MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_DISTRIBUTION_SRV, wiced_bt_mesh_model_fw_distribution_server_message_handler, NULL, NULL }, \
     { MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_UPDATE_CLNT, wiced_bt_mesh_model_fw_update_client_message_handler, NULL, NULL }, \
     { MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_UPDATE_SRV, wiced_bt_mesh_model_fw_update_server_message_handler, NULL, NULL }, \

@@ -5,7 +5,7 @@
  *
 ********************************************************************************
 * \copyright
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -93,7 +93,11 @@ typedef void ( *wiced_timer_callback_t )( TIMER_PARAM_TYPE cb_params );
 /**
  * Defines the WICED timer instance size
  */
-#define WICED_TIMER_INSTANCE_SIZE_IN_WORDS      14
+#if defined _WIN32 || defined WICEDX || defined __ANDROID__ || defined __APPLE__
+    #define WICED_TIMER_INSTANCE_SIZE_IN_WORDS      17
+#else
+    #define WICED_TIMER_INSTANCE_SIZE_IN_WORDS      14
+#endif
 
 /******************************************************************************
  * Global Data Structure definitions

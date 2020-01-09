@@ -121,7 +121,7 @@ class SelectNetworkPopoverViewController: UIViewController {
     }
 
     @IBAction func onCancelButtonClick(_ sender: UIButton) {
-        print("SelectNetworkPopoverViewController, onCancelButtonClick")
+        meshLog("SelectNetworkPopoverViewController, onCancelButtonClick")
         resetSelectedNetworkName()
         UtilityManager.navigateToViewController(targetClass: NetworkListViewController.self)
     }
@@ -136,8 +136,9 @@ class SelectNetworkPopoverViewController: UIViewController {
             case .importNetwork:
                 onImportNetworkConfirm(provisioinerName: UserSettings.shared.provisionerName, networkName: networkName)
             }
+            return
         } else {
-            print("warnning: SelectNetworkPopoverViewController, onConfirmButtonClick, no network selected, networkName=nil")
+            meshLog("warnning: SelectNetworkPopoverViewController, onConfirmButtonClick, no network selected, networkName=nil")
         }
         UtilityManager.navigateToViewController(targetClass: NetworkListViewController.self)
     }
@@ -148,69 +149,100 @@ class SelectNetworkPopoverViewController: UIViewController {
         let error = MeshFrameworkManager.shared.deleteMeshNetwork(provisioinerName: provisioinerName, networkName: networkName)
         indicatorView.stopAnimating()
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("SelectNetworkPopoverViewController, onConfirmButtonClick, failed to deleteMeshNetwork, name=\(networkName)")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to delete mesh network: \"\(networkName)\". Error Code: \(error)")
+            meshLog("SelectNetworkPopoverViewController, onConfirmButtonClick, failed to deleteMeshNetwork, name=\(networkName)")
+            UtilityManager.showAlertDialogue(parentVC: self,
+                                             message: "Failed to delete mesh network: \"\(networkName)\". Error Code: \(error)",
+                                             action: UIAlertAction(title: "OK", style: .default,
+                                                                   handler: { (action) in UtilityManager.navigateToViewController(targetClass: NetworkListViewController.self) })
+            )
             return
         }
 
-        print("SelectNetworkPopoverViewController, onConfirmButtonClick, deleteMeshNetwork, name=\(networkName), success")
-        UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network: \"\(networkName)\" has been deleted.", title: "Success")
+        UserSettings.shared.meshNetworks.removeAll(where: {$0 == networkName})
+        meshLog("SelectNetworkPopoverViewController, onConfirmButtonClick, deleteMeshNetwork, name=\(networkName), success")
+        UtilityManager.showAlertDialogue(parentVC: self,
+                                         message: "Mesh network: \"\(networkName)\" has been deleted.",
+                                         title: "Success",
+                                         action: UIAlertAction(title: "OK", style: .default,
+                                                               handler: { (action) in UtilityManager.navigateToViewController(targetClass: NetworkListViewController.self) })
+        )
     }
 
     func onExportNetworkConfirm(provisioinerName: String, networkName: String) {
         indicatorView.showAnimating(parentView: self.view)
         guard let exportedJsonString = MeshFrameworkManager.shared.meshClientNetworkExport(networkName: networkName) else {
             indicatorView.stopAnimating()
-            print("SelectNetworkPopoverViewController, onConfirmButtonClick, failed to do meshClientNetworkExport, name=\(networkName)")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to export mesh network: \"\(networkName)\" to \("filepath")")
+            meshLog("SelectNetworkPopoverViewController, onConfirmButtonClick, failed to do meshClientNetworkExport, name=\(networkName)")
+            UtilityManager.showAlertDialogue(parentVC: self,
+                                             message: "Failed to export mesh network: \"\(networkName)\" to \("filepath")",
+                                             action: UIAlertAction(title: "OK", style: .default,
+                                                                   handler: { (action) in UtilityManager.navigateToViewController(targetClass: NetworkListViewController.self) })
+                                            )
             return
         }
 
-        print("SelectNetworkPopoverViewController, onConfirmButtonClick, meshClientNetworkExport, name=\(networkName), success")
+        meshLog("SelectNetworkPopoverViewController, onConfirmButtonClick, meshClientNetworkExport, name=\(networkName), success")
         let error = MeshFrameworkManager.shared.writeExportedMeshNetwork(networkName: networkName, jsonContent: exportedJsonString)
         indicatorView.stopAnimating()
         if error == MeshErrorCode.MESH_SUCCESS {
-            print("SelectNetworkPopoverViewController, writeExportedMeshNetwork success")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network: \"\(networkName)\" has been exported and written to path: \(MeshFrameworkManager.shared.defaultExportStoragePath ?? MeshFrameworkManager.shared.defaultExportStorageFolderName).", title: "Success")
+            meshLog("SelectNetworkPopoverViewController, writeExportedMeshNetwork success")
+            UtilityManager.showAlertDialogue(parentVC: self,
+                                             message: "Mesh network: \"\(networkName)\" has been exported and written to path: \(MeshFrameworkManager.shared.defaultExportStoragePath ?? MeshFrameworkManager.shared.defaultExportStorageFolderName).",
+                                             title: "Success",
+                                             action: UIAlertAction(title: "OK", style: .default,
+                                                                   handler: { (action) in UtilityManager.navigateToViewController(targetClass: NetworkListViewController.self) })
+                                            )
         } else {
-            print("error: SelectNetworkPopoverViewController, writeExportedMeshNetwork failed, write path: \(MeshFrameworkManager.shared.defaultExportStoragePath ?? MeshFrameworkManager.shared.defaultExportStorageFolderName)")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to write the export Mesh network: \"\(networkName)\" to path: \(MeshFrameworkManager.shared.defaultExportStoragePath ?? MeshFrameworkManager.shared.defaultExportStorageFolderName).")
+            meshLog("error: SelectNetworkPopoverViewController, writeExportedMeshNetwork failed, write path: \(MeshFrameworkManager.shared.defaultExportStoragePath ?? MeshFrameworkManager.shared.defaultExportStorageFolderName)")
+            UtilityManager.showAlertDialogue(parentVC: self,
+                                             message: "Failed to write the export Mesh network: \"\(networkName)\" to path: \(MeshFrameworkManager.shared.defaultExportStoragePath ?? MeshFrameworkManager.shared.defaultExportStorageFolderName).",
+                                             action: UIAlertAction(title: "OK", style: .default,
+                                                                   handler: { (action) in UtilityManager.navigateToViewController(targetClass: NetworkListViewController.self) })
+                                            )
         }
     }
 
     func onImportNetworkConfirm(provisioinerName: String, networkName: String) {
         indicatorView.showAnimating(parentView: self.view)
-        print("SelectNetworkPopoverViewController, onImportNetworkConfirm, meshNetworkName=\(networkName)")
+        meshLog("SelectNetworkPopoverViewController, onImportNetworkConfirm, meshNetworkName=\(networkName)")
         guard let importJsonString = MeshFrameworkManager.shared.readExportedMeshNetwork(networkName: networkName) else {
             indicatorView.stopAnimating()
-            print("error: SelectNetworkPopoverViewController, onImportNetworkConfirm, failed to read \(networkName).json file")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to read the import Mesh network file: \"\(networkName).json\".")
+            meshLog("error: SelectNetworkPopoverViewController, onImportNetworkConfirm, failed to read \(networkName).json file")
+            UtilityManager.showAlertDialogue(parentVC: self,
+                                             message: "Failed to read the import Mesh network file: \"\(networkName).json\".",
+                                             action: UIAlertAction(title: "OK", style: .default,
+                                                                   handler: { (action) in UtilityManager.navigateToViewController(targetClass: NetworkListViewController.self) })
+                                            )
             return
         }
 
-        print("SelectNetworkPopoverViewController, onImportNetworkConfirm, importJsonString=\(importJsonString)")
+        meshLog("SelectNetworkPopoverViewController, onImportNetworkConfirm, importJsonString=\(importJsonString)")
         let realNetworkName = MeshFrameworkManager.shared.meshClientNetworkImport(provisioinerName: provisioinerName, jsonString: importJsonString) { (_ networkName: String?, _ status: Int, _ error: Int) in
             self.indicatorView.stopAnimating()
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: SelectNetworkPopoverViewController, onImportNetworkConfirm, failed to call meshClientNetworkImport, error=\(error)")
+                meshLog("error: SelectNetworkPopoverViewController, onImportNetworkConfirm, failed to call meshClientNetworkImport, error=\(error)")
                 return
             }
             guard status == MeshErrorCode.MESH_SUCCESS else {
-                print("error: SelectNetworkPopoverViewController, onImportNetworkConfirm, open mesh network failed, status=\(status)")
+                meshLog("error: SelectNetworkPopoverViewController, onImportNetworkConfirm, open mesh network failed, status=\(status)")
                 return
             }
 
-            print("SelectNetworkPopoverViewController, onImportNetworkConfirm, mesh network: \(String(describing: networkName)) openned success")
+            meshLog("SelectNetworkPopoverViewController, onImportNetworkConfirm, mesh network: \(String(describing: networkName)) openned success")
         }
 
         guard let parsedNetworkName = realNetworkName else {
             indicatorView.stopAnimating()
-            print("error: SelectNetworkPopoverViewController, failed to import the network from the input \(networkName).json file")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to import Mesh network from file: \"\(networkName).json\".")
+            meshLog("error: SelectNetworkPopoverViewController, failed to import the network from the input \(networkName).json file")
+            UtilityManager.showAlertDialogue(parentVC: self,
+                                             message: "Failed to import Mesh network from file: \"\(networkName).json\".",
+                                             action: UIAlertAction(title: "OK", style: .default,
+                                                                   handler: { (action) in UtilityManager.navigateToViewController(targetClass: NetworkListViewController.self) })
+                                            )
             return
         }
 
-        print("SelectNetworkPopoverViewController, onImportNetworkConfirm, openning mesh network: \(parsedNetworkName) from input \(networkName).json file")
+        meshLog("SelectNetworkPopoverViewController, onImportNetworkConfirm, openning mesh network: \(parsedNetworkName) from input \(networkName).json file")
         UserSettings.shared.currentActiveMeshNetworkName = parsedNetworkName
         UserSettings.shared.isCurrentActiveMeshNetworkOpenned = false
         UtilityManager.navigateToViewController(sender: self, targetVCClass: TransitionViewController.self)

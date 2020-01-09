@@ -315,20 +315,20 @@ public class LightingService extends Service implements IMeshControllerCallback 
     }
 
     public void OnLevelChange(String deviceName, int level) {
-        mMesh.levelSet(deviceName, (short)level, true, 0, (short) 0);
+        mMesh.levelSet(deviceName, (short)level, true, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
     }
 
     public void onHslValueChange(String deviceName, int hue, int saturation, int lightness) {
         Log.d(TAG, "onHslValueChange device=" + deviceName);
-        mMesh.hslSet(deviceName, (short)lightness, (short)hue, (short)saturation, false, 0, (short) 0);
+        mMesh.hslSet(deviceName, (short)lightness, (short)hue, (short)saturation, false, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
     }
 
     public void onOnoffSet(String deviceName, boolean brightness) {
         Log.d(TAG, "OnLightBrightinessChange devicename =" + deviceName);
         if(brightness)
-            mMesh.onoffSet(deviceName, true, false, 0, (short) 0);
+            mMesh.onoffSet(deviceName, true, false, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
         else
-            mMesh.onoffSet(deviceName, false, false, 0, (short) 0);
+            mMesh.onoffSet(deviceName, false, false, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
     }
 
     public void OnoffGet(String deviceName) {

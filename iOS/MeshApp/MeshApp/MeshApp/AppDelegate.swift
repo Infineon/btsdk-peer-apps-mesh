@@ -14,9 +14,15 @@ import MeshFramework
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    var bgTask: UIBackgroundTaskIdentifier?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        #if DEBUG
+        MeshNativeHelper.meshClientLogInit(true)
+        #else
+        MeshNativeHelper.meshClientLogInit(false)
+        #endif
 
         /// 1. Login automatically if App exist without logout, else show the login scene.
         /// 2. If automatically login success, jusp to start scene for Mesh Library initializing, else show the login scene.
@@ -38,6 +44,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidEnterBackground(_ application: UIApplication) {
         // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
         // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+        bgTask = application.beginBackgroundTask(expirationHandler: {
+            // TODO: Clean up any unfinished task business by marking where you stopped or ending the task outright.
+
+            if let endBgTask = self.bgTask {
+                application.endBackgroundTask(endBgTask)
+            }
+            self.bgTask = UIBackgroundTaskIdentifier.invalid
+        })
+
+        // Start the long-running task and return immediately.
+        DispatchQueue.global().async {
+            // TODO: Do the work associated with the task, preferably in chunks.
+
+            if let endBgTask = self.bgTask {
+                application.endBackgroundTask(endBgTask)
+            }
+            self.bgTask = UIBackgroundTaskIdentifier.invalid
+        }
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {

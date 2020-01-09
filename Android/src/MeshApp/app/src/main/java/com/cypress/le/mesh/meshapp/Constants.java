@@ -67,7 +67,7 @@ public class Constants {
     public static final int DEFAULT_PUBLISH_PERIOD = 2000;
     public static final int DEFAULT_RETRANSMIT_COUNT = 0;
     public static final int DEFAULT_RETRANSMIT_INTERVAL  = 500;
-
+    public static final int DEFAULT_TRANSITION_TIME = 0xFFFFFFFF;
 
 
     public static final String GATT_PROXY_CONNECTED    = "com.cypress.meshproxy.action.CONNECTED";

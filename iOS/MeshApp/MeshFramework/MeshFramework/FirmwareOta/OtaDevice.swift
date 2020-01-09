@@ -19,6 +19,7 @@ public protocol OtaDeviceProtocol {
     func equal(_ device: OtaDeviceProtocol) -> Bool
 
     var otaVersion: Int { get }                 // default is 1;
+    var otaDeviceHasConnected: Bool { get set } // indicates mesh device connected state.
     var otaDevice: AnyObject? { get set }       // system platform device instance that reference remote OTA device.
     var otaService: AnyObject? { get set }
     var otaControlPointCharacteristic: AnyObject? { get set }
@@ -82,6 +83,8 @@ public protocol OtaDeviceProtocol {
 
 
 public class OtaBleDevice: NSObject, OtaDeviceProtocol {
+    public var otaDeviceHasConnected: Bool = false
+
     public var otaVersion: Int {
         guard let serviceUuid = mOtaService?.uuid, serviceUuid == OtaConstants.BLE_V2.UUID_SERVICE_UPGRADE else {
             return OtaConstants.OTA_VERSION_1
@@ -303,9 +306,14 @@ public class OtaMeshDevice: OtaBleDevice {
     }
 
     override public func connect() {
+        if otaDeviceHasConnected {
+            OtaUpgrader.shared.didUpdateConnectionState(isConnected: true, error: nil)
+            return
+        }
+
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("OtaMeshDevice, connect, failed to connect to mesh network firstly ,error:\(error)")
+                meshLog("OtaMeshDevice, connect, failed to connect to mesh network firstly ,error:\(error)")
                 self.otaDevice = nil
                 OtaUpgrader.shared.didUpdateConnectionState(isConnected: false,
                                                             error: OtaError(code: OtaErrorCode.INVALID_OBJECT_INSTANCES,
@@ -315,7 +323,7 @@ public class OtaMeshDevice: OtaBleDevice {
 
             MeshFrameworkManager.shared.meshClientConnectComponent(componentName: self.getDeviceName(), scanDuration: MeshConstants.MESH_DEFAULT_SCAN_DURATION * 4) { (status: Int, componentName: String, error: Int) in
 
-                print("OtaMeshDevice, connect, meshClientConnectComponent, status:\(status), componentName:\(componentName), error:\(error)")
+                meshLog("OtaMeshDevice, connect, meshClientConnectComponent, status:\(status), componentName:\(componentName), error:\(error)")
                 guard error == MeshErrorCode.MESH_SUCCESS, status == MeshConstants.MESH_CLIENT_NODE_CONNECTED else {
                     // failed to connect to the mesh device.
                     self.otaDevice = nil
@@ -326,7 +334,7 @@ public class OtaMeshDevice: OtaBleDevice {
                 }
 
                 self.otaDevice = MeshNativeHelper.getCurrentConnectedPeripheral()
-                print("OtaMeshDevice, connect, meshClientConnectComponent, otaDevice:\(String(describing: self.otaDevice))")
+                meshLog("OtaMeshDevice, connect, meshClientConnectComponent, otaDevice:\(String(describing: self.otaDevice))")
 
                 OtaUpgrader.shared.didUpdateConnectionState(isConnected: true, error: nil)
             }
@@ -550,28 +558,28 @@ public class OtaHomeKitDevice: NSObject, OtaDeviceProtocol {
 
 extension OtaHomeKitDevice: HMAccessoryDelegate {
     public func accessoryDidUpdateName(_ accessory: HMAccessory) {
-        print("OtaHomeKitDevice, accessoryDidUpdateName accessory: \(accessory)")
+        meshLog("OtaHomeKitDevice, accessoryDidUpdateName accessory: \(accessory)")
     }
 
     public func accessoryDidUpdateReachability(_ accessory: HMAccessory) {
-        print("OtaHomeKitDevice, accessoryDidUpdateReachability accessory: \(accessory.name), isReachable: \(accessory.isReachable)")
+        meshLog("OtaHomeKitDevice, accessoryDidUpdateReachability accessory: \(accessory.name), isReachable: \(accessory.isReachable)")
     }
 
     public func accessoryDidUpdateServices(_ accessory: HMAccessory) {
-        print("OtaHomeKitDevice, accessoryDidUpdateServices accessory: \(accessory.name)")
+        meshLog("OtaHomeKitDevice, accessoryDidUpdateServices accessory: \(accessory.name)")
         OtaHomeKitDevice.dumpHomeKitAccessory(accessory)
     }
 
     public func accessory(_ accessory: HMAccessory, didUpdateNameFor service: HMService) {
-        print("OtaHomeKitDevice, accessory service: \(service.uniqueIdentifier.uuidString) name has been updated to \"\(service.name)\"")
+        meshLog("OtaHomeKitDevice, accessory service: \(service.uniqueIdentifier.uuidString) name has been updated to \"\(service.name)\"")
     }
 
     public func accessory(_ accessory: HMAccessory, didUpdateAssociatedServiceTypeFor service: HMService) {
-        print("OtaHomeKitDevice, accessory service:\(service.name) type has been updated to \"\(service.serviceType)\"")
+        meshLog("OtaHomeKitDevice, accessory service:\(service.name) type has been updated to \"\(service.serviceType)\"")
     }
 
     public func accessory(_ accessory: HMAccessory, service: HMService, didUpdateValueFor characteristic: HMCharacteristic) {
-        print("OtaHomeKitDevice, accessory:\(accessory.name) didUpdateValueFor characteristicType:\(characteristic.characteristicType), value: \(String(describing: characteristic.value))")
+        meshLog("OtaHomeKitDevice, accessory:\(accessory.name) didUpdateValueFor characteristicType:\(characteristic.characteristicType), value: \(String(describing: characteristic.value))")
 
         let data = characteristic.value as? Data
         if self.otaControlPointCharacteristic as? HMCharacteristic == characteristic {
@@ -584,23 +592,23 @@ extension OtaHomeKitDevice: HMAccessoryDelegate {
     }
 
     public static func dumpHomeKitAccessory(_ accessory: HMAccessory) {
-        print("OtaHomeKitDevice, dumpHomeKitAccessory accessory: \(accessory)")
-        print("  isReachable: \(accessory.isReachable), isBlocked: \(accessory.isBlocked), isBridged: \(accessory.isBridged), service count: \(accessory.services.count)")
+        meshLog("OtaHomeKitDevice, dumpHomeKitAccessory accessory: \(accessory)")
+        meshLog("  isReachable: \(accessory.isReachable), isBlocked: \(accessory.isBlocked), isBridged: \(accessory.isBridged), service count: \(accessory.services.count)")
         for service in accessory.services {
-            print("  - accessory service: \(service.name), \(service)")
+            meshLog("  - accessory service: \(service.name), \(service)")
             // HMService uniqueIdentifier UUID, allocated by HomeKit framework.
-            print("    service.uniqueIdentifier: \(service.uniqueIdentifier)")
+            meshLog("    service.uniqueIdentifier: \(service.uniqueIdentifier)")
             // BLE Service UUID.
-            print("    service.serviceType: \(service.serviceType)")
+            meshLog("    service.serviceType: \(service.serviceType)")
             // Inlcuded BLE Service UUID.
-            print("    service.associatedServiceType: \(String(describing: service.associatedServiceType))")
+            meshLog("    service.associatedServiceType: \(String(describing: service.associatedServiceType))")
             for characteristic in service.characteristics {
-                print("    - characteristic: \(characteristic)")
+                meshLog("    - characteristic: \(characteristic)")
                 // HMCharacteristic uniqueIdentifier UUID, allocated by HomeKit framework.
-                print("      characteristic.uniqueIdentifier: \(characteristic.uniqueIdentifier)")
+                meshLog("      characteristic.uniqueIdentifier: \(characteristic.uniqueIdentifier)")
                 // BLE Characterisitic UUID.
-                print("      characteristic.characteristicType: \(characteristic.characteristicType)")
-                print("      characteristic.properties: \(characteristic.properties)")
+                meshLog("      characteristic.characteristicType: \(characteristic.characteristicType)")
+                meshLog("      characteristic.properties: \(characteristic.properties)")
             }
         }
     }

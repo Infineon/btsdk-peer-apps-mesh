@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -48,6 +48,10 @@ typedef NS_ENUM(NSInteger, MeshClientNodeStatus) {
     MESH_CLIENT_NODE_ERROR_UNREACHABLE = 2,
 };
 
+typedef NS_ENUM(NSInteger, MeshDfuEvent) {
+    MESH_DFU_EVENT_START_OTA = 1,
+};
+
 #define CRC32_INIT_VALUE 0xFFFFFFFF
 
 NS_ASSUME_NONNULL_BEGIN
@@ -67,6 +71,8 @@ NS_ASSUME_NONNULL_BEGIN
 +(NSString *) getProvisionerUuidFileName;
 +(int) setFileStorageAtPath:(NSString *)path;
 +(int) setFileStorageAtPath:(NSString *)path provisionerUuid: (NSUUID * __nullable)provisionerUuid;
++(int) updateProvisionerUuid:(NSUUID * __nullable)provisionerUuid;
++(NSUUID *) generateRfcUuid;
 
 +(int) meshClientNetworkExists:(NSString *)meshName;
 +(int) meshClientNetworkCreate:(NSString *)provisionerName meshName:(NSString *)meshName;
@@ -179,6 +185,7 @@ NS_ASSUME_NONNULL_BEGIN
 +(int) meshClientDfuGetStatus:(NSString *)componentName;
 +(int) meshClientDfuStart:(int)dfuMethod  componentName:(NSString *)componentName firmwareId:(NSData *)firmwareId validationData:(NSData *)validationData;
 +(int) meshClientDfuStop;
++(void) meshClientDfuOtaFinish:(int)status;
 
 // Sensor APIs
 +(int) meshClientSensorCadenceGet:(NSString *)deviceName
@@ -245,6 +252,10 @@ NS_ASSUME_NONNULL_BEGIN
 +(void) meshClientClearDfuFwMetadata;
 +(void) meshClientSetDfuFilePath:(NSString * __nullable)filePath;
 +(NSString *) meshClientGetDfuFilePath;
+
++(Boolean) isMeshClientProvisionKeyRefreshing;
++(void) meshClientLog:(NSString *)message;
++(void) meshClientLogInit:(Boolean) is_console_enabled;
 @end
 
 NS_ASSUME_NONNULL_END

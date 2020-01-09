@@ -20,6 +20,7 @@ class ProvisioningStatusPopoverViewController: UIViewController {
     @IBOutlet weak var renameButton: UIButton!
     @IBOutlet weak var testButton: UIButton!
 
+    var parentVc: UnprovisionedDevicesViewController?
     var deviceName: String?                 // original device name before mesh provisioned.
     var provisionedDeviceName: String?      // mesh managed device name after mesh provisioned successfully.
     var deviceUuid: UUID?
@@ -27,6 +28,8 @@ class ProvisioningStatusPopoverViewController: UIViewController {
     var deviceType: Int = MeshConstants.MESH_COMPONENT_UNKNOWN
 
     var testButtonClickCount: Int = 0;
+
+    var isScanProvisionTestEnabled: Bool = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -76,7 +79,7 @@ class ProvisioningStatusPopoverViewController: UIViewController {
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_PROVISION_COMPLETE_STATUS):
             guard let provisionCompleteStatus = MeshNotificationConstants.getProvisionStatus(userInfo: userInfo) else {
-                print("error: ProvisioningStatusPopoverViewController, notificationHandler, invalid provision status data: \(String(describing: userInfo as? [String: Any]))")
+                meshLog("error: ProvisioningStatusPopoverViewController, notificationHandler, invalid provision status data: \(String(describing: userInfo as? [String: Any]))")
                 return
             }
             self.onProvisioinStatusUpdated(status: provisionCompleteStatus.status, uuid: provisionCompleteStatus.uuid)
@@ -105,11 +108,11 @@ class ProvisioningStatusPopoverViewController: UIViewController {
     // the received provision status update value should be 2,3,6,4,5 if done successfully.
     func onProvisioinStatusUpdated(status: Int, uuid: UUID) {
         guard uuid.uuidString == deviceUuid?.uuidString ?? "" else {
-            print("warning: ProvisioningStatusPopoverViewController, onProvisioinStatusUpdated, device uuid mismatched, received uuid:\(uuid), expected uuid:\(String(describing: deviceUuid))")
+            meshLog("warning: ProvisioningStatusPopoverViewController, onProvisioinStatusUpdated, device uuid mismatched, received uuid:\(uuid), expected uuid:\(String(describing: deviceUuid))")
             return
         }
 
-        print("ProvisioningStatusPopoverViewController, onProvisioinStatusUpdated, status=\(status), uuid=\(uuid.uuidString)")
+        meshLog("ProvisioningStatusPopoverViewController, onProvisioinStatusUpdated, status=\(status), uuid=\(uuid.uuidString)")
         switch status {
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_FAILED:
             self.viewDidUpdateProvisionStatus(message: "Provision Failed", progressPercentage: 1)
@@ -118,6 +121,21 @@ class ProvisioningStatusPopoverViewController: UIViewController {
             self.okButton.isEnabled = true
             self.renameButton.isEnabled = false
             self.testButton.isEnabled = false
+
+            if isScanProvisionTestEnabled {  // exist the popup dialogue
+                DispatchQueue.main.async {
+                    self.dismiss(animated: true) {
+                        NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STATUS),
+                        object: nil,
+                        userInfo: [
+                            MeshNotificationConstants.USER_INFO_KEY_STAGE: MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_PROVISIONING,
+                            MeshNotificationConstants.USER_INFO_KEY_STAGE_STATUS: MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_STATUS_FAILED,
+                            MeshNotificationConstants.USER_INFO_KEY_UNPROVISIONED_DEVICE_NAME: (self.deviceName ?? "") as Any,
+                            MeshNotificationConstants.USER_INFO_KEY_TARGET_DEVICE_UUID: (self.deviceUuid?.uuidString ?? "") as Any,
+                            MeshNotificationConstants.USER_INFO_KEY_PROVISIONED_DEVICE_NAME: (self.provisionedDeviceName ?? "") as Any])
+                    }
+                }
+            }
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_CONNECTING:
             self.viewDidUpdateProvisionStatus(message: "Provision Scanning", progressPercentage: 0.2)
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_PROVISIONING:
@@ -141,7 +159,22 @@ class ProvisioningStatusPopoverViewController: UIViewController {
                 self.deviceName = provisionedDeviceName
                 self.deviceNameLabel.text = provisionedDeviceName
                 self.deviceType = MeshFrameworkManager.shared.getMeshComponentType(componentName: provisionedDeviceName)
-                print("ProvisioningStatusPopoverViewController, onProvisioinStatusUpdated, provisionedDeviceName=\(provisionedDeviceName))")
+                meshLog("ProvisioningStatusPopoverViewController, onProvisioinStatusUpdated, provisionedDeviceName=\(provisionedDeviceName))")
+            }
+
+            if isScanProvisionTestEnabled {  // exist the popup dialogue
+                DispatchQueue.main.async {
+                    self.dismiss(animated: true) {
+                        NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STATUS),
+                        object: nil,
+                        userInfo: [
+                            MeshNotificationConstants.USER_INFO_KEY_STAGE: MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_PROVISIONING,
+                            MeshNotificationConstants.USER_INFO_KEY_STAGE_STATUS: MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_STATUS_SUCCESS,
+                            MeshNotificationConstants.USER_INFO_KEY_UNPROVISIONED_DEVICE_NAME: (self.deviceName ?? "") as Any,
+                            MeshNotificationConstants.USER_INFO_KEY_TARGET_DEVICE_UUID: (self.deviceUuid?.uuidString ?? "") as Any,
+                            MeshNotificationConstants.USER_INFO_KEY_PROVISIONED_DEVICE_NAME: (self.provisionedDeviceName ?? "") as Any])
+                    }
+                }
             }
         default:
             break
@@ -154,7 +187,7 @@ class ProvisioningStatusPopoverViewController: UIViewController {
     }
 
     func provisioningStart() {
-        print("ProvisioningStatusPopoverViewController, provisioningStart, deviceName:\(String(describing: self.deviceName)), uuid:\(String(describing: self.deviceUuid)), groupName:\(String(describing: self.groupName))")
+        meshLog("ProvisioningStatusPopoverViewController, provisioningStart, deviceName:\(String(describing: self.deviceName)), uuid:\(String(describing: self.deviceUuid)), groupName:\(String(describing: self.groupName))")
 
         var error = MeshErrorCode.MESH_ERROR_INVALID_ARGS
         if let name = self.deviceName, let uuid = self.deviceUuid, let group = self.groupName {
@@ -163,10 +196,26 @@ class ProvisioningStatusPopoverViewController: UIViewController {
         }
 
         if error != MeshErrorCode.MESH_SUCCESS {
-            print("error: ProvisioningStatusPopoverViewController, provisioningStart, failed to call meshClientProvision API, error=\(error)")
+            meshLog("error: ProvisioningStatusPopoverViewController, provisioningStart, failed to call meshClientProvision API, error=\(error)")
             var message = "Failed to start provisioning with selected device. Error Code: \(error)."
-            if error == MeshErrorCode.MESH_ERROR_INVALID_STATE {
+            var stage_status: Int = MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_STATUS_FAILED
+            if error ==  MeshErrorCode.MESH_ERROR_INVALID_STATE {
+                stage_status = MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_STATUS_NETWORK_BUSY
                 message = "Failed to start provisioning with selected device. Curretly, the mesh network is not idle, may busying on syncing with some unreachable devices. Please wait for a little later and try again."
+            }
+
+            if isScanProvisionTestEnabled {  // exist the popup dialogue
+                self.dismiss(animated: true) {
+                    NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STATUS),
+                    object: nil,
+                    userInfo: [
+                        MeshNotificationConstants.USER_INFO_KEY_STAGE: MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_PROVISIONING,
+                        MeshNotificationConstants.USER_INFO_KEY_STAGE_STATUS: stage_status,
+                        MeshNotificationConstants.USER_INFO_KEY_UNPROVISIONED_DEVICE_NAME: (self.deviceName ?? "") as Any,
+                        MeshNotificationConstants.USER_INFO_KEY_TARGET_DEVICE_UUID: (self.deviceUuid?.uuidString ?? "") as Any,
+                        MeshNotificationConstants.USER_INFO_KEY_PROVISIONED_DEVICE_NAME: (self.provisionedDeviceName ?? "") as Any])
+                }
+                return
             }
             UtilityManager.showAlertDialogue(parentVC: self,
                                              message: message,
@@ -182,15 +231,15 @@ class ProvisioningStatusPopoverViewController: UIViewController {
     }
 
     @IBAction func onOkButtonClick(_ sender: UIButton) {
-        print("ProvisioningStatusPopoverViewController, onOkButtonClick")
+        meshLog("ProvisioningStatusPopoverViewController, onOkButtonClick")
         self.dismiss(animated: true) {
             NotificationCenter.default.removeObserver(self)
-            UtilityManager.navigateToViewController(targetClass: UnprovisionedDevicesViewController.self)
+            self.parentVc?.pullToRefresh()
         }
     }
 
     @IBAction func onRenameButtonClick(_ sender: UIButton) {
-        print("ProvisioningStatusPopoverViewController, onRenameButtonClick")
+        meshLog("ProvisioningStatusPopoverViewController, onRenameButtonClick")
 
         let alertController = UIAlertController(title: "Rename Device", message: nil, preferredStyle: .alert)
         alertController.addTextField { (textField: UITextField) in
@@ -201,12 +250,12 @@ class ProvisioningStatusPopoverViewController: UIViewController {
             if let textField = alertController.textFields?.first, let newDeviceName = textField.text, newDeviceName.count > 0, let oldDeviceName = self.provisionedDeviceName {
                 MeshFrameworkManager.shared.meshClientRename(oldName: oldDeviceName, newName: newDeviceName) { (networkName: String?, error: Int) in
                     guard error == MeshErrorCode.MESH_SUCCESS else {
-                        print("error: ProvisioningStatusPopoverViewController, failed to call rename Device Name from \(oldDeviceName) to \(newDeviceName), error=\(error)")
+                        meshLog("error: ProvisioningStatusPopoverViewController, failed to call rename Device Name from \(oldDeviceName) to \(newDeviceName), error=\(error)")
                         UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to rename device \"\(oldDeviceName)\" to \"\(newDeviceName)\". Error Code: \(error)")
                         return
                     }
 
-                    print("ProvisioningStatusPopoverViewController, rename \"\(oldDeviceName)\" device to new name=\"\(newDeviceName)\" success")
+                    meshLog("ProvisioningStatusPopoverViewController, rename \"\(oldDeviceName)\" device to new name=\"\(newDeviceName)\" success")
                     // rename done success, update the new device name.
                     if let meshDeviceUuid = self.deviceUuid, let meshName = MeshFrameworkManager.shared.getMeshComponentsByDevice(uuid: meshDeviceUuid)?.first {
                         self.provisionedDeviceName = meshName
@@ -224,7 +273,7 @@ class ProvisioningStatusPopoverViewController: UIViewController {
 
     @IBAction func onTestButtonClick(_ sender: UIButton) {
         guard let deviceName = self.provisionedDeviceName else {
-            print("ProvisioningStatusPopoverViewController, onTestButtonClick, invalid provisionedDeviceName nil")
+            meshLog("ProvisioningStatusPopoverViewController, onTestButtonClick, invalid provisionedDeviceName nil")
             return
         }
 
@@ -243,7 +292,7 @@ class ProvisioningStatusPopoverViewController: UIViewController {
         let reliable: Bool = false
         var error = MeshErrorCode.MESH_SUCCESS
 
-        print("ProvisioningStatusPopoverViewController, turnDeviceOnOffTest, turn device:\(deviceName) \(isOn ? "ON" : "OFF"), reliable:\(reliable), type:\(deviceType)")
+        meshLog("ProvisioningStatusPopoverViewController, turnDeviceOnOffTest, turn device:\(deviceName) \(isOn ? "ON" : "OFF"), reliable:\(reliable), type:\(deviceType)")
         switch self.deviceType {
         case MeshConstants.MESH_COMPONENT_GENERIC_LEVEL_SERVER:
             error = MeshFrameworkManager.shared.meshClientLevelSet(deviceName: deviceName, level: lightness, reliable: reliable, transitionTime: 0, delay: 0)
@@ -257,10 +306,10 @@ class ProvisioningStatusPopoverViewController: UIViewController {
             error = MeshFrameworkManager.shared.meshClientOnOffSet(deviceName: deviceName, isOn: isOn, reliable: reliable)
         }
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("ProvisioningStatusPopoverViewController, turnDeviceOnOffTest, failed to turn device:\"\(deviceName)\" \(isOn ? "ON" : "OFF")")
+            meshLog("ProvisioningStatusPopoverViewController, turnDeviceOnOffTest, failed to turn device:\"\(deviceName)\" \(isOn ? "ON" : "OFF")")
             return
         }
-        print("ProvisioningStatusPopoverViewController, turnDeviceOnOffTest, turn device:\(deviceName) \(isOn ? "ON" : "OFF") success")
+        meshLog("ProvisioningStatusPopoverViewController, turnDeviceOnOffTest, turn device:\(deviceName) \(isOn ? "ON" : "OFF") success")
     }
 
     func deviceIdentify(deviceName: String) {
@@ -268,12 +317,12 @@ class ProvisioningStatusPopoverViewController: UIViewController {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.testButton.isEnabled = true
-                print("ProvisioningStatusPopoverViewController, deviceIdentify, device:\(deviceName), failed to connect to mesh network")
+                meshLog("ProvisioningStatusPopoverViewController, deviceIdentify, device:\(deviceName), failed to connect to mesh network")
                 return
             }
 
             let error = MeshFrameworkManager.shared.meshClientIdentify(name: deviceName, duration: 10)
-            print("ProvisioningStatusPopoverViewController, deviceIdentify, device:\(deviceName), error:\(error)")
+            meshLog("ProvisioningStatusPopoverViewController, deviceIdentify, device:\(deviceName), error:\(error)")
             self.testButton.isEnabled = true
         }
     }

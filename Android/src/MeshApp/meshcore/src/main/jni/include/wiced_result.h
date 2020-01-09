@@ -5,7 +5,7 @@
 *   This file provides return result codes
 *
 *//*****************************************************************************
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -48,8 +48,9 @@ extern "C" {
 #endif /* ifndef RESULT_ENUM */
 
 
-/** \addtogroup  Result         WICED Result Codes
-*  \ingroup     gentypes
+/**
+*  \addtogroup  Result         WICED Result Codes
+*  \ingroup     wicedsys
 *
 *  <b> WICED Result list </b> for Bluetooth BR/EDR and LE @b .
 *

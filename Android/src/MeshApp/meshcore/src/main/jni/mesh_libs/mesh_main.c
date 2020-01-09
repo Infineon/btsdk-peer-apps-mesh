@@ -111,11 +111,17 @@ void Log(const char *fmt, ...)
 
 int wiced_printf(char * buffer, int len, char * fmt_str, ...)
 {
-    unsigned int i;
-    for( i=0; i<len; i++){
-        Log("%x",*fmt_str);
-        fmt_str++;
-    }
+//    unsigned int i;
+//    for( i=0; i<len; i++){
+//        Log("%x",*fmt_str);
+//        fmt_str++;
+//    }
+
+    va_list ap;
+    va_start(ap, fmt_str);
+    __android_log_vprint(ANDROID_LOG_INFO, LOG_TAG, fmt_str, ap);
+    va_end(ap);
+
     return 0;
 }
 

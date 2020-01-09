@@ -35,11 +35,11 @@ public struct MeshConstants {
     // Public BLE device address, just a placeholder, useless.
     public static let MESH_DEFAULT_PERIPHERAL_BDADDR_TYPE: UInt8    = 0
 
-    public static let MESH_DEFAULT_COMPONENT_CONNECT_SCAN_DURATION  = 5     // unit: seconds
+    public static let MESH_DEFAULT_COMPONENT_CONNECT_SCAN_DURATION  = 10     // unit: seconds
     public static let MESH_DEFAULT_COMPONENT_CONNECT_USE_PROXY      = true
 
     // See <<Mesh Model>> section 3.1.3 and 3.2.1.2 about the detail of the values of transition time and delay.
-    public static let MESH_DEFAULT_ONOFF_TRANSITION_TIME: UInt32    = 0     // bit0-5: transition number of steps; bit6-7: transition step resolution.
+    public static let MESH_DEFAULT_ONOFF_TRANSITION_TIME: UInt32    = 0xFFFFFFFF     // bit0-5: transition number of steps; bit6-7: transition step resolution.
     public static let MESH_DEFAULT_ONOFF_DELAY                      = 0     // uint: ms, must be multiple of 5 millisecond (one step is 5 millisecond).
 
     // Currently, with the support of the mesh library, only one connection can be established at any time between the provisioner and target mesh device.
@@ -99,7 +99,7 @@ public struct MeshConstants {
     public static let SENSOR_TRIGGER_TYPE                       = MeshControl.TRIGGER_TYPE_NATIVE
     public static let SENSOR_TRIGGER_DELTA_DOWN                 = 0
     public static let SENSOR_TRIGGER_DELTA_UP                   = 0
-    public static let SENSOR_MIN_INTERVAL                       = 0
+    public static let SENSOR_MIN_INTERVAL                       = 1     // unit: seconds
     public static let SENSOR_FAST_CADENCE_LOW                   = 0
     public static let SENSOR_FAST_CADENCE_HIGH                  = 0
 
@@ -125,12 +125,16 @@ public struct MeshConstants {
     public static let LIGHT_DELTA_UV_MESH_RAW_VALUE_MIN             = Int(Int16.min)
     public static let LIGHT_DELTA_UV_MESH_RAW_VALUE_MAX             = Int(Int16.max)
 
-    // This sample shows simple use of vendor get/set/status messages.  Vendor model
-    // can define any opcodes it wants.
+    /*
+     * TODO: Change to any allocated SIG company ID when required.
+     *       This constant value is used by MeshApp in Swift language. By Default, it was set to Cypress Company ID.
+     *       See the macro MESH_VENDOR_COMPANY_ID defined in mesh_app.c which used by mesh libraries.
+     */
+    public static let MESH_VENDOR_COMPANY_ID    = 0x131
+    public static let MESH_VENDOR_MODEL_ID      = 1         // TODO: This need to be modified based on Mesh Device implementation.
+    // This sample shows simple use of vendor get/set/status messages.  Vendor model can define any opcodes it wants.
     public static let MESH_VENDOR_OPCODE1       = 1     // Command to Get data
     public static let MESH_VENDOR_OPCODE2       = 2     // Command to Set data ack is required
-    public static let MESH_VENDOR_COMPANY_ID    = 0x131     // Cypress Company ID
-    public static let MESH_VENDOR_MODEL_ID      = 1         // TODO: This need to be modified.
 
     public static let MESH_CLIENT_LC_MODE_ON = 1
     public static let MESH_CLIENT_LC_MODE_OFF = 0
@@ -304,24 +308,24 @@ public struct MeshNotificationConstants {
         var ver: Int = 0
 
         let infoArray = componentInfo.split(maxSplits: 3, omittingEmptySubsequences: true, whereSeparator: {$0 == " "})
-        print("\(infoArray)")
+        meshLog("\(infoArray)")
         for item in infoArray {
             if item.hasPrefix("CID:") {
                 let cidStrings = item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})
                 cid = Int(cidStrings[1]) ?? 0
-                print("CID: \(item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})), cid=\(cid)")
+                meshLog("CID: \(item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})), cid=\(cid)")
             } else if item.hasPrefix("PID:") {
                 let pidStrings = item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})
                 pid = Int(pidStrings[1]) ?? 0
-                print("PID: \(item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})), pid=\(pid)")
+                meshLog("PID: \(item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})), pid=\(pid)")
             } else if item.hasPrefix("VID:") {
                 let vidStrings = item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})
                 vid = Int(vidStrings[1]) ?? 0
-                print("VID: \(item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})), vid=\(vid)")
+                meshLog("VID: \(item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})), vid=\(vid)")
             } else if item.hasPrefix("VER:") {
                 let verStrings = item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})
                 ver = Int(verStrings[1]) ?? 0
-                print("VER: \(item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})), ver=\(ver)")
+                meshLog("VER: \(item.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: {$0 == ":"})), ver=\(ver)")
             }
         }
         return (cid, pid,vid, ver)
@@ -619,6 +623,69 @@ public struct MeshNotificationConstants {
         }
         return (deviceName!, propertyId!, propertyValue!)
     }
+
+    public static let MESH_SCAN_PROVISION_TEST_STAGE_IDLE = 0
+    public static let MESH_SCAN_PROVISION_TEST_STAGE_PROVISIONING = 1
+    public static let MESH_SCAN_PROVISION_TEST_STAGE_SCANNING = 2
+    public static let MESH_SCAN_PROVISION_TEST_STAGE_DELETING = 3
+    public static let MESH_SCAN_PROVISION_TEST_STAGE_STATUS_SUCCESS = 0
+    public static let MESH_SCAN_PROVISION_TEST_STAGE_STATUS_FAILED = 1
+    public static let MESH_SCAN_PROVISION_TEST_STAGE_STATUS_NETWORK_BUSY = 2
+    public static let MESH_SCAN_PROVISION_TEST_STATUS = "meshScanProvisionTestStatus"
+    public static let USER_INFO_KEY_STAGE = "scanProvisionTestStage"
+    public static let USER_INFO_KEY_STAGE_STATUS = "scanProvisionTestStageStatus"
+    public static let USER_INFO_KEY_UNPROVISIONED_DEVICE_NAME = "scanProvisionTestUnprovisionedDeviceName"
+    public static let USER_INFO_KEY_TARGET_DEVICE_UUID = "scanProvisionTestTargetDeviceUuid"  // UUID String
+    public static let USER_INFO_KEY_PROVISIONED_DEVICE_NAME = "scanProvisionTestProvisionedDeviceName"
+    public static func getScanProvisionTestStatus(userInfo: [AnyHashable: Any]) -> (stage: Int, status: Int, unprovisionedDeviceName: String?, targetDeviceUuid: UUID?, provisionedDeviceName: String?)? {
+        guard let userInfo = userInfo as? [String: Any] else {
+            return nil
+        }
+        var stage: Int?
+        var status: Int?
+        var unprovisionedDeviceName: String?
+        var targetDeviceUuid: UUID?
+        var provisionedDeviceName: String?
+        for (key, value) in userInfo {
+            if key == MeshNotificationConstants.USER_INFO_KEY_STAGE, value is Int, let value = value as? Int {
+                stage = value
+            } else if key == MeshNotificationConstants.USER_INFO_KEY_STAGE_STATUS, value is Int, let value = value as? Int {
+                status = value
+            } else if key == MeshNotificationConstants.USER_INFO_KEY_UNPROVISIONED_DEVICE_NAME, value is String, let value = value as? String {
+                unprovisionedDeviceName = value.isEmpty ? nil : value
+            } else if key == MeshNotificationConstants.USER_INFO_KEY_TARGET_DEVICE_UUID, value is String, let value = value as? String {
+                targetDeviceUuid = value.isEmpty ? nil : UUID(uuidString: value)
+            } else if key == MeshNotificationConstants.USER_INFO_KEY_PROVISIONED_DEVICE_NAME, value is String, let value = value as? String {
+                provisionedDeviceName = value.isEmpty ? nil : value
+            }
+        }
+        guard let _ = stage, let _ = status else {
+            return nil
+        }
+        return (stage!, status!, unprovisionedDeviceName, targetDeviceUuid, provisionedDeviceName)
+    }
+
+    public static let MESH_CLIENT_DFU_EVENT_START_OTA = "meshClientDfuEventStartOta"
+    public static let USER_INFO_KEY_DFU_EVENT = "meshClientDfuEvent"        // value type: Int, raw data type: UInt8
+    public static let USER_INFO_KEY_DFU_EVENT_DATA = "meshClientDfuEventData"
+    public static func getMeshClientDfuEvent(userInfo: [AnyHashable: Any]) -> (event: Int, data: Data)? {
+        guard let userInfo = userInfo as? [String: Any] else {
+            return nil
+        }
+        var event: Int?
+        var data: Data?
+        for (key, value) in userInfo {
+            if key == MeshNotificationConstants.USER_INFO_KEY_DFU_EVENT, value is Int, let value = value as? Int {
+                event = value
+            } else if key == MeshNotificationConstants.USER_INFO_KEY_DFU_EVENT_DATA, value is Data, let value = value as? Data {
+                data = value
+            }
+        }
+        guard let _ = event, let _ = data else {
+            return nil
+        }
+        return (event!, data!)
+    }
 }
 
 public struct MeshUUIDConstants{
@@ -629,6 +696,16 @@ public struct MeshUUIDConstants{
     static let UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN               = CBUUID(string: "00002ADD-0000-1000-8000-00805f9b34fb")
     static let UUID_CHARACTERISTIC_MESH_PROXY_DATA_OUT              = CBUUID(string: "00002ADE-0000-1000-8000-00805f9b34fb")
     static let UUID_DESCRIPTOR_CCCD                                 = CBUUID(string: "00002902-0000-1000-8000-00805f9b34fb")    // Client Configuration Characteristic Descriptor
+    static let UUID_MESH_SERVICES: [CBUUID] = [
+        MeshUUIDConstants.UUID_SERVICE_MESH_PROVISIONING,
+        MeshUUIDConstants.UUID_SERVICE_MESH_PROXY]
+    static let UUID_MESH_PROVISIONING_CHARACTERISTICS_CCCD: [CBUUID] = [
+        MeshUUIDConstants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_IN,
+        MeshUUIDConstants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_OUT]
+    static let UUID_MESH_PROXY_CHARACTERISTICS_CCCD: [CBUUID] = [
+        MeshUUIDConstants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN,
+        MeshUUIDConstants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_OUT,
+        MeshUUIDConstants.UUID_DESCRIPTOR_CCCD]
 }
 
 public struct MeshErrorCode {
@@ -759,8 +836,9 @@ public struct MeshPropertyId {
             let rawValue = Int8(UInt8(value[0]))
             return (Double(rawValue) / 2)
         } else if value.count == 2 {
-            let temperature = value.withUnsafeBytes { (pointer: UnsafePointer<Int16>) -> Int16 in
-                let buffer = UnsafeBufferPointer(start: pointer, count: 1)
+            let temperature = value.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) -> Int16 in
+                let unsafePointer = bytes.baseAddress!
+                let buffer = UnsafeBufferPointer(start: unsafePointer.assumingMemoryBound(to: Int16.self), count: 1)
                 return Array<Int16>(buffer)[0]
             }
             return (Double(temperature) / 100)
@@ -856,8 +934,8 @@ public struct MeshControl {
 
     // see Mesh Model Specification, section 4.1.3.1 Fast Cadence Period Divisor.
     public static let DEFAULT_FAST_CADENCE_PERIOD_DIVISOR   = 0x00  // The value of 0x00 would have a divisor of 1, the Publish Period would not change.
-    public static let FAST_CADENCE_PERIOD_DIVISOR_TEXT_LIST = ["1", "2", "4", "8", "16", "32", "64", "128", "256", "512"]
-    public static func getFastCadencePeriodDivisor(divisorText: String) -> Int? {
+    public static let FAST_CADENCE_PERIOD_DIVISOR_TEXT_LIST = ["2", "4", "8", "16", "32", "64", "128", "256", "512", "1024"]
+    public static func getFastCadencePeriodDivisorIndex(divisorText: String) -> Int? {
         for (index, item) in MeshControl.FAST_CADENCE_PERIOD_DIVISOR_TEXT_LIST.enumerated() {
             if item == divisorText {
                 return index
@@ -865,11 +943,25 @@ public struct MeshControl {
         }
         return nil
     }
-    public static func getFastCadencePeriodDivisorText(divisor: Int) -> String? {
-        guard divisor < MeshControl.FAST_CADENCE_PERIOD_DIVISOR_TEXT_LIST.count else {
-            return nil
+    public static func getFastCadencePeriodDivisor(divisorText: String) -> Int {
+        var divisorIndex: Int = 0
+        for (index, item) in MeshControl.FAST_CADENCE_PERIOD_DIVISOR_TEXT_LIST.enumerated() {
+            if item == divisorText {
+                divisorIndex = Int(index)
+            }
         }
-        return MeshControl.FAST_CADENCE_PERIOD_DIVISOR_TEXT_LIST[divisor]
+        return (1 << (divisorIndex + 1))
+    }
+    public static func getFastCadencePeriodDivisorText(divisor: Int) -> String {
+        var index: Int = 0
+        var divisorTemp = divisor
+        while (divisorTemp > 1) {
+            index += 1
+            divisorTemp >>= 1
+        }
+        index = min(index - 1, MeshControl.FAST_CADENCE_PERIOD_DIVISOR_TEXT_LIST.count - 1)
+        index = max(index, 0)
+        return MeshControl.FAST_CADENCE_PERIOD_DIVISOR_TEXT_LIST[index]
     }
 
     public static let MESH_CLIENT_ADDRESS_ALL_PROXIES  = 0xFFFC

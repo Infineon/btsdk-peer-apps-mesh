@@ -1,6 +1,6 @@
 /*
  *
- *  * Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+ *  * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
  *  * Cypress Semiconductor Corporation. All Rights Reserved.
  *  *
  *  * This software, including source code, documentation and related
@@ -170,6 +170,11 @@ public class ActivityOtaUpgrade extends AppCompatActivity implements LightingSer
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "OTaUpgrade");
+                if (mDfuMethod == 1){
+                    Log.d(TAG, "OTaUpgrade method:" + mDfuMethod);
+                    show("App DFU to all method is not supported!", Toast.LENGTH_SHORT);
+                    return;
+                }
                 AlertDialog alertDialog = new AlertDialog.Builder(ActivityOtaUpgrade.this).create();
                 alertDialog.setTitle("OTA upgrade");
                 alertDialog.setMessage("\nStart OTA Upgrade ? \n\nFile selected :\n \n" + mFileName);
@@ -567,8 +572,9 @@ public class ActivityOtaUpgrade extends AppCompatActivity implements LightingSer
 
     @Override
     public void onDfuStatus(byte status, byte progress) {
-        Log.d(TAG,"onDfuStatus");
-        int percent;
+        Log.d(TAG,"onDfuStatus: "+status);
+        Log.d(TAG,"onDfuprogress: "+progress+"%");
+//        int percent;
         String txt = dfuStatusTxt.getText().toString();
 
         switch(status){

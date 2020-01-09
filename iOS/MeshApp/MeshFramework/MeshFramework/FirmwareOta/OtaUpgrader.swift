@@ -95,13 +95,14 @@ open class OtaUpgrader: OtaUpgraderProtocol {
             return otaDevice
         }
         set {
-            otaDevice = delegate
+            otaDevice = newValue
         }
     }
 
     private var dfuType: Int = MeshDfuType.APP_OTA_TO_DEVICE
     private var dfuMetadata: OtaDfuMetadata?
     private var dfuProxyToDevice: String?
+    private var otaTransferForDfu: Bool = false
 
     private var otaCommandTimer: Timer?
     private let lock = NSLock()
@@ -138,14 +139,14 @@ open class OtaUpgrader: OtaUpgraderProtocol {
     }
 
     open func dumpOtaUpgradeStatus() {
-        print("dumpOtaUpgradeStatus, otaState:\(state.description), isOtaUpgradeRunning:\(isOtaUpgradeRunning), isDeviceConnected:\(isDeviceConnected), prepareOtaUpgradeOnly:\(prepareOtaUpgradeOnly), isOtaUpgradePrepareReady:\(isOtaUpgradePrepareReady)")
+        meshLog("dumpOtaUpgradeStatus, otaState:\(state.description), isOtaUpgradeRunning:\(isOtaUpgradeRunning), isDeviceConnected:\(isDeviceConnected), prepareOtaUpgradeOnly:\(prepareOtaUpgradeOnly), isOtaUpgradePrepareReady:\(isOtaUpgradePrepareReady)")
     }
 
     open func otaUpgradePrepare(for device: OtaDeviceProtocol) -> Int {
         lock.lock()
         if isOtaUpgradeRunning {
             dumpOtaUpgradeStatus()
-            print("error: OtaUpgrader, otaUpgradePrepare, ota upgrader has been started, busying")
+            meshLog("error: OtaUpgrader, otaUpgradePrepare, ota upgrader has been started, busying")
             lock.unlock()
             return OtaErrorCode.BUSYING
         }
@@ -170,7 +171,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         lock.lock()
         if !isOtaUpgradePrepareReady, isOtaUpgradeRunning {
             dumpOtaUpgradeStatus()
-            print("error: OtaUpgrader, otaUpgradeStart, ota upgrader has been started, busying")
+            meshLog("error: OtaUpgrader, otaUpgradeStart, ota upgrader has been started, busying")
             lock.unlock()
             return OtaErrorCode.BUSYING
         }
@@ -181,11 +182,11 @@ open class OtaUpgrader: OtaUpgraderProtocol {
             self.fwImageSize = fwImage.count
         } else {
             if self.dfuType != MeshDfuType.APP_OTA_TO_DEVICE || self.activeDfuCommand != .NONE {
-                print("OtaUpgrader, otaUpgradeStart, active DFU command = \(self.activeDfuCommand) or i, fwImage not set, continue")
+                meshLog("OtaUpgrader, otaUpgradeStart, active DFU command = \(self.activeDfuCommand) or i, fwImage not set, continue")
                 self.fwImage = nil
                 self.fwImageSize = 0
             } else {
-                print("error: OtaUpgrader, otaUpgradeStart, invalid OTA firmware image, nil")
+                meshLog("error: OtaUpgrader, otaUpgradeStart, invalid OTA firmware image, nil")
                 lock.lock()
                 isOtaUpgradeRunning = false
                 lock.unlock()
@@ -215,7 +216,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         self.maxOtaPacketSize = OtaUpgrader.getMaxDataTransferSize(deviceType: device.getDeviceType())
         self.completeError = nil
 
-        print("OtaUpgrader, otaUpgradeStart, otaDevice name:\(device.getDeviceName()), type:\(device.getDeviceType())")
+        meshLog("OtaUpgrader, otaUpgradeStart, otaDevice name:\(device.getDeviceName()), type:\(device.getDeviceType())")
         OtaNotificationData.init(otaError: OtaError(state: .idle, code: OtaErrorCode.SUCCESS, desc: "otaUpgradeStart started")).post()
         DispatchQueue.main.async {
             self.stateMachineProcess()
@@ -228,9 +229,14 @@ open class OtaUpgrader: OtaUpgraderProtocol {
     ///
     /// Interfaces for receiving notification or response data from remote device.
     ///
-
     open func didUpdateConnectionState(isConnected: Bool, error: Error?) {
+        DispatchQueue.main.async {
+            self._didUpdateConnectionState(isConnected: isConnected, error: error)
+        }
+    }
+    open func _didUpdateConnectionState(isConnected: Bool, error: Error?) {
         guard isOtaUpgradeRunning, state != .idle else {
+            otaDevice?.otaDeviceHasConnected = false
             return
         }
 
@@ -243,13 +249,15 @@ open class OtaUpgrader: OtaUpgraderProtocol {
          */
         if state == .verify,  otaCommandTimer?.isValid ?? false, !isConnected {
             otaVerifyResponse(data: Data(repeating: 0, count: 1), error: nil)
+            otaDevice?.otaDeviceHasConnected = false
             return
         }
 
         stopOtaCommandTimer()
         guard error == nil, isConnected else {
+            otaDevice?.otaDeviceHasConnected = false
             if error != nil {
-                print("error: OtaUpgrader, didUpdateConnectionState, unexpected disconnect from or failed to connect to remote OTA device, error:\(error!)")
+                meshLog("error: OtaUpgrader, didUpdateConnectionState, unexpected disconnect from or failed to connect to remote OTA device, error:\(error!)")
                 let errorDomain = (error! as NSError).domain
                 let errorCode = (error! as NSError).code
                 if errorCode == CBError.Code.connectionTimeout.rawValue, errorDomain == CBErrorDomain {
@@ -258,7 +266,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
                     completeError = OtaError(state: state, code: OtaErrorCode.ERROR_DEVICE_CONNECT, desc: "disconnected from remote device or failed to connect to the remote device")
                 }
             } else {
-                print("error: OtaUpgrader, didUpdateConnectionState, disconnected from remote OTA device")
+                meshLog("error: OtaUpgrader, didUpdateConnectionState, disconnected from remote OTA device")
                 completeError = OtaError(state: state, code: OtaErrorCode.ERROR_DEVICE_DISCONNECT, desc: "disconnect from remote device")
             }
             OtaNotificationData(otaError: completeError!).post()
@@ -271,12 +279,19 @@ open class OtaUpgrader: OtaUpgraderProtocol {
             return
         }
 
+        meshLog("_didUpdateConnectionState, state=\(state), otaTransferForDfu=\(otaTransferForDfu)")
+        otaDevice?.otaDeviceHasConnected = true
+        otaDevice?.otaDevice = MeshNativeHelper.getCurrentConnectedPeripheral()
         OtaNotificationData(otaState: state, otaError: nil).post()
         if self.prepareOtaUpgradeOnly || self.dfuType == MeshDfuType.APP_OTA_TO_DEVICE {
             state = .otaServiceDiscover
             stateMachineProcess()
         } else {
-            state = .dfuStart
+            if state == .dfuStart, otaTransferForDfu {
+                state = .otaServiceDiscover
+            } else {
+                state = .dfuStart
+            }
             stateMachineProcess()
         }
     }
@@ -286,6 +301,11 @@ open class OtaUpgrader: OtaUpgraderProtocol {
      * After the OTA service has been discovered, the OTA adapter should save those instacen for later usage.
      */
     open func didUpdateOtaServiceCharacteristicState(isDiscovered: Bool, error: Error?) {
+        DispatchQueue.main.async {
+            self._didUpdateOtaServiceCharacteristicState(isDiscovered: isDiscovered, error: error)
+        }
+    }
+    open func _didUpdateOtaServiceCharacteristicState(isDiscovered: Bool, error: Error?) {
         guard isOtaUpgradeRunning, isDeviceConnected, state != .idle else {
             return
         }
@@ -294,10 +314,10 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         guard error == nil, isDiscovered else {
             OtaManager.shared.dumpOtaStatus()
             if error != nil {
-                print("error: OtaUpgrader, didUpdateOtaServiceCharacteristicState, failed to discover OTA GATT service, error:\(error!)")
+                meshLog("error: OtaUpgrader, didUpdateOtaServiceCharacteristicState, failed to discover OTA GATT service, error:\(error!)")
                 completeError = OtaError(state: state, code: OtaErrorCode.ERROR_DISCOVER_SERVICE, desc: "discover OTA service with error")
             } else {
-                print("error: OtaUpgrader, didUpdateOtaServiceCharacteristicState, no OTA GATT service discovered from remote OTA device")
+                meshLog("error: OtaUpgrader, didUpdateOtaServiceCharacteristicState, no OTA GATT service discovered from remote OTA device")
                 completeError = OtaError(state: state, code: OtaErrorCode.ERROR_DEVICE_OTA_NOT_SUPPORTED, desc: "no OTA service discovered")
             }
             OtaNotificationData(otaError: completeError!).post()
@@ -324,6 +344,11 @@ open class OtaUpgrader: OtaUpgraderProtocol {
      * The OTA adapter must call this interface when the notification states of the OTA service Control Pointer characteristic is udpated,
      */
     open func didUpdateNotificationState(isEnabled: Bool, error: Error?) {
+        DispatchQueue.main.async {
+            self._didUpdateNotificationState(isEnabled: isEnabled, error: error)
+        }
+    }
+    open func _didUpdateNotificationState(isEnabled: Bool, error: Error?) {
         guard isOtaUpgradeRunning, isDeviceConnected, state != .idle else {
             return
         }
@@ -332,10 +357,10 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         guard error == nil, isEnabled else {
             OtaManager.shared.dumpOtaStatus()
             if error != nil {
-                print("error: OtaUpgrader, didUpdateNotificationState, failed to enable OTA Control Point characteristic notification, error:\(error!)")
+                meshLog("error: OtaUpgrader, didUpdateNotificationState, failed to enable OTA Control Point characteristic notification, error:\(error!)")
                 completeError = OtaError(state: state, code: OtaErrorCode.ERROR_CHARACTERISTIC_NOTIFICATION_UPDATE, desc: "enable notification with error")
             } else {
-                print("error: OtaUpgrader, didUpdateOtaServiceCharacteristicState, OTA Control Point characteristic notification not enabled")
+                meshLog("error: OtaUpgrader, didUpdateOtaServiceCharacteristicState, OTA Control Point characteristic notification not enabled")
                 completeError = OtaError(state: state, code: OtaErrorCode.ERROR_CHARACTERISTIC_NOTIFICATION_UPDATE, desc: "notification disabled")
             }
             OtaNotificationData(otaError: completeError!).post()
@@ -360,6 +385,11 @@ open class OtaUpgrader: OtaUpgraderProtocol {
      * inlcuding the characterisitic indication/notification data and read value data.
      */
     open func didUpdateValueFor(characteristic: OtaCharacteristic, value: Data?, error: Error?) {
+        DispatchQueue.main.async {
+            self._didUpdateValueFor(characteristic: characteristic, value: value, error: error)
+        }
+    }
+    open func _didUpdateValueFor(characteristic: OtaCharacteristic, value: Data?, error: Error?) {
         guard isOtaUpgradeRunning, isDeviceConnected, state != .idle else {
             return
         }
@@ -380,7 +410,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         case .abort:
             otaAbortResponse(data: value, error: error)
         default:
-            print("warnning: OtaUpgrader, didUpdateValueFor, state=\(state.description)")
+            meshLog("warnning: OtaUpgrader, didUpdateValueFor, state=\(state.description)")
             break
         }
     }
@@ -415,6 +445,10 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         case .abort:
             self.otaAbort()
         case .complete:
+            if otaTransferForDfu {
+                otaTransferForDfu = false
+                MeshFrameworkManager.shared.meshClientDfuOtaFinish(status: (completeError == nil) ? MeshErrorCode.MESH_SUCCESS : MeshErrorCode.MESH_ERROR_INVALID_STATE)
+            }
             self.otaCompleted()
             lock.lock()
             if prepareOtaUpgradeOnly {
@@ -429,14 +463,14 @@ open class OtaUpgrader: OtaUpgraderProtocol {
             isGetComponentInfoRunning = false
             activeDfuCommand = .NONE
             lock.unlock()
-            print("OtaUpgrader, stateMachineProcess, exit")
+            meshLog("OtaUpgrader, stateMachineProcess, exit")
         }
     }
 
     private func otaConnect() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaConnect, otaDevice instance is nil")
+            meshLog("error: OtaUpgrader, otaConnect, otaDevice instance is nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .complete
@@ -451,7 +485,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
     private func discoverOtaServiceCharacteristics() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, discoverOtaServiceCharacteristics, invalid delegate:nil")
+            meshLog("error: OtaUpgrader, discoverOtaServiceCharacteristics, invalid delegate:nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .complete
@@ -466,7 +500,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
     private func otaReadAppInfo() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaReadAppInfo, otaDevice instance is nil")
+            meshLog("error: OtaUpgrader, otaReadAppInfo, otaDevice instance is nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .complete
@@ -553,7 +587,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
     private func otaEnableNotification() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaEnableNotification, otaDevice instance is nil")
+            meshLog("error: OtaUpgrader, otaEnableNotification, otaDevice instance is nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .complete
@@ -562,13 +596,14 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         }
 
         startOtaCommandTimer()
+        meshLog("OtaUpgrader, enable notification")
         otaDevice.enableOtaNotification(enabled: true)
     }
 
     private func otaPrepareForDownload() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaPrepareForDownload, otaDevice instance is nil")
+            meshLog("error: OtaUpgrader, otaPrepareForDownload, otaDevice instance is nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .complete
@@ -577,11 +612,12 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         }
 
         startOtaCommandTimer()
+        meshLog("OtaUpgrader, prepare download")
         var otaCommand = OtaCommandData(command: .prepareDownload)
-        if otaDevice.otaVersion == OtaConstants.OTA_VERSION_2, let metadata = self.dfuMetadata {
+        if dfuType != MeshDfuType.APP_OTA_TO_DEVICE, let metadata = self.dfuMetadata {
             otaCommand = OtaCommandData(command: .prepareDownload, companyId: metadata.companyId, firmwareId: metadata.firwmareId)
         }
-        print("OtaUpgrader, otaPrepareForDownload, OTA_VERSION_\(otaDevice.otaVersion), otaCommand.value.count=\(otaCommand.value.count)")
+        meshLog("OtaUpgrader, otaPrepareForDownload, OTA_VERSION_\(otaDevice.otaVersion), otaCommand.value.count=\(otaCommand.value.count)")
         otaDevice.writeValue(to: .controlPointCharacteristic, value: otaCommand.value) { (data, error) in
             guard error == nil else {
                 self.otaPrepareForDownloadResponse(data: data, error: error)
@@ -594,7 +630,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         stopOtaCommandTimer()
         guard error == nil else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaPrepareForDownload, failed to write Prepare for Download command, error:\(error!)")
+            meshLog("error: OtaUpgrader, otaPrepareForDownload, failed to write Prepare for Download command, error:\(error!)")
             completeError = OtaError(state: state, code: OtaErrorCode.FAILED, desc: "failed to write Prepare for Download command")
             OtaNotificationData(otaError: completeError!).post()
             state = .complete
@@ -617,7 +653,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
     private func otaStartDownload() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaStartDownload, otaDevice instance is nil")
+            meshLog("error: OtaUpgrader, otaStartDownload, otaDevice instance is nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .abort
@@ -626,6 +662,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         }
 
         startOtaCommandTimer()
+        meshLog("OtaUpgrader, start download")
         let otaCommand = OtaCommandData(command: .startDownload, lParam: UInt32(fwImageSize))
         otaDevice.writeValue(to: .controlPointCharacteristic, value: otaCommand.value) { (data, error) in
             guard error == nil else {
@@ -639,7 +676,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         stopOtaCommandTimer()
         guard error == nil else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaStartDownload, failed to write Start Download command, error:\(error!)")
+            meshLog("error: OtaUpgrader, otaStartDownload, failed to write Start Download command, error:\(error!)")
             completeError = OtaError(state: state, code: OtaErrorCode.FAILED, desc: "failed to write Start Download command")
             OtaNotificationData(otaError: completeError!).post()
             state = .abort
@@ -648,7 +685,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         }
 
         let status = OtaCommandStatus.parse(from: data)
-        print("OtaUpgrader, otaStartDownloadResponse, status:\(status.description())")
+        meshLog("OtaUpgrader, otaStartDownloadResponse, status:\(status.description())")
         if status == .success {
             OtaNotificationData(otaState: state, otaError: nil).post()
             state = .dataTransfer
@@ -664,10 +701,10 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         guard let otaDevice = self.otaDevice, let fwImage = self.fwImage else {
             OtaManager.shared.dumpOtaStatus()
             if self.otaDevice == nil {
-                print("error: OtaUpgrader, otaTransferData, otaDevice instance is nil")
+                meshLog("error: OtaUpgrader, otaTransferData, otaDevice instance is nil")
                 completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             } else {
-                print("error: OtaUpgrader, otaTransferData, invalid fwImage nil")
+                meshLog("error: OtaUpgrader, otaTransferData, invalid fwImage nil")
                 completeError = OtaError(state: state, code: OtaErrorCode.INVALID_FW_IMAGE, desc: "fw image data is nil")
             }
             OtaNotificationData(otaError: completeError!, fwImageSize: fwImageSize, transferredImageSize: fwOffset).post()
@@ -690,11 +727,11 @@ open class OtaUpgrader: OtaUpgraderProtocol {
             if (fwOffset + transferringSize) >= fwImageSize {
                 fwCrc32 ^= CRC32_INIT_VALUE     // this is the last packet, get final calculated fw image CRC value.
             }
-            print("OtaUpgrader, otaTransferData, fwImageSize:\(fwImageSize), write at offset:\(fwOffset), size:\(transferringSize)")
+            meshLog("OtaUpgrader, otaTransferData, fwImageSize:\(fwImageSize), write at offset:\(fwOffset), size:\(transferringSize)")
             startOtaCommandTimer()
             otaDevice.writeValue(to: .dataCharacteristic, value: transferData, completion: self.otaTransferDataResponse)
         } else {
-            print("warnning: OtaUpgrader, otaTransferData, no more data for transferring, fwImageSize:\(fwImageSize), offset:\(fwOffset)")
+            meshLog("warnning: OtaUpgrader, otaTransferData, no more data for transferring, fwImageSize:\(fwImageSize), offset:\(fwOffset)")
             stopOtaCommandTimer()
             fwOffset = fwImageSize
             OtaNotificationData(otaState: state, otaError: nil, fwImageSize: self.fwImageSize, transferredImageSize: fwOffset).post()
@@ -708,7 +745,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         stopOtaCommandTimer()
         guard error == nil else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaTransferData, failed to write transfer data, error:\(error!)")
+            meshLog("error: OtaUpgrader, otaTransferData, failed to write transfer data, error:\(error!)")
             completeError = OtaError(state: state, code: OtaErrorCode.FAILED, desc: "failed to write transfer data")
             OtaNotificationData(otaError: completeError!, fwImageSize: fwImageSize, transferredImageSize: fwOffset).post()
             state = .abort
@@ -720,7 +757,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         OtaNotificationData(otaState: state, otaError: nil, fwImageSize: self.fwImageSize, transferredImageSize: fwOffset).post()
 
         if fwOffset >= fwImageSize {
-            print("OtaUpgrader, otaTransferData, fwImageSize:\(fwImageSize), totally transferred size:\(fwOffset), done")
+            meshLog("OtaUpgrader, otaTransferData, fwImageSize:\(fwImageSize), totally transferred size:\(fwOffset), done")
             state = .verify
         }
         stateMachineProcess()
@@ -729,7 +766,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
     private func otaVerify() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaVerify, otaDevice instance is nil")
+            meshLog("error: OtaUpgrader, otaVerify, otaDevice instance is nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .abort
@@ -739,7 +776,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
 
         startOtaCommandTimer()
         let otaCommand = OtaCommandData(command: .verify, lParam: UInt32(fwCrc32))
-        print("OtaUpgrader, otaVerify, CRC32=\(String.init(format: "0x%X", fwCrc32))")
+        meshLog("OtaUpgrader, otaVerify, CRC32=\(String.init(format: "0x%X", fwCrc32))")
         otaDevice.writeValue(to: .controlPointCharacteristic, value: otaCommand.value) { (data, error) in
             guard error == nil else {
                 self.otaVerifyResponse(data: data, error: error)
@@ -752,7 +789,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         stopOtaCommandTimer()
         guard error == nil else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaVerify, failed to write Verify command, error:\(error!)")
+            meshLog("error: OtaUpgrader, otaVerify, failed to write Verify command, error:\(error!)")
             completeError = OtaError(state: state, code: OtaErrorCode.FAILED, desc: "failed to write Verify command")
             OtaNotificationData(otaError: completeError!).post()
             state = .abort
@@ -761,10 +798,16 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         }
 
         let status = OtaCommandStatus.parse(from: data)
-        print("OtaUpgrader, otaVerifyResponse, status:\(status.description())")
+        meshLog("OtaUpgrader, otaVerifyResponse, status:\(status.description())")
         if status == .success {
             OtaNotificationData(otaState: state, otaError: nil).post()
-            state = .apply
+            if otaTransferForDfu {
+                state = .complete
+                otaTransferForDfu = false
+                MeshFrameworkManager.shared.meshClientDfuOtaFinish(status: MeshErrorCode.MESH_SUCCESS)
+            } else {
+                state = .apply
+            }
         } else {
             completeError = OtaError(state: state, code: OtaErrorCode.ERROR_OTA_VERIFICATION_FAILED, desc: "firmware downloaded image CRC32 verification failed")
             OtaNotificationData(otaState: state, otaError: completeError).post()
@@ -776,7 +819,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
     private func otaApply() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaApply, otaDevice instance is nil")
+            meshLog("error: OtaUpgrader, otaApply, otaDevice instance is nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .abort
@@ -784,6 +827,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
             return
         }
 
+        meshLog("OtaUpgrader, otaApply, otaDevice.otaVersion=\(otaDevice.otaVersion)")
         // The apply command only supported in OTA_VERSION_2 DFU OTA.
         guard otaDevice.otaVersion == OtaConstants.OTA_VERSION_2 else {
             state = .complete
@@ -814,7 +858,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         stopOtaCommandTimer()
         guard error == nil else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaApply, failed to write apply command, error:\(error!)")
+            meshLog("error: OtaUpgrader, otaApply, failed to write apply command, error:\(error!)")
             completeError = OtaError(state: state,
                                      code: OtaErrorCode.ERROR_CHARACTERISTIC_WRITE_VALUE,
                                      desc: "failed to write apply command")
@@ -825,7 +869,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         }
 
         let status = OtaCommandStatus.parse(from: data)
-        print("OtaUpgrader, otaApplyResponse, status:\(status.description())")
+        meshLog("OtaUpgrader, otaApplyResponse, status:\(status.description())")
         if status == .success {
             OtaNotificationData(otaState: state, otaError: nil).post()
             state = .dfuStart
@@ -840,7 +884,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
     private func otaStartDfu() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaStartDfu, otaDevice instance is nil")
+            meshLog("error: OtaUpgrader, otaStartDfu, otaDevice instance is nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .complete
@@ -852,13 +896,13 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         if self.activeDfuCommand == .DFU_GET_STATUS {
             let error = MeshFrameworkManager.shared.meshClientDfuGetStatus(componentName: dfuStartDeviceName)
             if error != MeshErrorCode.MESH_SUCCESS {
-                print("error: OtaUpgrader, otaStartDfu, failed to exectue meshClientDfuGetStatus, error:\(error)")
+                meshLog("error: OtaUpgrader, otaStartDfu, failed to exectue meshClientDfuGetStatus, error:\(error)")
                 completeError = OtaError(state: state, code: OtaErrorCode.FAILED, desc: "failed to exectue meshClientDfuGetStatus. Error Code: \(error)")
                 OtaNotificationData(otaState: state, otaError: completeError!).post()
             }
             state = .complete
             stateMachineProcess()
-            print("OtaUpgrader, otaStartDfu, meshClientDfuGetStatus return success")
+            meshLog("OtaUpgrader, otaStartDfu, meshClientDfuGetStatus return success")
             return
         }
 
@@ -871,7 +915,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         }
 
         guard let metadata = self.dfuMetadata else {
-            print("error: OtaUpgrader, otaStartDfu, invalid metadata, nil")
+            meshLog("error: OtaUpgrader, otaStartDfu, invalid metadata, nil")
             completeError = OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "firmware metadata is nil")
             OtaNotificationData(otaError: completeError!).post()
             state = .complete
@@ -879,11 +923,11 @@ open class OtaUpgrader: OtaUpgraderProtocol {
             return
         }
 
-        // Send DFU start command.
-        print("OtaUpgrader, otaStartDfu, dfuType: \(dfuType), dfuStartDeviceName: \(dfuStartDeviceName), companyId: \(metadata.companyId), firmwareId: \(metadata.firwmareId.dumpHexBytes())")
+        // Send DFU start command, onDfuEventReceived callback will be executed when meshClientDfuStart started successfully.
+        meshLog("OtaUpgrader, otaStartDfu, dfuType: \(dfuType), dfuStartDeviceName: \(dfuStartDeviceName), companyId: \(metadata.companyId), firmwareId: \(metadata.firwmareId.dumpHexBytes())")
         let error = Int(MeshNativeHelper.meshClientDfuStart(Int32(dfuType), componentName: dfuStartDeviceName, firmwareId: metadata.firwmareId, validationData: metadata.validationData))
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: OtaUpgrader, otaStartDfu, failed to exectue DFU start command, error:\(error)")
+            meshLog("error: OtaUpgrader, otaStartDfu, failed to exectue DFU start command, error:\(error)")
             completeError = OtaError(state: state, code: OtaErrorCode.FAILED, desc: "failed to exectue DFU start command. Error Code: \(error)")
             OtaNotificationData(otaState: state, otaError: completeError!).post()
             state = .complete
@@ -893,15 +937,15 @@ open class OtaUpgrader: OtaUpgraderProtocol {
 
         OtaUpgrader.isDfuStarted = true
         OtaNotificationData(otaState: state, otaError: nil).post()
-        state = .complete
-        stateMachineProcess()
-        print("OtaUpgrader, otaStartDfu, DFU start command finished success")
+        //state = .complete
+        //stateMachineProcess()
+        meshLog("OtaUpgrader, otaStartDfu, DFU start command executed success")
     }
 
     private func otaAbort() {
         guard let otaDevice = self.otaDevice else {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaAbort, otaDevice instance is nil")
+            meshLog("error: OtaUpgrader, otaAbort, otaDevice instance is nil")
             //OtaNotificationData(otaError: OtaError(state: state, code: OtaErrorCode.INVALID_PARAMETERS, desc: "otaDevice instance is nil")).post()
             state = .complete
             stateMachineProcess()
@@ -926,22 +970,22 @@ open class OtaUpgrader: OtaUpgraderProtocol {
             let error = MeshFrameworkManager.shared.meshClientDfuStop()
             if error == MeshErrorCode.MESH_SUCCESS {
                 OtaUpgrader.isDfuStarted = false
-                print("warning: OtaUpgrader, otaAbortResponse, DFU process stopped manually, error=\(error)")
+                meshLog("warning: OtaUpgrader, otaAbortResponse, DFU process stopped manually, error=\(error)")
             } else {
-                print("error: OtaUpgrader, otaAbortResponse, failed to send DFU stop command, error=\(error)")
+                meshLog("error: OtaUpgrader, otaAbortResponse, failed to send DFU stop command, error=\(error)")
             }
-            print("OtaUpgrader, otaAbortResponse, DFU stopped for \(String(describing: MeshDfuType.getDfuTypeText(type: self.dfuType)))")
+            meshLog("OtaUpgrader, otaAbortResponse, DFU stopped for \(String(describing: MeshDfuType.getDfuTypeText(type: self.dfuType)))")
             return
         }
 
         var abortError: OtaError?
         if let error = error {
             OtaManager.shared.dumpOtaStatus()
-            print("error: OtaUpgrader, otaAbortResponse, failed to write Abort command, error:\(error)")
+            meshLog("error: OtaUpgrader, otaAbortResponse, failed to write Abort command, error:\(error)")
             abortError = OtaError(state: state, code: OtaErrorCode.FAILED, desc: "failed to write Abort command")
         } else {
             let status = OtaCommandStatus.parse(from: data)
-            print("OtaUpgrader, otaAbortResponse, response status:\(status.description())")
+            meshLog("OtaUpgrader, otaAbortResponse, response status:\(status.description())")
             if status == .success {
                 abortError = OtaError(state: state, code: OtaErrorCode.ERROR_OTA_ABORTED, desc: "OTA processed has been aborted")
             } else {
@@ -960,52 +1004,58 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         OtaManager.shared.dumpOtaStatus()
         if completeError == nil {
             if self.activeDfuCommand != .NONE {
-                print("OtaUpgrader, otaCompleted, active DFU command=\(self.activeDfuCommand) started with success ")
+                meshLog("OtaUpgrader, otaCompleted, active DFU command=\(self.activeDfuCommand) started with success")
             } else {
-                print("OtaUpgrader, otaCompleted, done with success ")
+                meshLog("OtaUpgrader, otaCompleted, done with success, self.activeDfuCommand=\(self.activeDfuCommand)")
             }
         } else {
             if self.activeDfuCommand != .NONE {
-                print("error: OtaUpgrader, otaCompleted, failed to start active DFU command=\(self.activeDfuCommand), error: (\(completeError!.code), \(completeError!.description))")
+                meshLog("error: OtaUpgrader, otaCompleted, failed to start active DFU command=\(self.activeDfuCommand), error: (\(completeError!.code), \(completeError!.description)), self.activeDfuCommand=\(self.activeDfuCommand)")
             } else {
-                print("error: OtaUpgrader, otaCompleted, done with error: (\(completeError!.code), \(completeError!.description))")
+                meshLog("error: OtaUpgrader, otaCompleted, done with error: (\(completeError!.code), \(completeError!.description)), self.activeDfuCommand=\(self.activeDfuCommand)")
             }
         }
 
         if self.activeDfuCommand == .DFU_APPLY, completeError == nil {
             OtaNotificationData(otaState: .complete, otaError: OtaError(state: .apply, code: MeshErrorCode.MESH_SUCCESS, desc: "success")).post()
         } else {
+            guard self.activeDfuCommand != .DFU_STOP else {
+                return
+            }
             OtaNotificationData(otaState: .complete, otaError: completeError).post()
         }
     }
 
-    /// DFU OTA only supported OTA_VERSION_2 in devices.
-    open func otaDfuStart(for device: OtaDeviceProtocol, dfuType: Int, fwImage: Data, metadata: OtaDfuMetadata, proxyToDevice: String? = nil) -> Int {
+    /// DFU OTA enterances.
+    open func otaDfuStart(for device: OtaDeviceProtocol, dfuType: Int, fwImage: Data, metadata: OtaDfuMetadata) -> Int {
         self.dfuType = dfuType
         self.dfuMetadata = metadata
-        self.dfuProxyToDevice = proxyToDevice
         self.activeDfuCommand = .DFU_START
         return self.otaUpgradeStart(for: device, fwImage: fwImage)
     }
 
     open func otaDfuStop() -> Int {
-        if self.dfuType == MeshDfuType.APP_OTA_TO_DEVICE ||
+        self.activeDfuCommand = .DFU_STOP
+        self.dfuType = OtaUpgrader.activeDfuType ?? MeshDfuType.PROXY_DFU_TO_ALL
+        self.completeError = OtaError(state: state, code: OtaErrorCode.ERROR_OTA_ABORTED, desc: "DFU process stopped manually")
+        let error = MeshFrameworkManager.shared.meshClientDfuStop()
+        if error == MeshErrorCode.MESH_SUCCESS {
+            OtaUpgrader.isDfuStarted = false
+            meshLog("warning: OtaUpgrader, otaDfuStop, DFU process stopped manually, error=\(error)")
+        } else {
+            meshLog("error: OtaUpgrader, otaDfuStop, failed to send DFU stop command, error=\(error)")
+        }
+        if self.dfuType == MeshDfuType.APP_OTA_TO_DEVICE || self.otaTransferForDfu ||
             (self.state.rawValue >= OtaState.enableNotification.rawValue && self.state.rawValue <= OtaState.verify.rawValue) {
             self.otaAbort()
         } else {
-            let error = MeshFrameworkManager.shared.meshClientDfuStop()
-            if error == MeshErrorCode.MESH_SUCCESS {
-                OtaUpgrader.isDfuStarted = false
-                print("warning: OtaUpgrader, otaDfuStop, DFU process stopped manually, error=\(error)")
-            } else {
-                print("error: OtaUpgrader, otaDfuStop, failed to send DFU stop command, error=\(error)")
-            }
+            self.state = .complete
+            self.stateMachineProcess()
         }
         return MeshErrorCode.MESH_SUCCESS
     }
 
     open func otaDfuApply(for device: OtaDeviceProtocol) -> Int {
-        self.activeDfuCommand = .DFU_APPLY
         return MeshErrorCode.MESH_SUCCESS; // Do nothing for DFU apply, currently.
 
         /* Support first DFU revision.
@@ -1015,7 +1065,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         lock.lock()
         if self.activeDfuCommand != .NONE {
             lock.unlock()
-            print("error: OtaUpgrader, otaDfuApply has been called, busying")
+            meshLog("error: OtaUpgrader, otaDfuApply has been called, busying")
             OtaNotificationData(otaState: .complete, otaError: OtaError(state: .apply, code: MeshErrorCode.MESH_ERROR_API_IS_BUSYING, desc: "DFU Apply has been called, busying")).post()
             return MeshErrorCode.MESH_ERROR_API_IS_BUSYING
         }
@@ -1027,14 +1077,14 @@ open class OtaUpgrader: OtaUpgraderProtocol {
 
     open func otaGetDfuStatus(for device: OtaDeviceProtocol) -> Int {
         guard let dfuType = OtaUpgrader.activeDfuType, dfuType != MeshDfuType.APP_OTA_TO_DEVICE else {
-            print("APP_OTA_TO_DEVICE does not support get DFU status")
+            meshLog("APP_OTA_TO_DEVICE does not support get DFU status")
             return MeshErrorCode.MESH_ERROR_INVALID_STATE
         }
 
         if OtaUpgrader.isDfuStarted, dfuType == MeshDfuType.APP_DFU_TO_ALL {   // The component device should have been connected whent he DFU process has been started.
             let error = MeshFrameworkManager.shared.meshClientDfuGetStatus(componentName: device.getDeviceName())
             if error != MeshErrorCode.MESH_SUCCESS {
-                print("error: OtaUpgrader, otaGetDfuStatus, failed to exectue meshClientDfuGetStatus, error:\(error)")
+                meshLog("error: OtaUpgrader, otaGetDfuStatus, failed to exectue meshClientDfuGetStatus, error:\(error)")
             }
             return error
         }
@@ -1042,6 +1092,13 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         self.dfuType = dfuType
         self.activeDfuCommand = .DFU_GET_STATUS
         return self.otaUpgradeStart(for: device)
+    }
+
+    open func onDfuEventReceived(event: Int, data: Data) {
+        DispatchQueue.main.async {
+            self.otaTransferForDfu = true
+            self._didUpdateConnectionState(isConnected: true, error: nil)
+        }
     }
 }
 
@@ -1239,6 +1296,11 @@ extension OtaUpgrader {
     }
 
     @objc private func onOtaCommandTimeout() {
+        DispatchQueue.main.async {
+            self._onOtaCommandTimeout()
+        }
+    }
+    private func _onOtaCommandTimeout() {
         if state == .readAppInfo {
             // AppInfo read are not supported on some devices, so bypass the error if it happen.
             otaReadAppInfoResponse(data: nil, error: nil)
@@ -1304,7 +1366,7 @@ extension OtaUpgrader {
         var isDirectory = ObjCBool(false)
         let exists = FileManager.default.fileExists(atPath: filePath, isDirectory: &isDirectory)
         guard exists, !isDirectory.boolValue, let fwImageData = FileManager.default.contents(atPath: filePath), fwImageData.count > 0 else {
-            print("error: OtaUpgrader, readParseFirmwareImage, failed to read and parse firmware image: \(filePath)")
+            meshLog("error: OtaUpgrader, readParseFirmwareImage, failed to read and parse firmware image: \(filePath)")
             MeshNativeHelper.meshClientSetDfuFilePath(nil);
             return nil
         }
@@ -1372,7 +1434,7 @@ extension OtaUpgrader {
 
             guard let cid = cid, let fwId = fwId, let pid = pid, let hwid = hwid, let fwVer = fwVer,
                 let fwVerMaj = fwVerMaj, let fwVerMin = fwVerMin, let fwVerRev = fwVerRev else {
-                    print("error: OtaUpgrader, readFwMetadataImageFile, invalid content of the matadata image. \(lines)")
+                    meshLog("error: OtaUpgrader, readFwMetadataImageFile, invalid content of the matadata image. \(lines)")
                     MeshNativeHelper.meshClientClearDfuFwMetadata()
                     return nil
             }
@@ -1383,7 +1445,7 @@ extension OtaUpgrader {
             }
 
             guard let validationData = validationData else {
-                print("error: OtaUpgrader, readFwMetadataImageFile, invalid content of the matadata image, no validation data. \(lines)")
+                meshLog("error: OtaUpgrader, readFwMetadataImageFile, invalid content of the matadata image, no validation data. \(lines)")
                 MeshNativeHelper.meshClientClearDfuFwMetadata()
                 return nil
             }
@@ -1391,7 +1453,7 @@ extension OtaUpgrader {
             MeshNativeHelper.meshClientSetDfuFwMetadata(fwId, validationData: validationData)
             return (cid, fwId, pid, hwid, fwVer, fwVerMaj, fwVerMin, fwVerRev, validationData)
         } catch {
-            print("error: OtaUpgrader, readFwMetadataImageFile, failed to read \"\(path)\". \(error)")
+            meshLog("error: OtaUpgrader, readFwMetadataImageFile, failed to read \"\(path)\". \(error)")
         }
         MeshNativeHelper.meshClientClearDfuFwMetadata()
         return nil

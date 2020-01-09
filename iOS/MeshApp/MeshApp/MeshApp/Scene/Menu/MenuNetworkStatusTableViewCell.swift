@@ -68,7 +68,7 @@ class MenuNetworkStatusTableViewCell: UITableViewCell {
     }
 
     @IBAction func onNetworkStatusReflashButtonClick(_ sender: UIButton) {
-        print("MenuNetworkStatusTableViewCell, onNetworkStatusReflashButtonClick")
+        meshLog("MenuNetworkStatusTableViewCell, onNetworkStatusReflashButtonClick")
         connectingToMeshNetwork()
     }
 
@@ -89,7 +89,7 @@ class MenuNetworkStatusTableViewCell: UITableViewCell {
             self.networkStatusMessageLabel.text = networkConnectingMsg
             networkStatusReflashButton.imageView?.startRotate()
             MeshFrameworkManager.shared.connectMeshNetwork { (isConnected: Bool, connId: Int, addr: Int, isOverGatt: Bool, error: Int) in
-                print("MenuNetworkStatusTableViewCell, connectingToMeshNetwork completion, isConnected:\(isConnected), connId:\(connId), addr:\(addr), isOverGatt:\(isOverGatt), error:\(error)")
+                meshLog("MenuNetworkStatusTableViewCell, connectingToMeshNetwork completion, isConnected:\(isConnected), connId:\(connId), addr:\(addr), isOverGatt:\(isOverGatt), error:\(error)")
                 guard error == MeshErrorCode.MESH_SUCCESS else {
                     if let vc = self.parentVC {
                         var message = "Failed to connect to mesh network. Error Code: \(error)."

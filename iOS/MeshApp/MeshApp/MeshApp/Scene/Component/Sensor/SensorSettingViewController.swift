@@ -101,7 +101,9 @@ class SensorSettingViewController: UIViewController {
         let sensorSettingProperties = getSensorSettingProperties()
         sensorPropertyDropListButton.dropDownItems = sensorSettingProperties
 
+        cadenceSettingsFastCadenceButton.isSelected = UserSettings.shared.isSensorFastCadenceEnabled
         onFastCadenceButtonSelected(isSelected: cadenceSettingsFastCadenceButton.isSelected)
+        cadenceSettingsTriggersButton.isSelected = UserSettings.shared.isSensorTriggerPubEnabled
         onTriggerButtonSelected(isSelected: cadenceSettingsTriggersButton.isSelected)
         sensorSettingEnable(isEnabled: !sensorSettingProperties.isEmpty)
 
@@ -114,6 +116,8 @@ class SensorSettingViewController: UIViewController {
         let publishPeriod = MeshFrameworkManager.shared.meshClientGetPublicationPeriod(componentName: componentName, isClient: false, method: MeshControl.METHOD_SENSOR)
         if publishPeriod > 0 {
             publishPeriodTimeTextView.text = "\(publishPeriod)"
+        } else {
+            publishPeriodTimeTextView.text = "10000"    // set to default 10000ms.
         }
 
         // initialize Cadence Settings.
@@ -125,19 +129,38 @@ class SensorSettingViewController: UIViewController {
             }
 
             // settings for Fast Cadence.
-            fastCadenceMeasurementDropListbutton.setSelection(select: MeshControl.MEASUREMENT_TYPE_INSIDE)
-            fastCadenceRangeMinValueTextView.text = "\(cadenceSettings.fastCadenceLow)"
-            fastCadenceRangeMaxValueTextView.text = "\(cadenceSettings.fastCadenceHigh)"
-            if let divisorText = MeshControl.getFastCadencePeriodDivisorText(divisor: cadenceSettings.fastCadencePeriodDivisor) {
-                fastCadencePublishPeriodDropListButton.setSelection(select: divisorText)
-            } else {
-                fastCadencePublishPeriodDropListButton.setSelection(select: MeshControl.DEFAULT_FAST_CADENCE_PERIOD_DIVISOR)
+            if cadenceSettings.fastCadencePeriodDivisor > 1 {
+                UserSettings.shared.isSensorFastCadenceEnabled = true
+                cadenceSettingsFastCadenceButton.isSelected = true
+
+                if cadenceSettings.fastCadenceLow == cadenceSettings.fastCadenceHigh {
+                    fastCadenceRangeMinValueTextView.text = "\(cadenceSettings.fastCadenceLow)"
+                    fastCadenceRangeMaxValueTextView.text = "\(cadenceSettings.fastCadenceHigh)"
+                    fastCadenceMeasurementDropListbutton.setSelection(select: UserSettings.shared.sensorFastCadenceMeasureType)
+                } else if cadenceSettings.fastCadenceLow > cadenceSettings.fastCadenceHigh {
+                    fastCadenceRangeMinValueTextView.text = "\(cadenceSettings.fastCadenceHigh)"
+                    fastCadenceRangeMaxValueTextView.text = "\(cadenceSettings.fastCadenceLow)"
+                    fastCadenceMeasurementDropListbutton.setSelection(select: MeshControl.MEASUREMENT_TYPE_OUTSIDE)
+                    UserSettings.shared.sensorFastCadenceMeasureType = MeshControl.getMeasurementTypeText(type: MeshControl.MEASUREMENT_TYPE_OUTSIDE)!
+                } else {
+                    fastCadenceRangeMinValueTextView.text = "\(cadenceSettings.fastCadenceLow)"
+                    fastCadenceRangeMaxValueTextView.text = "\(cadenceSettings.fastCadenceHigh)"
+                    fastCadenceMeasurementDropListbutton.setSelection(select: MeshControl.MEASUREMENT_TYPE_INSIDE)
+                    UserSettings.shared.sensorFastCadenceMeasureType = MeshControl.getMeasurementTypeText(type: MeshControl.MEASUREMENT_TYPE_INSIDE)!
+                }
             }
 
+            fastCadencePublishPeriodDropListButton.setSelection(select: MeshControl.getFastCadencePeriodDivisorText(divisor: cadenceSettings.fastCadencePeriodDivisor))
+
             // settings for Triggers.
-            triggerPublishNoMoreThanSecondsTextView.text = "\(cadenceSettings.minInterval)"
-            triggerPublishIncreaseUnitTextView.text = "\(cadenceSettings.triggerDeltaUp)"
-            triggerPublishDecreaseUnitTextView.text = "\(cadenceSettings.triggerDeltaDown)"
+            if cadenceSettings.triggerDeltaUp != 0 || cadenceSettings.triggerDeltaDown != 0 {
+                UserSettings.shared.isSensorTriggerPubEnabled = true
+                cadenceSettingsTriggersButton.isSelected = true
+
+                triggerPublishIncreaseUnitTextView.text = "\(cadenceSettings.triggerDeltaUp)"
+                triggerPublishDecreaseUnitTextView.text = "\(cadenceSettings.triggerDeltaDown)"
+            }
+            triggerPublishNoMoreThanSecondsTextView.text = "\(cadenceSettings.minInterval / 1000)"  // // convert by from ms to seconds.
         }
 
         // initialize sensor property settings.
@@ -271,52 +294,60 @@ class SensorSettingViewController: UIViewController {
 
     @IBAction func onPublishToDropListButtonClick(_ sender: CustomDropDownButton) {
         publishToDropListButton.showDropList(width: 220, parent: self) {
-            print("\(self.publishToDropListButton.selectedIndex), \(self.publishToDropListButton.selectedString)")
+            meshLog("\(self.publishToDropListButton.selectedIndex), \(self.publishToDropListButton.selectedString)")
         }
     }
 
     @IBAction func onCadenceStatusTriggerTypeDropDwonButtonClick(_ sender: CustomDropDownButton) {
         cadenceStatusTriggerTypeDropDwonButton.showDropList(width: 150, parent: self) {
-            print("onCadenceStatusTriggerTypeDropDwonButtonClick, \(self.cadenceStatusTriggerTypeDropDwonButton.selectedIndex), \(self.cadenceStatusTriggerTypeDropDwonButton.selectedString)")
+            meshLog("onCadenceStatusTriggerTypeDropDwonButtonClick, \(self.cadenceStatusTriggerTypeDropDwonButton.selectedIndex), \(self.cadenceStatusTriggerTypeDropDwonButton.selectedString)")
         }
     }
 
     @IBAction func onFastCadenceMeasurementDropListbuttonClick(_ sender: CustomDropDownButton) {
         fastCadenceMeasurementDropListbutton.showDropList(width: 150, parent: self) {
-            print("fastCadenceMeasurementDropListbutton, \(self.fastCadenceMeasurementDropListbutton.selectedIndex), \(self.fastCadenceMeasurementDropListbutton.selectedString)")
+            meshLog("fastCadenceMeasurementDropListbutton, \(self.fastCadenceMeasurementDropListbutton.selectedIndex), \(self.fastCadenceMeasurementDropListbutton.selectedString)")
         }
     }
 
     @IBAction func onFastCadencePublishPeriodDropListButtonClick(_ sender: CustomDropDownButton) {
         fastCadencePublishPeriodDropListButton.showDropList(width: 100, parent: self) {
-            print("fastCadencePublishPeriodDropListButton, \(self.fastCadencePublishPeriodDropListButton.selectedIndex), \(self.fastCadencePublishPeriodDropListButton.selectedString)")
+            meshLog("fastCadencePublishPeriodDropListButton, \(self.fastCadencePublishPeriodDropListButton.selectedIndex), \(self.fastCadencePublishPeriodDropListButton.selectedString)")
         }
     }
 
     @IBAction func onSensorPropertyDropListButtonClick(_ sender: CustomDropDownButton) {
         sensorPropertyDropListButton.showDropList(width: 220, parent: self) {
-            print("sensorPropertyDropListButton, \(self.sensorPropertyDropListButton.selectedIndex), \(self.sensorPropertyDropListButton.selectedString)")
+            meshLog("sensorPropertyDropListButton, \(self.sensorPropertyDropListButton.selectedIndex), \(self.sensorPropertyDropListButton.selectedString)")
         }
     }
 
     // MARK: - apply setting data to the remote device
 
     @IBAction func onPublishSetButtonClick(_ sender: UIButton) {
-        print("SensorSettingViewController, onPublishSetButtonClick")
+        meshLog("SensorSettingViewController, onPublishSetButtonClick")
         guard let componentName = self.componentName else {
-            print("error: SensorSettingViewController, onPublishSetButtonClick, invalid nil mesh component name")
+            meshLog("error: SensorSettingViewController, onPublishSetButtonClick, invalid nil mesh component name")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil mesh component name.")
             return
         }
         guard let periodText = publishPeriodTimeTextView.text, !periodText.isEmpty else {
-            print("error: SensorSettingViewController, onPublishSetButtonClick, period textField is empty or not set")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Please input the publish period time firstly before click the Publsh Set button.")
+            meshLog("error: SensorSettingViewController, onPublishSetButtonClick, period textField is empty or not set")
+            UtilityManager.showAlertDialogue(parentVC: self, message: "Please set the correct publish period time value in milliseconds.")
             return
         }
 
         let publishTarget = publishToDropListButton.selectedString
-        let publishPeriod = Int(periodText) ?? MeshConstants.MESH_DEFAULT_PUBLISH_PERIOD
-        print("SensorSettingViewController, onPublishSetButtonClick, input values, publishTarget:\(publishTarget), publishPeriod:\(publishPeriod), groupName=\(String(describing: self.groupName))")
+        var publishPeriod = 10000
+        if let value = Int(periodText), value <= Int32.max {
+            publishPeriod = value
+        } else {
+            meshLog("error: SensorSettingViewController, onPublishSetButtonClick, invalid priod time value or too big, periodText=\(periodText)")
+            UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid period time value, please set the correct value in milliseconds.")
+            return
+        }
+
+        meshLog("SensorSettingViewController, onPublishSetButtonClick, input values, publishTarget:\(publishTarget), publishPeriod:\(publishPeriod), groupName=\(String(describing: self.groupName))")
         if let groupName = self.groupName, groupName != publishTarget {
             UtilityManager.showAlertDialogue(parentVC: self,
                                              message: "Are you sure to set publish target to \"\(publishTarget)\" instead of active group \"\(groupName)\"?\nClick OK to continue.\nClick Cancle to change the publish target.",
@@ -326,7 +357,7 @@ class SensorSettingViewController: UIViewController {
                     DispatchQueue.main.async {
                         self.doPublishSet(componentName: componentName, publishTargetName: publishTarget, publishPeriod: publishPeriod)
                     }
-            }
+                }
             )
         }
 
@@ -335,14 +366,14 @@ class SensorSettingViewController: UIViewController {
     func doPublishSet(componentName: String, publishTargetName: String, publishPeriod: Int) {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: SensorViewController, doPublishSet, failed to connect to mesh network, error:\(error)")
+                meshLog("error: SensorViewController, doPublishSet, failed to connect to mesh network, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the mesh network. Error Code: \(error).")
                 return
             }
 
             var error = MeshFrameworkManager.shared.setMeshPublicationConfiguration()
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: SensorSettingViewController, onPublishSetButtonClick, failed to call setMeshPublicationConfiguration API, error:\(error)")
+                meshLog("error: SensorSettingViewController, onPublishSetButtonClick, failed to call setMeshPublicationConfiguration API, error:\(error)")
                 if error == MeshErrorCode.MESH_ERROR_INVALID_STATE {
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network is busying, please try again a little later.")
                 } else {
@@ -353,7 +384,7 @@ class SensorSettingViewController: UIViewController {
 
             error = MeshFrameworkManager.shared.configureMeshPublication(componentName: componentName, isClient: false, method: MeshControl.METHOD_SENSOR, targetName: publishTargetName, publishPeriod: publishPeriod)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: SensorSettingViewController, onPublishSetButtonClick, failed to call setMeshPublicationConfiguration API, error:\(error)")
+                meshLog("error: SensorSettingViewController, onPublishSetButtonClick, failed to call setMeshPublicationConfiguration API, error:\(error)")
                 if error == MeshErrorCode.MESH_ERROR_INVALID_STATE {
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network is busying, please try again a little later.")
                 } else {
@@ -362,35 +393,78 @@ class SensorSettingViewController: UIViewController {
                 return
             }
 
-            print("SensorSettingViewController, onPublishSetButtonClick, configureMeshPublication success, publishTarget:\(publishTargetName), publishPeriod:\(publishPeriod)")
+            meshLog("SensorSettingViewController, onPublishSetButtonClick, configureMeshPublication success, publishTarget:\(publishTargetName), publishPeriod:\(publishPeriod)")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Publish Set done successfully.", title: "Success")
         }
     }
 
     @IBAction func onCadenceSetButtonClick(_ sender: UIButton) {
-        print("SensorSettingViewController, onCadenceSetButtonClick")
+        meshLog("SensorSettingViewController, onCadenceSetButtonClick")
         guard let componentName = self.componentName else {
-            print("error: SensorSettingViewController, onCadenceSetButtonClick, invalid nil mesh component name")
+            meshLog("error: SensorSettingViewController, onCadenceSetButtonClick, invalid nil mesh component name")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil mesh component name.")
             return
         }
         guard let minIntervalText = triggerPublishNoMoreThanSecondsTextView.text else {
-            print("error: SensorSettingViewController, onCadenceSetButtonClick, triggerPublishNoMoreThanSecondsTextView not set")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Please set minimum interval more than 1 second(s).")
+            meshLog("error: SensorSettingViewController, onCadenceSetButtonClick, triggerPublishNoMoreThanSecondsTextView not set")
+            UtilityManager.showAlertDialogue(parentVC: self, message: "Please set minimum interval not less than 1 second(s).")
             return
         }
 
-        let triggerType: Int = MeshControl.getTriggerType(typeText: cadenceStatusTriggerTypeDropDwonButton.selectedString)  ?? MeshConstants.SENSOR_TRIGGER_TYPE
-        let fastCadenceLow: Int = Int(fastCadenceRangeMinValueTextView.text ?? "") ?? MeshConstants.SENSOR_FAST_CADENCE_LOW
-        let fastCadenceHigh: Int = Int(fastCadenceRangeMaxValueTextView.text ?? "") ?? MeshConstants.SENSOR_FAST_CADENCE_HIGH
-        let fastCadencePeriodDivisor: Int = MeshControl.getFastCadencePeriodDivisor(divisorText: fastCadencePublishPeriodDropListButton.selectedString) ?? MeshConstants.SENSOR_FAST_CADENCE_PERIOD_DIVISOR
-        let minInterval: Int = Int(minIntervalText) ?? MeshConstants.SENSOR_MIN_INTERVAL
-        let triggerDeltaDown: Int = Int(triggerPublishDecreaseUnitTextView.text ?? "") ?? MeshConstants.SENSOR_TRIGGER_DELTA_DOWN
-        let triggerDeltaUp: Int = Int(triggerPublishIncreaseUnitTextView.text ?? "") ?? MeshConstants.SENSOR_TRIGGER_DELTA_UP
+        let triggerType: Int = MeshControl.getTriggerType(typeText: cadenceStatusTriggerTypeDropDwonButton.selectedString) ?? MeshConstants.SENSOR_TRIGGER_TYPE
+
+        var fastCadencePeriodDivisor: Int = 1
+        var fastCadenceLow: Int = 0
+        var fastCadenceHigh: Int = 0
+        if cadenceSettingsFastCadenceButton.isSelected {
+            fastCadencePeriodDivisor = MeshControl.getFastCadencePeriodDivisor(divisorText: fastCadencePublishPeriodDropListButton.selectedString)
+            let isInside = (MeshControl.getMeasurementType(typeText: fastCadenceMeasurementDropListbutton.selectedString) ?? MeshControl.MEASUREMENT_TYPE_INSIDE) == MeshControl.MEASUREMENT_TYPE_INSIDE ? true : false
+            let newLow = Int(fastCadenceRangeMinValueTextView.text ?? "") ?? MeshConstants.SENSOR_FAST_CADENCE_LOW
+            fastCadenceRangeMinValueTextView.text = "\(newLow)"
+            let newHigh = Int(fastCadenceRangeMaxValueTextView.text ?? "") ?? MeshConstants.SENSOR_FAST_CADENCE_HIGH
+            fastCadenceRangeMinValueTextView.text = "\(newHigh)"
+            fastCadenceLow = isInside ? newLow : newHigh
+            fastCadenceHigh = isInside ? newHigh : newLow
+        }
+
+        var triggerDeltaDown: Int = 0
+        var triggerDeltaUp: Int = 0
+        var minInterval = MeshConstants.SENSOR_MIN_INTERVAL * 1000
+        if cadenceSettingsTriggersButton.isSelected {
+            if let value = Int(minIntervalText), value <= (Int32.max / 1000) {
+                if value < MeshConstants.SENSOR_MIN_INTERVAL {
+                    triggerPublishNoMoreThanSecondsTextView.text = "\(MeshConstants.SENSOR_MIN_INTERVAL)"
+                } else {
+                    minInterval = value * 1000
+                }
+            } else {
+                // if the input value is invaid or not set, set to default value.
+                meshLog("warning: invalid input triggerPublishNoMoreThanSecondsTextView.text:\(String(describing: triggerPublishNoMoreThanSecondsTextView.text)) value, reset to default: \(MeshConstants.SENSOR_MIN_INTERVAL)")
+                triggerPublishNoMoreThanSecondsTextView.text = "\(MeshConstants.SENSOR_MIN_INTERVAL)"
+            }
+
+            if let value = Int(triggerPublishIncreaseUnitTextView.text ?? ""), value <= Int32.max {
+                triggerDeltaUp = value
+            } else {
+                meshLog("warning: invalid input triggerPublishIncreaseUnitTextView.text:\(String(describing: triggerPublishIncreaseUnitTextView.text)) value, reset to default: 0")
+                triggerPublishIncreaseUnitTextView.text = "0"
+            }
+            if let value = Int(triggerPublishDecreaseUnitTextView.text ?? ""), value <= Int32.max {
+                triggerDeltaDown = value
+            } else {
+                meshLog("warning: invalid input triggerPublishDecreaseUnitTextView.text:\(String(describing: triggerPublishDecreaseUnitTextView.text)) value, reset to default: 0")
+                triggerPublishDecreaseUnitTextView.text = "0"
+            }
+        }
+
+        // store the settings that cannot be reterieved in APIs in app when it executed.
+        UserSettings.shared.sensorFastCadenceMeasureType = fastCadenceMeasurementDropListbutton.selectedString
+        UserSettings.shared.isSensorFastCadenceEnabled = cadenceSettingsFastCadenceButton.isSelected
+        UserSettings.shared.isSensorTriggerPubEnabled = cadenceSettingsTriggersButton.isSelected
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: SensorViewController, onCadenceSetButtonClick, failed to connect to mesh network, error:\(error)")
+                meshLog("error: SensorViewController, onCadenceSetButtonClick, failed to connect to mesh network, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the mesh network. Error Code: \(error).")
                 return
             }
@@ -404,7 +478,7 @@ class SensorSettingViewController: UIViewController {
                                                                                fastCadenceLow: fastCadenceLow,
                                                                                fastCadenceHigh: fastCadenceHigh)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: SensorSettingViewController, onCadenceSetButtonClick, failed to call meshClientSensorCadenceSet API, error:\(error)")
+                meshLog("error: SensorSettingViewController, onCadenceSetButtonClick, failed to call meshClientSensorCadenceSet API, error:\(error)")
                 if error == MeshErrorCode.MESH_ERROR_INVALID_STATE {
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network is busying, please try again a little later.")
                 } else {
@@ -413,41 +487,39 @@ class SensorSettingViewController: UIViewController {
                 return
             }
 
-            print("SensorSettingViewController, onCadenceSetButtonClick, call meshClientSensorCadenceSet done success")
+            meshLog("SensorSettingViewController, onCadenceSetButtonClick, call meshClientSensorCadenceSet done success")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Cadence Set done successfully.", title: "Success")
         }
     }
 
     @IBAction func onSensorSettingSetButtonClick(_ sender: UIButton) {
-        print("SensorSettingViewController, onSensorSettingSetButtonClick")
+        meshLog("SensorSettingViewController, onSensorSettingSetButtonClick")
         guard let componentName = self.componentName else {
-            print("error: SensorSettingViewController, onSensorSettingSetButtonClick, invalid nil mesh component name")
+            meshLog("error: SensorSettingViewController, onSensorSettingSetButtonClick, invalid nil mesh component name")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil mesh component name.")
             return
         }
         guard let valueText = sensorSettingPropertyValueTextView.text, !valueText.isEmpty else {
-            print("error: SensorSettingViewController, onSensorSettingSetButtonClick, sensor setting value textField is empty or not set")
+            meshLog("error: SensorSettingViewController, onSensorSettingSetButtonClick, sensor setting value textField is empty or not set")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Please set the property setting value firstly before click the Sensor Setting Set button.")
             return
         }
 
         let settingPropertyId = MeshPropertyId.getPropertyIdByText(sensorPropertyDropListButton.selectedString)
-        var bytes = [UInt8](repeating: 0, count: 2)
-        if let valueText = sensorSettingPropertyValueTextView.text, !valueText.isEmpty {
-            bytes[0] = UInt8(valueText) ?? 0
-        }
-        print("SensorSettingViewController, onSensorSettingSetButtonClick, settingPropertyId:\(String(format: "0x%04x", settingPropertyId)) set values: \(Data(bytes).dumpHexBytes())")
+        let bytes = [UInt8](repeating: 0, count: 2)
+        let propertyData = UtilityManager.convertHexDigitStringToData(hexDigit: sensorSettingPropertyValueTextView.text) ?? Data(bytes: bytes, count: 2)
+        meshLog("SensorSettingViewController, onSensorSettingSetButtonClick, settingPropertyId:\(String(format: "0x%04x", settingPropertyId)) set values: \(propertyData.dumpHexBytes())")
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: SensorViewController, onSensorSettingSetButtonClick, failed to connect to mesh network, error:\(error)")
+                meshLog("error: SensorViewController, onSensorSettingSetButtonClick, failed to connect to mesh network, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the mesh network. Error Code: \(error).")
                 return
             }
 
-            let error = MeshFrameworkManager.shared.meshClientSensorSettingSet(componentName: componentName, propertyId: self.propertyId, settingPropertyId: settingPropertyId, value: Data(bytes))
+            let error = MeshFrameworkManager.shared.meshClientSensorSettingSet(componentName: componentName, propertyId: self.propertyId, settingPropertyId: settingPropertyId, value: propertyData)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: SensorSettingViewController, onSensorSettingSetButtonClick, failed to call meshClientSensorSettingSet API, error:\(error)")
+                meshLog("error: SensorSettingViewController, onSensorSettingSetButtonClick, failed to call meshClientSensorSettingSet API, error:\(error)")
                 if error == MeshErrorCode.MESH_ERROR_INVALID_STATE {
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network is busying, please try again a little later.")
                 } else {
@@ -456,7 +528,7 @@ class SensorSettingViewController: UIViewController {
                 return
             }
 
-            print("SensorSettingViewController, onSensorSettingSetButtonClick, call meshClientSensorSettingSet API done success)")
+            meshLog("SensorSettingViewController, onSensorSettingSetButtonClick, call meshClientSensorSettingSet API done success)")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Sensor Setting Set done successfully.", title: "Success")
         }
     }

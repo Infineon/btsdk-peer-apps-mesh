@@ -38,13 +38,13 @@ open class TrackingHelper: NSObject {
             isValueChanged = true
         }
 
-        print("TrackingHelper, execute, componentType=\(componentType)")
+        meshLog("TrackingHelper, execute, componentType=\(componentType)")
         switch componentType {
         case MeshConstants.MESH_COMPONENT_LIGHT_HSL:
             if let hslSet = self.hslSet, isValueChanged {
                 MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
                     guard error == MeshErrorCode.MESH_SUCCESS else {
-                        print("TrackingHelper, failed to connect to mesh network")
+                        meshLog("TrackingHelper, failed to connect to mesh network")
                         return
                     }
 
@@ -55,7 +55,7 @@ open class TrackingHelper: NSObject {
                                                                       reliable: reliable,
                                                                       transitionTime: UInt32(hslSet.transitionTime),
                                                                       delay: UInt16(hslSet.delay)))
-                    print("TrackingHelper, meshClientHslSet, \(hslSet), reliable=\(reliable), error=\(error)")
+                    meshLog("TrackingHelper, meshClientHslSet, \(hslSet), reliable=\(reliable), error=\(error)")
                     self.isValueChanged = false
                 }
             }
@@ -65,7 +65,7 @@ open class TrackingHelper: NSObject {
             if let levelSet = self.levelSet, isValueChanged {
                 MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
                     guard error == MeshErrorCode.MESH_SUCCESS else {
-                        print("TrackingHelper, failed to connect to mesh network")
+                        meshLog("TrackingHelper, failed to connect to mesh network")
                         return
                     }
 
@@ -74,7 +74,7 @@ open class TrackingHelper: NSObject {
                                                                         reliable: reliable,
                                                                         transitionTime: UInt32(levelSet.transitionTime),
                                                                         delay: UInt16(levelSet.delay)))
-                    print("TrackingHelper, meshClientLevelSet, \(levelSet), reliable=\(reliable), error=\(error)")
+                    meshLog("TrackingHelper, meshClientLevelSet, \(levelSet), reliable=\(reliable), error=\(error)")
                     self.isValueChanged = false
                 }
             }
@@ -82,7 +82,7 @@ open class TrackingHelper: NSObject {
             if let lightnessSet = self.lightnessSet, isValueChanged {
                 MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
                     guard error == MeshErrorCode.MESH_SUCCESS else {
-                        print("TrackingHelper, failed to connect to mesh network")
+                        meshLog("TrackingHelper, failed to connect to mesh network")
                         return
                     }
 
@@ -91,7 +91,7 @@ open class TrackingHelper: NSObject {
                                                                             reliable: reliable,
                                                                             transitionTime: UInt32(lightnessSet.transitionTime),
                                                                             delay: UInt16(lightnessSet.delay)))
-                    print("TrackingHelper, meshClientLightnessSet, \(lightnessSet), reliable=\(reliable), error=\(error)")
+                    meshLog("TrackingHelper, meshClientLightnessSet, \(lightnessSet), reliable=\(reliable), error=\(error)")
                     self.isValueChanged = false
                 }
             }
@@ -99,7 +99,7 @@ open class TrackingHelper: NSObject {
             if let ctlSet = self.ctlSet, isValueChanged {
                 MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
                     guard error == MeshErrorCode.MESH_SUCCESS else {
-                        print("TrackingHelper, failed to connect to mesh network")
+                        meshLog("TrackingHelper, failed to connect to mesh network")
                         return
                     }
 
@@ -110,7 +110,7 @@ open class TrackingHelper: NSObject {
                                                                       reliable: reliable,
                                                                       transitionTime: UInt32(ctlSet.transitionTime),
                                                                       delay: UInt16(ctlSet.delay)))
-                    print("TrackingHelper, meshClientCtlSet, \(ctlSet), reliable=\(reliable), error=\(error)")
+                    meshLog("TrackingHelper, meshClientCtlSet, \(ctlSet), reliable=\(reliable), error=\(error)")
                     self.isValueChanged = false
                 }
             }

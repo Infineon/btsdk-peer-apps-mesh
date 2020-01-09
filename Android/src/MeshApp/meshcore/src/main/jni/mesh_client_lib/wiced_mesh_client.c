@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -41,6 +41,18 @@
 #include <string.h>
 #include <memory.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#include <io.h>
+#endif
+#ifdef __APPLE__
+#include <sys/uio.h>
+#include <dirent.h>
+#include <errno.h>
+#endif
+#if defined __ANDROID__ || defined WICEDX_LINUX
+#include <dirent.h>
+#include <errno.h>
+#endif
 #include "wiced_bt_ble.h"
 #include "wiced_mesh_client.h"
 #include "hci_control_api.h"
@@ -284,6 +296,7 @@ typedef struct
     uint8_t     provision_procedure;
 
     uint16_t    unicast_addr;       // local device unicast address
+    uint16_t    company_id;         // Local device company ID
     uint8_t     dev_key[16];        // local device key
     unprovisioned_report_t *p_first_unprovisioned;// address of the first unprovisioned report
     uint8_t     uuid[16];           // device being provisioned
@@ -322,6 +335,7 @@ typedef struct
     mesh_client_network_opened_t p_opened_callback;
     mesh_client_component_info_status_t p_component_info_status_callback;
     mesh_client_dfu_status_t p_dfu_status_callback;
+    mesh_client_dfu_event_t p_dfu_event_callback;
     mesh_client_unprovisioned_device_t p_unprovisioned_device;
     mesh_client_provision_status_t p_provision_status;
     mesh_client_connect_status_t p_connect_status;
@@ -433,6 +447,7 @@ static void mesh_process_scan_status(mesh_provision_cb_t *p_cb, wiced_bt_mesh_ev
 static void mesh_process_scan_report(mesh_provision_cb_t *p_cb, wiced_bt_mesh_event_t *p_event, wiced_bt_mesh_provision_scan_report_data_t *p_data);
 static void mesh_process_scan_extended_report(mesh_provision_cb_t *p_cb, wiced_bt_mesh_event_t *p_event, wiced_bt_mesh_provision_scan_extended_report_data_t *p_data);
 static void mesh_process_fw_distribution_status(wiced_bt_mesh_event_t *p_event, void *p);
+static void mesh_process_fw_distribution_start_ota(wiced_bt_mesh_event_t *p_event, void *p);
 static void mesh_process_light_lc_mode_status(wiced_bt_mesh_event_t* p_event, void* p_data);
 static void mesh_process_light_lc_occupancy_mode_status(wiced_bt_mesh_event_t* p_event, void* p);
 static void mesh_process_light_lc_property_status(wiced_bt_mesh_event_t* p_event, void* p_data);
@@ -564,6 +579,40 @@ int mesh_client_network_create(const char *provisioner_name, const char *provisi
     return MESH_CLIENT_SUCCESS;
 }
 
+#if !(defined(_WIN32)) && (defined(__ANDROID__) || defined(__APPLE__) || defined(WICEDX_LINUX) || defined(BSA))
+static int parse_file_ext(const struct dirent *dir, char *ext)
+{
+    // the ext must start with '.' character.
+    if (!dir || !ext || strlen(ext) < 2)
+        return 0;
+
+    if (dir->d_type == DT_REG)
+    {
+        const char *ext_start = strrchr(dir->d_name, '.');
+        if (!ext_start || ext_start == dir->d_name)
+        {
+            return 0;
+        }
+        else
+        {
+            if (strcasecmp(ext_start, ext) == 0)
+                return 1;
+        }
+    }
+    return 0;
+}
+
+static int parse_json_ext(const struct dirent *dir)
+{
+    return parse_file_ext(dir, ".json");
+}
+
+static int parse_bin_ext(const struct dirent *dir)
+{
+    return parse_file_ext(dir, ".bin");
+}
+#endif  // #if !(defined(_WIN32)) && (defined(__ANDROID__) || defined(__APPLE__) || defined(WICEDX_LINUX) || defined(BSA))
+
 int mesh_client_network_delete(const char *provisioner_name, const char *provisioner_uuid, char *mesh_name)
 {
     // we might need to init mesh to get UUID to delete RPL file.
@@ -573,9 +622,64 @@ int mesh_client_network_delete(const char *provisioner_name, const char *provisi
     }
     if (p_mesh_db != NULL)
     {
-        char filename[50];
-        get_rpl_filename(filename);
-        remove(filename);
+        // remove the RPL and UUID file only when this is the last mesh network to be deleted.
+        int json_num = 0;
+#if !(defined(_WIN32)) && (defined(__ANDROID__) || defined(__APPLE__) || defined(WICEDX_LINUX) || defined(BSA))
+        struct dirent **namelist;
+        int n;
+
+        json_num = n = scandir(".", &namelist, parse_json_ext, alphasort);
+        while (n--)
+        {
+            wiced_bt_free_buffer(namelist[n]);
+        }
+        wiced_bt_free_buffer(namelist);
+#else
+        #ifdef _WIN32
+                intptr_t hFile;
+        #else
+                long hFile;
+        #endif
+        struct _finddata_t find_file;
+
+        if ((hFile = _findfirst("*.json", &find_file)) != -1L)
+        {
+            do
+            {
+                json_num++;
+            } while (_findnext(hFile, &find_file) == 0);
+            _findclose(hFile);
+        }
+#endif // #if !(defined(_WIN32)) && (defined(__ANDROID__) || defined(__APPLE__) || defined(WICEDX_LINUX) || defined(BSA))
+
+        Log("json_num: %d\n", json_num);
+        if (json_num < 2)
+        {
+            int ret;
+            char filename[50];
+            get_rpl_filename(filename);
+            remove(filename);
+
+#if !(defined(_WIN32)) && (defined(__ANDROID__) || defined(__APPLE__) || defined(WICEDX_LINUX) || defined(BSA))
+            n = scandir(".", &namelist, parse_bin_ext, alphasort);
+            while (n--) {
+                ret = remove(namelist[n]->d_name);
+                Log("remove: %s, ret=%d, errno=%d\n", namelist[n]->d_name, ret, errno);
+                wiced_bt_free_buffer(namelist[n]);
+            }
+            wiced_bt_free_buffer(namelist);
+#else
+            if ((hFile = _findfirst("*.bin", &find_file)) != -1L)
+            {
+                do
+                {
+                    ret = remove(find_file.name);
+                    Log("remove: %s, ret=%d, errno=%d\n", find_file.name, ret, errno);
+                } while (_findnext(hFile, &find_file) == 0);
+                _findclose(hFile);
+            }
+#endif // #if !(defined(_WIN32)) && (defined(__ANDROID__) || defined(__APPLE__) || defined(WICEDX_LINUX) || defined(BSA))
+        }
 
         wiced_bt_mesh_db_deinit(p_mesh_db);
         p_mesh_db = NULL;
@@ -1136,8 +1240,8 @@ void mesh_process_seq_changed(wiced_bt_mesh_core_state_seq_t *p_seq_changed)
                     entry.seq[2] = (uint8_t)(p_seq_changed->seq >> 16);
                     fseek(fp, 0 - sizeof(entry), SEEK_CUR);
                     fwrite(&entry, 1, sizeof(entry), fp);
-                    fclose(fp);
                 }
+                fclose(fp);
                 return;
             }
         }
@@ -1171,7 +1275,10 @@ void mesh_del_seq(uint16_t addr)
     file_size = ftell(fp);
     p_buffer = (uint8_t *)wiced_bt_get_buffer(file_size);
     if (p_buffer == NULL)
+    {
+        fclose(fp);
         return;
+    }
     fseek(fp, 0, SEEK_SET);
     fread(p_buffer, 1, file_size, fp);
     fclose(fp);
@@ -1498,7 +1605,7 @@ uint8_t mesh_client_get_component_info(char *component_name, mesh_client_compone
 /*
  * Current version of the DFU, will use Proxy device as a Distributor node, and all other nodes with the same CID/PID/VID as Updating nodes.
  */
-int mesh_client_dfu_start(uint8_t dfu_method, char *component_name, uint8_t *fw_id, uint8_t fw_id_len, uint8_t *va_data, uint8_t va_data_len)
+int mesh_client_dfu_start(uint8_t dfu_method, char *component_name, uint8_t *fw_id, uint8_t fw_id_len, uint8_t *va_data, uint8_t va_data_len, wiced_bool_t ota_supported, mesh_client_dfu_event_t p_dfu_event_callback)
 {
     wiced_bt_mesh_fw_distribution_start_data_t start_data;
     wiced_bt_mesh_db_node_t *p_distributor_node = NULL;
@@ -1575,6 +1682,7 @@ int mesh_client_dfu_start(uint8_t dfu_method, char *component_name, uint8_t *fw_
         return MESH_CLIENT_ERR_NOT_FOUND;
     }
     p_cb->distributor_addr = p_distributor_node->unicast_address;
+    p_cb->p_dfu_event_callback = p_dfu_event_callback;
 
     sprintf(group_name, "dfu_%04x", p_distributor_node->unicast_address);
     mesh_client_group_create(group_name, NULL);
@@ -1584,6 +1692,7 @@ int mesh_client_dfu_start(uint8_t dfu_method, char *component_name, uint8_t *fw_
     memcpy(start_data.firmware_id.fw_id, fw_id, start_data.firmware_id.fw_id_len);
     start_data.validation_data.len = va_data_len;
     memcpy(start_data.validation_data.data, va_data, start_data.validation_data.len);
+    start_data.ota_supported = ota_supported;
 
     p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_DISTRIBUTION_CLNT, p_distributor_node->unicast_address, p_mesh_db->app_key[0].index, 0, NULL);
     if (p_event == NULL)
@@ -1592,7 +1701,7 @@ int mesh_client_dfu_start(uint8_t dfu_method, char *component_name, uint8_t *fw_
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
 
-    if (!wiced_bt_mesh_fw_provider_start(p_event, &start_data))
+    if (!wiced_bt_mesh_fw_provider_start(p_event, &start_data, mesh_provision_process_event))
     {
         Log("Failed to start DFU\n");
         return MESH_CLIENT_ERR_PROCEDURE_NOT_COMPLETE;
@@ -1694,6 +1803,14 @@ int mesh_client_dfu_get_status(char *distributor_name, mesh_client_dfu_status_t 
 
     wiced_bt_mesh_fw_provider_get_status(p_event, mesh_provision_process_event);
     return MESH_CLIENT_SUCCESS;
+}
+
+/*
+ * Report OTA event to DFU (when OTA is used for image upload)
+ */
+void mesh_client_dfu_ota_finish(uint8_t status)
+{
+    wiced_bt_mesh_fw_provider_ota_finish(status);
 }
 
 
@@ -2863,24 +2980,27 @@ int mesh_client_scan_unprovisioned(int start, uint8_t *p_uuid)
         if ((p_mesh_db->node[i].unicast_address == p_cb->unicast_addr) && (mesh_client_is_proxy_connected() && (p_cb->proxy_conn_id == 0xFFFF)))
             continue;
 
-        if ((p_event = mesh_configure_create_event(p_mesh_db->node[i].unicast_address, (p_mesh_db->node[i].unicast_address != p_cb->unicast_addr))) == NULL)
-            break;
-
-        if (p_mesh_db->node[i].scanning_state == SCANNING_STATE_IDLE)
+        if (start && (p_mesh_db->node[i].scanning_state == SCANNING_STATE_IDLE))
         {
             p_mesh_db->node[i].scanning_state = SCANNING_STATE_GETTING_INFO;
 
             Log("ScanInfoGet addr:%04x", p_mesh_db->node[i].unicast_address);
 
             mesh_configure_set_local_device_key(p_mesh_db->node[i].unicast_address);
-            wiced_bt_mesh_provision_scan_capabilities_get(p_event);
+
+            if ((p_event = mesh_configure_create_event(p_mesh_db->node[i].unicast_address, (p_mesh_db->node[i].unicast_address != p_cb->unicast_addr))) != NULL)
+                wiced_bt_mesh_provision_scan_capabilities_get(p_event);
         }
-        else
+        else if (!start &&
+           ((p_mesh_db->node[i].scanning_state == SCANNING_STATE_STARTING) ||
+            (p_mesh_db->node[i].scanning_state == SCANNING_STATE_SCANNING)))
         {
             p_mesh_db->node[i].scanning_state = SCANNING_STATE_IDLE;
 
             Log("ScanStop addr:%04x", p_mesh_db->node[i].unicast_address);
-            wiced_bt_mesh_provision_scan_stop(p_event);
+
+            if ((p_event = mesh_configure_create_event(p_mesh_db->node[i].unicast_address, (p_mesh_db->node[i].unicast_address != p_cb->unicast_addr))) != NULL)
+                wiced_bt_mesh_provision_scan_stop(p_event);
         }
     }
     return MESH_CLIENT_SUCCESS;
@@ -3034,7 +3154,6 @@ uint8_t mesh_client_provision(const char* device_name, const char* group_name, u
         wiced_bt_mesh_client_proxy_disconnect();
     else
     {
-        mesh_configure_set_local_device_key(p_cb->provisioner_addr);
         mesh_client_provision_connect(p_cb);
 
         if (p_cb->p_provision_status != NULL)
@@ -3089,7 +3208,7 @@ uint8_t mesh_client_disconnect_network(void)
     {
         p_cb->db_changed = WICED_FALSE;
 
-        if (provision_cb.p_database_changed != NULL)
+        if ((provision_cb.p_database_changed != NULL) && (p_mesh_db != NULL))
             provision_cb.p_database_changed(p_mesh_db->name);
     }
     return MESH_CLIENT_SUCCESS;
@@ -3299,6 +3418,10 @@ void mesh_provision_process_event(uint16_t event, wiced_bt_mesh_event_t *p_event
 
     case WICED_BT_MESH_FW_DISTRIBUTION_STATUS:
         mesh_process_fw_distribution_status(p_event, p_data);
+        return;
+
+    case WICED_BT_MESH_FW_DISTRIBUTION_START_OTA:
+        mesh_process_fw_distribution_start_ota(p_event, p_data);
         return;
 
     case WICED_BT_MESH_HEALTH_ATTENTION_STATUS:
@@ -4285,6 +4408,9 @@ void mesh_provision_process_provision_end(mesh_provision_cb_t *p_cb, wiced_bt_me
             {
                 // Delete the old one.
                 wiced_bt_mesh_db_node_remove(p_mesh_db, p_node->unicast_address);
+
+                mesh_del_seq(p_node->unicast_address);
+                wiced_bt_mesh_core_del_seq(p_node->unicast_address);
             }
             p_node = wiced_bt_mesh_db_node_create(p_mesh_db, p_cb->provisioning_device_name, p_cb->addr, p_cb->uuid, p_cb->num_elements, p_data->dev_key, p_data->net_key_idx);
         }
@@ -4498,6 +4624,7 @@ void mesh_configure_composition_data_status(mesh_provision_cb_t *p_cb, wiced_bt_
             wiced_bt_free_buffer(p_cb->p_local_composition_data);
 
         p_cb->p_local_composition_data = p_data;
+        p_cb->company_id = p_data->data[0] + (p_data->data[1] << 8);
 
         // If this is exactly the same device that has been configured last time, which will be likely
         // the case every time except for the very first time DB is created, do not update the
@@ -6099,8 +6226,7 @@ void configure_queue_local_device_operations(mesh_provision_cb_t *p_cb)
             for (j = 0; j < num_vs_models; j++)
             {
                 uint16_t company_id = p_comp_data[0] + (p_comp_data[1] << 8);
-                if (((company_id == MESH_COMPANY_ID_CYPRESS) || (company_id == MESH_COMPANY_ID_UNUSED))
-                 && ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL))
+                if ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
                 {
                     //wiced_bt_mesh_config_model_app_bind_data_t
                     p_op->operation = CONFIG_OPERATION_MODEL_APP_BIND;
@@ -6498,8 +6624,10 @@ void configure_queue_remote_device_operations(mesh_provision_cb_t *p_cb)
                 p_comp_data += 4;
                 comp_data_len -= 4;
 
-                // check if we know this company ID
-                if (company_id != MESH_COMPANY_ID_CYPRESS)
+                // check if we know this company ID. We will configure Vendor Specific model if it matches Company ID of the local
+                // device. For Controllers that own configuration (Windows Mesh Client, Android, iOS, the company ID is defined in
+                // the mesh_config structure.  For the embedded controller, the mesh_provision_client app contains definition
+                if (company_id != p_cb->company_id)
                     continue;
 
                 if ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
@@ -7136,6 +7264,43 @@ int mesh_client_move_component_to_group(const char *component_name, const char *
                     else
                     {
                         Log("Model:%4x is subscribed to the group:%4x\n", p_models_array[j].id, p_group_to->addr);
+                    }
+                }
+
+                // If this model was configured for publication to the group, modify the publication address keeping
+                // all other parameters of the publication. For example, a sensor may be configure for periodic publications that we want to keep.
+                uint16_t pub_addr;
+                uint16_t app_key_idx;
+                uint8_t  publish_ttl;
+                uint32_t publish_period;
+                uint16_t publish_retransmit_count;
+                uint32_t publish_retransmit_interval;
+                uint8_t  credentials;
+
+                if (wiced_bt_mesh_db_node_model_pub_get(p_mesh_db, p_node->unicast_address + i, p_models_array[j].company_id, p_models_array[j].id, &pub_addr, &app_key_idx, &publish_ttl, &publish_period, &publish_retransmit_count, &publish_retransmit_interval, &credentials)
+                 && ((pub_addr == 0xFFFF) || (pub_addr == p_group_from->addr)))
+                {
+                    Log("Model:%4x reconfigure publication to:%4x\n", p_models_array[j].id, p_group_to->addr);
+
+                    if ((p_op = (pending_operation_t*)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
+                    {
+                        memset(p_op, 0, sizeof(pending_operation_t));
+                        p_op->operation = CONFIG_OPERATION_MODEL_PUBLISH;
+                        p_op->p_event = mesh_configure_create_event(dst, (dst != p_cb->unicast_addr));
+                        p_op->uu.model_pub.element_addr = p_node->unicast_address + i;
+                        p_op->uu.model_pub.company_id = p_models_array[j].company_id;
+                        p_op->uu.model_pub.model_id = p_models_array[j].id;
+                        p_op->uu.model_pub.publish_addr[0] = p_group_to->addr & 0xff;
+                        p_op->uu.model_pub.publish_addr[1] = (p_group_to->addr >> 8) & 0xff;
+                        p_op->uu.model_pub.app_key_idx = app_key_idx;
+
+                        // if we are changing the group, use configured pub parameters, otherwise use defaults.
+                        p_op->uu.model_pub.publish_period = (pub_addr == p_group_from->addr) ? (uint32_t)publish_period : 0;
+                        p_op->uu.model_pub.publish_ttl = (pub_addr == p_group_from->addr) ? publish_ttl : p_cb->publish_ttl;
+                        p_op->uu.model_pub.publish_retransmit_count = (pub_addr == p_group_from->addr) ? publish_retransmit_count : p_cb->publish_retransmit_count;
+                        p_op->uu.model_pub.publish_retransmit_interval = (pub_addr == p_group_from->addr) ? publish_retransmit_interval : p_cb->publish_retransmit_interval;
+                        p_op->uu.model_pub.credential_flag = (pub_addr == p_group_from->addr) ? credentials : p_cb->publish_credential_flag;
+                        configure_pending_operation_queue(p_cb, p_op);
                     }
                 }
             }
@@ -8586,6 +8751,26 @@ int mesh_client_ctl_set(const char *p_name, uint16_t lightness, uint16_t tempera
     return MESH_CLIENT_SUCCESS;
 }
 
+int mesh_client_add_vendor_model(uint16_t company_id, uint16_t model_id, uint8_t num_opcodes, uint8_t *buffer, uint16_t data_len)
+{
+    wiced_bt_mesh_add_vendor_model_data_t vendata;
+
+    Log("mesh_client_add_vendor_model called\n");
+
+    memset(&vendata, 0, sizeof(wiced_bt_mesh_add_vendor_model_data_t));
+    vendata.company_id = company_id;
+    vendata.model_id = model_id;
+    vendata.num_opcodes = num_opcodes;
+    if (num_opcodes > WICED_BT_MESH_MAX_VENDOR_MODEL_OPCODES)
+        return MESH_CLIENT_ERR_INVALID_ARGS;
+
+    memcpy(vendata.opcode, buffer, 3 * num_opcodes);
+
+    wiced_bt_mesh_add_vendor_model(&vendata);
+    return MESH_CLIENT_SUCCESS;
+}
+
+
 int mesh_client_vendor_data_set(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *buffer, uint16_t data_len)
 {
     int i;
@@ -8622,15 +8807,7 @@ int mesh_client_vendor_data_set(const char *device_name, uint16_t company_id, ui
         Log("not connected\n");
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = wiced_bt_mesh_create_event(0, company_id, model_id, dst, app_key->index);
-    if (p_event == NULL)
-    {
-        Log("vendor set no mem\n");
-        return MESH_CLIENT_ERR_NO_MEMORY;
-    }
-    p_event->opcode = opcode;
 
-    Log("Send VS Data addr:%04x app_key_idx:%04x company_id:%04x model_id:%04x opcode:%02x ", p_event->dst, p_event->app_key_idx, company_id, model_id, opcode);
     char buf[100];
     uint8_t *p = buffer;
     len = data_len;
@@ -8646,6 +8823,16 @@ int mesh_client_vendor_data_set(const char *device_name, uint16_t company_id, ui
             Log(buf);
     }
     Log(buf);
+
+    wiced_bt_mesh_event_t *p_event = wiced_bt_mesh_create_event(0, company_id, model_id, dst, app_key->index);
+    if (p_event == NULL)
+    {
+        Log("vendor set no mem\n");
+        return MESH_CLIENT_ERR_NO_MEMORY;
+    }
+    p_event->opcode = opcode;
+
+    Log("Send VS Data addr:%04x app_key_idx:%04x company_id:%04x model_id:%04x opcode:%02x", p_event->dst, p_event->app_key_idx, company_id, model_id, opcode);
 
     wiced_bt_mesh_client_vendor_data(p_event, buffer, data_len);
     return MESH_CLIENT_SUCCESS;
@@ -9002,6 +9189,16 @@ void mesh_process_fw_distribution_status(wiced_bt_mesh_event_t *p_event, void *p
         mesh_client_dfu_clean_up();
 }
 
+void mesh_process_fw_distribution_start_ota(wiced_bt_mesh_event_t *p_event, void *p)
+{
+    mesh_provision_cb_t *p_cb = &provision_cb;
+
+    if (p_cb->p_dfu_event_callback != NULL)
+    {
+        p_cb->p_dfu_event_callback(DFU_EVENT_START_OTA, NULL, 0);
+    }
+}
+
 void mesh_process_on_off_status(wiced_bt_mesh_event_t *p_event, void *p)
 {
     mesh_provision_cb_t *p_cb = &provision_cb;
@@ -9271,24 +9468,18 @@ void mesh_client_connection_state_changed(uint16_t conn_id, uint16_t mtu)
         }
         p_cb->state = PROVISION_STATE_NETWORK_CONNECT;
     }
+
+    // call to gatt_client state change will result in the state machine item, notify RPR server first.
+    wiced_bt_mesh_remote_provisioning_connection_state_changed(conn_id, 0);
+
     wiced_bt_mesh_gatt_client_connection_state_changed(conn_id, mtu);
 
-    // Special case when we wait for the proxy connection to go down do not tell provisioning client which may be confused
-    // unprovision device
-    if ((p_cb->state == PROVISION_STATE_CONNECTING) && p_cb->use_gatt && (p_cb->proxy_conn_id != 0) && (p_cb->provisioner_addr == p_cb->unicast_addr))
+    if ((conn_id == 0) && (p_cb->state == PROVISION_STATE_NETWORK_CONNECT))
     {
-    }
-    else
-    {
-        wiced_bt_mesh_remote_provisioning_connection_state_changed(conn_id, 0);
+        if (p_cb->p_connect_status != NULL)
+            p_cb->p_connect_status(0, 0, 0, 1);
 
-        if ((conn_id == 0) && (p_cb->state == PROVISION_STATE_NETWORK_CONNECT))
-        {
-            if (p_cb->p_connect_status != NULL)
-                p_cb->p_connect_status(0, 0, 0, 1);
-
-            p_cb->state = PROVISION_STATE_IDLE;
-        }
+        p_cb->state = PROVISION_STATE_IDLE;
     }
 }
 

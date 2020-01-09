@@ -38,9 +38,9 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Allow to access Bluetooth devices.</string>
+	<string>The Bluetooth access is required to access and communicate with remote Bluetooth based mesh devices. Disallow it will cause no function of this MeshApp.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Allow to access Bluetooth devices.</string>
+	<string>The Bluetooth access is required to access and communicate with remote Bluetooth based mesh devices. Disallow it will cause no function of this MeshApp.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>

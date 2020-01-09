@@ -1,5 +1,5 @@
 /*
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -75,6 +75,12 @@
 #define MESH_ERROR_NO_MEM                   2
 
 #define DEFAULT_TRANSITION_TIME             0xFFFFFFFF
+
+// Mesh event (wiced_bt_mesh_event_t) is created by default to use the application configured
+// TTL value that is set by the function wiced_bt_mesh_config_default_ttl_set(...).
+// Application can override and set the TTL value for each event (p_event->ttl) with any valid values 0x00, 0x02 - 0x7F.
+#define USE_CONFIGURED_DEFAULT_TTL  0x80
+#define DEFAULT_RETRANSMISSION  0x41
 
 #ifdef __cplusplus
 extern "C"
@@ -411,12 +417,24 @@ uint8_t mesh_client_get_component_info(char *component_name, mesh_client_compone
 #define DFU_METHOD_APP_TO_ALL                       1
 #define DFU_METHOD_APP_TO_DEVICE                    2
 
-int mesh_client_dfu_start(uint8_t dfu_method, char* component_name, uint8_t* fw_id, uint8_t fw_id_len, uint8_t* va_data, uint8_t va_data_len);
+/*
+ * Callback to return DFU event.
+ */
+typedef void(*mesh_client_dfu_event_t)(uint8_t event, uint8_t *p_event_data, uint32_t event_data_length);
+
+#define DFU_EVENT_START_OTA                         1
+
+int mesh_client_dfu_start(uint8_t dfu_method, char* component_name, uint8_t* fw_id, uint8_t fw_id_len, uint8_t* va_data, uint8_t va_data_len, wiced_bool_t ota_supported, mesh_client_dfu_event_t p_dfu_event_callback);
 
 /*
  * The function can be called to stop DFU process
  */
 int mesh_client_dfu_stop(void);
+
+/*
+ * Report OTA event to DFU (when OTA is used for image upload)
+ */
+void mesh_client_dfu_ota_finish(uint8_t status);
 
 /*
  * Component info callback is used to indicate the status of the get component info operation and return the retrieved information.
@@ -513,6 +531,11 @@ int mesh_client_ctl_get(const char *device_name);
  * Set state of CTL light
  */
 int mesh_client_ctl_set(const char *device_name, uint16_t lightness, uint16_t temperature, uint16_t delta_uv, wiced_bool_t reliable, uint32_t transition_time, uint16_t delay);
+
+/*
+ * Add vendor-specific model
+ */
+int mesh_client_add_vendor_model(uint16_t company_id, uint16_t model_id, uint8_t num_opcodes, uint8_t *buffer, uint16_t data_len);
 
 /*
  * Send vendor specific data
@@ -629,7 +652,7 @@ int mesh_client_light_lc_on_off_set(const char* p_name, uint8_t on_off, wiced_bo
 
 /*
  * If start_listen is true, this function configures mesh library to receive and pass to the application messages that are sent to the group.
- * For example. This method can be used to register to receive, for example, “SENSOR” messages sent in a specific group.
+ * For example. This method can be used to register to receive, for example, "SENSOR" messages sent in a specific group.
  * If the control_method parameter is NULL, the library will register to receive messages for all types of messages.
  * Alternatively the control_message can be set to one of the predefined strings: ONOFF, LEVEL, POWER, HSL, CTL, XYL, VENDOR_XXXX or SENSOR.
  * If the group_name is NULL, the library will register to receive messages sent to all the groups. Otherwise the group_name shall be set to the name of the existing group.

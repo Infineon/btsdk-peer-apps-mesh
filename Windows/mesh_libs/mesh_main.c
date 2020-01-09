@@ -1,5 +1,5 @@
 /*
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -219,6 +219,8 @@ uint64_t clock_SystemTimeMicroseconds64(void)
 }
 
 static wiced_timer_t *wiced_timer_first = NULL;
+
+#define wiced_timer_callback_fp wiced_timer_callback_t // TODO: remove. Only for backward compatability
 
 wiced_result_t wiced_init_timer(wiced_timer_t* p_timer, wiced_timer_callback_fp TimerCb, TIMER_PARAM_TYPE cBackparam, wiced_timer_type_t type)
 {

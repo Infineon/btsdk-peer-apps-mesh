@@ -83,7 +83,7 @@ class VendorSpecificDataViewController: UIViewController {
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_VENDOR_SPECIFIC_DATA_CHANGED):
             guard let vendorData = MeshNotificationConstants.getVendorSpecificData(userInfo: userInfo) else {
-                print("error, VendorSpecificDataViewController, getVendorSpecificData, no valid data received, userInfo=\(userInfo)")
+                meshLog("error, VendorSpecificDataViewController, getVendorSpecificData, no valid data received, userInfo=\(userInfo)")
                 return
             }
 
@@ -103,17 +103,17 @@ class VendorSpecificDataViewController: UIViewController {
 
     @IBAction func onSendVendorDataButtonClick(_ sender: UIButton) {
         guard let deviceName = self.deviceName else {
-            print("error: VendorSpecificDataViewController, onSendVendorDataButtonClick, invalid deviceName, nil")
+            meshLog("error: VendorSpecificDataViewController, onSendVendorDataButtonClick, invalid deviceName, nil")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid device name or not set.", title: "Error")
             return
         }
         guard let vendorData = UtilityManager.convertHexDigitStringToData(hexDigit: setVendorDataTextfield.text) else {
             if !(setVendorDataTextfield.text?.isEmpty ?? true), !UtilityManager.isValidDigitString(digit: setVendorDataTextfield.text, isHexdecimal: true) {
-                print("error: VendorSpecificDataViewController, onSendVendorDataButtonClick, invalid vendor data, contain not hex digit characters")
+                meshLog("error: VendorSpecificDataViewController, onSendVendorDataButtonClick, invalid vendor data, contain not hex digit characters")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid vendor data, contains non hexdecimal digit characters. Please correct the invalid data and try again!", title: "Error")
                 return
             }
-            print("error: VendorSpecificDataViewController, onSendVendorDataButtonClick, vendor data not set, nil")
+            meshLog("error: VendorSpecificDataViewController, onSendVendorDataButtonClick, vendor data not set, nil")
             UtilityManager.showAlertDialogue(parentVC: self, message: "No vendor specific data set, please input hexdecimal vendor specific data firstly!", title: "Error")
             return
         }
@@ -124,19 +124,19 @@ class VendorSpecificDataViewController: UIViewController {
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected(handler: { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: VendorSpecificDataViewController, onSendVendorDataButtonClick. Error Code: \(error)")
+                meshLog("error: VendorSpecificDataViewController, onSendVendorDataButtonClick. Error Code: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to set the vendor data, Mesh network not connected yet!")
                 return
             }
 
-            print("VendorSpecificDataViewController, onSendVendorDataButtonClick, deviceName: \(deviceName), companyId: \(String(describing: companyId)), modelId: \(String(describing: modelId)), opcode: \(String(describing: opcode)), data: \(vendorData.dumpHexBytes())")
+            meshLog("VendorSpecificDataViewController, onSendVendorDataButtonClick, deviceName: \(deviceName), companyId: \(String(describing: companyId)), modelId: \(String(describing: modelId)), opcode: \(String(describing: opcode)), data: \(vendorData.dumpHexBytes())")
             let error = MeshFrameworkManager.shared.meshClientVendorDataSet(deviceName: deviceName, companyId: companyId, modelId: modelId, opcode: opcode, data: vendorData)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("VendorSpecificDataViewController, onSendVendorDataButtonClick, failed to send out data, error: \(error)")
+                meshLog("VendorSpecificDataViewController, onSendVendorDataButtonClick, failed to send out data, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send out the vendor data, please check the values of Company Id, Model Id and OpCode are all set correctly! Error Code: \(error)", title: "Error")
                 return
             }
-            print("VendorSpecificDataViewController, onSendVendorDataButtonClick, send out success")
+            meshLog("VendorSpecificDataViewController, onSendVendorDataButtonClick, send out success")
         })
     }
 }

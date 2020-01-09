@@ -60,7 +60,7 @@ class MeshStorageSettings {
 
     var currentAllFileNameUnderUserStorage: [String]? {
         guard let _ = currentUserStoragePath else {
-            print("error: currentAllFileNameUnderUserStorage, invalid MeshStorageSettings, currentUserStoragePath is nil")
+            meshLog("error: currentAllFileNameUnderUserStorage, invalid MeshStorageSettings, currentUserStoragePath is nil")
             return nil
         }
 
@@ -79,7 +79,7 @@ class MeshStorageSettings {
 
     var currentAllFilePathUnderUserStorage: [String]? {
         guard let fileStoragePath = currentUserStoragePath else {
-            print("error: currentAllFilePathUnderUserStorage, invalid MeshStorageSettings, currentUserStoragePath is nil")
+            meshLog("error: currentAllFilePathUnderUserStorage, invalid MeshStorageSettings, currentUserStoragePath is nil")
             return nil
         }
 
@@ -98,7 +98,7 @@ class MeshStorageSettings {
 
     var meshNetworksUnderExportedMeshStorage: [String]? {
         guard let exportedStoragePath = exportMeshStoragePath else {
-            print("error: meshNetworksUnderExportedMeshStorage, invalid exportMeshStoragePath nil")
+            meshLog("error: meshNetworksUnderExportedMeshStorage, invalid exportMeshStoragePath nil")
             return nil
         }
 
@@ -116,7 +116,7 @@ class MeshStorageSettings {
 
     func writeExportedMeshNetwork(networkName: String, jsonContent: String) -> Int {
         guard let rootStoragePath = self.meshStoragePath else {
-            print("error: writeExportedMeshNetwork, mesh root storage directory not initialized yet")
+            meshLog("error: writeExportedMeshNetwork, mesh root storage directory not initialized yet")
             return MeshErrorCode.MESH_ERROR_INVALID_ARGS
         }
 
@@ -127,30 +127,30 @@ class MeshStorageSettings {
         if !exists {
             do {
                 try fileManager.createDirectory(atPath: exportStoragePath, withIntermediateDirectories: true, attributes: nil)
-                print("writeExportedMeshNetwork, success on create exported mesh networks storage directory \(rootStoragePath)")
+                meshLog("writeExportedMeshNetwork, success on create exported mesh networks storage directory \(rootStoragePath)")
             } catch {
-                print("error: writeExportedMeshNetwork, failed to create exported mesh networks storage directory \(rootStoragePath), \(error)")
+                meshLog("error: writeExportedMeshNetwork, failed to create exported mesh networks storage directory \(rootStoragePath), \(error)")
                 return MeshErrorCode.MESH_ERROR_DIRECTORY_CREATE_FAILED
             }
         }
 
         if !fileManager.isReadableFile(atPath: exportStoragePath) || !fileManager.isWritableFile(atPath: exportStoragePath) {
-            print("error: writeExportedMeshNetwork, readbale=\(fileManager.isReadableFile(atPath: exportStoragePath)) or writeable=\(fileManager.isWritableFile(atPath: exportStoragePath)) not allowed at path \(exportStoragePath)")
+            meshLog("error: writeExportedMeshNetwork, readbale=\(fileManager.isReadableFile(atPath: exportStoragePath)) or writeable=\(fileManager.isWritableFile(atPath: exportStoragePath)) not allowed at path \(exportStoragePath)")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_RW_NOT_ALLOWED
         }
 
         let exportFileName = exportStoragePath + "/" + networkName + ".json"
         if FileManager.default.createFile(atPath: exportFileName, contents: jsonContent.data(using: .utf8)) {
-            print("writeExportedMeshNetwork, write exported file to \"\(exportFileName)\" success")
+            meshLog("writeExportedMeshNetwork, write exported file to \"\(exportFileName)\" success")
             return MeshErrorCode.MESH_SUCCESS
         }
-        print("writeExportedMeshNetwork, failed to write exported file to \"\(exportFileName)\"")
+        meshLog("writeExportedMeshNetwork, failed to write exported file to \"\(exportFileName)\"")
         return MeshErrorCode.MESH_ERROR_FILE_CREATE_FAILED
     }
 
     func readExportedMeshNetwork(networkName: String) -> String? {
         guard let exportMeshStoragePath = self.exportMeshStoragePath else {
-            print("error: readExportedMeshNetwork, mesh exported root storage directory not initialized yet")
+            meshLog("error: readExportedMeshNetwork, mesh exported root storage directory not initialized yet")
             return nil
         }
 
@@ -159,15 +159,15 @@ class MeshStorageSettings {
         var isDirectory = ObjCBool(false)
         let exists = fileManager.fileExists(atPath: importFilePath, isDirectory: &isDirectory)
         if !exists || isDirectory.boolValue {
-            print("error: readExportedMeshNetwork, mesh network file: \(importFilePath) not exists")
+            meshLog("error: readExportedMeshNetwork, mesh network file: \(importFilePath) not exists")
             return nil
         }
         if let networkContent = FileManager.default.contents(atPath: importFilePath), let jsonContent = String(data: networkContent, encoding: .utf8) {
-            print("readExportedMeshNetwork file: \(importFilePath) success")
+            meshLog("readExportedMeshNetwork file: \(importFilePath) success")
             return jsonContent
         }
 
-        print("error: readExportedMeshNetwork, failed to read network file: \(importFilePath)")
+        meshLog("error: readExportedMeshNetwork, failed to read network file: \(importFilePath)")
         return nil
     }
 
@@ -178,15 +178,15 @@ class MeshStorageSettings {
         if !exists {
             do {
                 try fileManager.createDirectory(atPath: rootStoragePath, withIntermediateDirectories: true, attributes: nil)
-                print("setMeshRootStorage, success on create root storage directory \(rootStoragePath)")
+                meshLog("setMeshRootStorage, success on create root storage directory \(rootStoragePath)")
             } catch {
-                print("error: setMeshRootStorage, failed to create root directory \(rootStoragePath), \(error)")
+                meshLog("error: setMeshRootStorage, failed to create root directory \(rootStoragePath), \(error)")
                 return MeshErrorCode.MESH_ERROR_DIRECTORY_CREATE_FAILED
             }
         }
 
         if !fileManager.isReadableFile(atPath: rootStoragePath) || !fileManager.isWritableFile(atPath: rootStoragePath) {
-            print("error: setMeshRootStorage, readbale=\(fileManager.isReadableFile(atPath: rootStoragePath)) or writeable=\(fileManager.isWritableFile(atPath: rootStoragePath)) not allowed at path \(rootStoragePath)")
+            meshLog("error: setMeshRootStorage, readbale=\(fileManager.isReadableFile(atPath: rootStoragePath)) or writeable=\(fileManager.isWritableFile(atPath: rootStoragePath)) not allowed at path \(rootStoragePath)")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_RW_NOT_ALLOWED
         }
 
@@ -196,27 +196,27 @@ class MeshStorageSettings {
         exists = fileManager.fileExists(atPath: meshStoragePath, isDirectory: &isDirectory)
         if exists && isDirectory.boolValue {
             // The mesh root storage path has been existing.
-            print("MeshStorageSettings, setMeshRootStorage, mesh root storage path exists")
+            meshLog("MeshStorageSettings, setMeshRootStorage, mesh root storage path exists")
         } else if exists && !isDirectory.boolValue {
             // A file with same name as @meshStoragePath has existed.
-            print("error: setMeshRootStorage, file existed, unable to create directory \(meshStoragePath)")
+            meshLog("error: setMeshRootStorage, file existed, unable to create directory \(meshStoragePath)")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_DUPLICATED_NAME
         } else {
             do {
                 try fileManager.createDirectory(atPath: meshStoragePath, withIntermediateDirectories: true, attributes: nil)
             } catch {
-                print("error: setMeshRootStorage, failed to create directory \(meshStoragePath), \(error)")
+                meshLog("error: setMeshRootStorage, failed to create directory \(meshStoragePath), \(error)")
                 return MeshErrorCode.MESH_ERROR_DIRECTORY_CREATE_FAILED
             }
         }
 
         if !fileManager.changeCurrentDirectoryPath(meshStoragePath) {
-            print("error: setMeshRootStorage, failed to change current directory to \(meshStoragePath)")
+            meshLog("error: setMeshRootStorage, failed to change current directory to \(meshStoragePath)")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_CHANGE_FAILED
         }
 
         self.meshStoragePath = fileManager.currentDirectoryPath
-        print("MeshStorageSettings, setMeshRootStorage to \(String(describing: self.meshStoragePath)) success")
+        meshLog("MeshStorageSettings, setMeshRootStorage to \(String(describing: self.meshStoragePath)) success")
 
         _ = setMeshFwImagesStorage()
         return MeshErrorCode.MESH_SUCCESS
@@ -228,7 +228,7 @@ class MeshStorageSettings {
             rootStorage = self.meshStoragePath
         }
         guard let meshStorage = rootStorage else {
-            print("error: setMeshFwImagesStorage, invalid root storage directory path")
+            meshLog("error: setMeshFwImagesStorage, invalid root storage directory path")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_NOT_EXIST
         }
 
@@ -238,15 +238,15 @@ class MeshStorageSettings {
         if !exists {
             do {
                 try fileManager.createDirectory(atPath: meshStorage, withIntermediateDirectories: true, attributes: nil)
-                print("setMeshFwImagesStorage, success on create mesh storage directory \(meshStorage)")
+                meshLog("setMeshFwImagesStorage, success on create mesh storage directory \(meshStorage)")
             } catch {
-                print("error: setMeshFwImagesStorage, failed to create mesh directory \(meshStorage), \(error)")
+                meshLog("error: setMeshFwImagesStorage, failed to create mesh directory \(meshStorage), \(error)")
                 return MeshErrorCode.MESH_ERROR_DIRECTORY_CREATE_FAILED
             }
         }
 
         if !fileManager.isReadableFile(atPath: meshStorage) || !fileManager.isWritableFile(atPath: meshStorage) {
-            print("error: setMeshFwImagesStorage, readbale=\(fileManager.isReadableFile(atPath: meshStorage)) or writeable=\(fileManager.isWritableFile(atPath: meshStorage)) not allowed at path \(meshStorage)")
+            meshLog("error: setMeshFwImagesStorage, readbale=\(fileManager.isReadableFile(atPath: meshStorage)) or writeable=\(fileManager.isWritableFile(atPath: meshStorage)) not allowed at path \(meshStorage)")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_RW_NOT_ALLOWED
         }
 
@@ -256,33 +256,33 @@ class MeshStorageSettings {
         exists = fileManager.fileExists(atPath: fwImagesStoragePath, isDirectory: &isDirectory)
         if exists && isDirectory.boolValue {
             // The mesh root storage path has been existing.
-            print("setMeshFwImagesStorage, setMeshRootStorage, mesh root storage path exists")
+            meshLog("setMeshFwImagesStorage, setMeshRootStorage, mesh root storage path exists")
         } else if exists && !isDirectory.boolValue {
             // A file with same name as @meshStoragePath has existed.
-            print("error: setMeshFwImagesStorage, file existed, unable to create directory \(fwImagesStoragePath)")
+            meshLog("error: setMeshFwImagesStorage, file existed, unable to create directory \(fwImagesStoragePath)")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_DUPLICATED_NAME
         } else {
             do {
                 try fileManager.createDirectory(atPath: fwImagesStoragePath, withIntermediateDirectories: true, attributes: nil)
             } catch {
-                print("error: setMeshFwImagesStorage, failed to create directory \(fwImagesStoragePath), \(error)")
+                meshLog("error: setMeshFwImagesStorage, failed to create directory \(fwImagesStoragePath), \(error)")
                 return MeshErrorCode.MESH_ERROR_DIRECTORY_CREATE_FAILED
             }
         }
 
         self.fwImagesStoragePath = fwImagesStoragePath
-        print("MeshStorageSettings, setMeshFwImagesStorage to \(String(describing: self.fwImagesStoragePath)) success")
+        meshLog("MeshStorageSettings, setMeshFwImagesStorage to \(String(describing: self.fwImagesStoragePath)) success")
         return MeshErrorCode.MESH_SUCCESS
     }
 
     func setUserStorage(for user: String) -> Int {
         let fileManager = FileManager.default
         guard let meshStoragePath = self.meshStoragePath else {
-            print("error: setUserStorage, setUserStorage, meshStoragePath not set")
+            meshLog("error: setUserStorage, setUserStorage, meshStoragePath not set")
             return MeshErrorCode.MESH_ERROR_INVALID_ARGS
         }
         if !fileManager.isReadableFile(atPath: meshStoragePath) || !fileManager.isWritableFile(atPath: meshStoragePath) {
-            print("error: setUserStorage, readbale or writeable not allowed at path=\(meshStoragePath)")
+            meshLog("error: setUserStorage, readbale or writeable not allowed at path=\(meshStoragePath)")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_RW_NOT_ALLOWED
         }
 
@@ -292,29 +292,29 @@ class MeshStorageSettings {
         let exists = fileManager.fileExists(atPath: userStoragePath, isDirectory: &isDirectory)
         if exists && isDirectory.boolValue {
             // The user storage path has been existing.
-            print("MeshStorageSettings, setUserStorage, user storage path exists")
+            meshLog("MeshStorageSettings, setUserStorage, user storage path exists")
         } else if exists && !isDirectory.boolValue {
             // A file with same name as @userStoragePath has existed.
-            print("error: setUserStorage, file existed, unable to create directory \(userStoragePath)")
+            meshLog("error: setUserStorage, file existed, unable to create directory \(userStoragePath)")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_DUPLICATED_NAME
         } else {
             do {
                 try fileManager.createDirectory(atPath: userStoragePath, withIntermediateDirectories: true, attributes: nil)
             } catch {
-                print("error: setUserStorage, failed to create directory \(userStoragePath), \(error)")
+                meshLog("error: setUserStorage, failed to create directory \(userStoragePath), \(error)")
                 return MeshErrorCode.MESH_ERROR_DIRECTORY_CREATE_FAILED
             }
         }
 
         if !fileManager.changeCurrentDirectoryPath(userStoragePath) {
-            print("error: setUserStorage, failed to change current directory to \(userStoragePath)")
+            meshLog("error: setUserStorage, failed to change current directory to \(userStoragePath)")
             return MeshErrorCode.MESH_ERROR_DIRECTORY_CHANGE_FAILED
         }
 
         self.userIdentify = user
         self.userStorageName = userStorageName
         self.userStoragePath = fileManager.currentDirectoryPath
-        print("MeshStorageSettings, setUserStorage forUser=\(user) under path=\(String(describing: self.userStoragePath)) success")
+        meshLog("MeshStorageSettings, setUserStorage forUser=\(user) under path=\(String(describing: self.userStoragePath)) success")
         return MeshErrorCode.MESH_SUCCESS
     }
 
@@ -322,7 +322,7 @@ class MeshStorageSettings {
         let fileManager = FileManager.default
         var isDirectory = ObjCBool(false)
         guard let meshStoragePath = self.meshStoragePath else {
-            print("error: MeshStorageSettings, deleteUserStorage, invalid mesh storage status, meshStoragePath is nil")
+            meshLog("error: MeshStorageSettings, deleteUserStorage, invalid mesh storage status, meshStoragePath is nil")
             return MeshErrorCode.MESH_ERROR_INVALID_ARGS
         }
 
@@ -333,12 +333,12 @@ class MeshStorageSettings {
             do {
                 try fileManager.removeItem(atPath: userStoragePath)
             } catch {
-                print("error: deleteUserStorage forUser=\(user), failed to delete directory \(userStoragePath)")
+                meshLog("error: deleteUserStorage forUser=\(user), failed to delete directory \(userStoragePath)")
                 return MeshErrorCode.MESH_ERROR_DIRECTORY_DELETE_FAILED
             }
         }
 
-        print("MeshStorageSettings, deleteUserStorage forUser=\(user), \(userStoragePath) success")
+        meshLog("MeshStorageSettings, deleteUserStorage forUser=\(user), \(userStoragePath) success")
         return MeshErrorCode.MESH_SUCCESS
     }
 
@@ -346,7 +346,7 @@ class MeshStorageSettings {
         let fileManager = FileManager.default
         var isDirectory = ObjCBool(false)
         guard let meshStoragePath = self.meshStoragePath else {
-            print("error: MeshStorageSettings, deleteUserStorage, invalid mesh storage status, meshStoragePath is nil")
+            meshLog("error: MeshStorageSettings, deleteUserStorage, invalid mesh storage status, meshStoragePath is nil")
             return MeshErrorCode.MESH_ERROR_INVALID_ARGS
         }
 
@@ -355,12 +355,12 @@ class MeshStorageSettings {
             do {
                 try fileManager.removeItem(atPath: meshStoragePath)
             } catch {
-                print("error: deleteMeshStorage, failed to delete directory \(meshStoragePath)")
+                meshLog("error: deleteMeshStorage, failed to delete directory \(meshStoragePath)")
                 return MeshErrorCode.MESH_ERROR_DIRECTORY_DELETE_FAILED
             }
         }
 
-        print("MeshStorageSettings, deleteMeshStorage, \(meshStoragePath) success")
+        meshLog("MeshStorageSettings, deleteMeshStorage, \(meshStoragePath) success")
         return MeshErrorCode.MESH_SUCCESS
     }
 
@@ -380,18 +380,18 @@ class MeshStorageSettings {
 
     func validateMeshFilePath(fileName: String) -> Bool {
         guard let _ = userStoragePath else {
-            print("error: MeshStorageSettings, validateMeshFilePath, \(fileName), not initialized mesh user storage path")
+            meshLog("error: MeshStorageSettings, validateMeshFilePath, \(fileName), not initialized mesh user storage path")
             return false
         }
         if !fileName.hasSuffix(".bin") && !fileName.hasSuffix(".json") {
-            print("error: MeshStorageSettings, validateMeshFilePath, \(fileName), invalid mesh file extension")
+            meshLog("error: MeshStorageSettings, validateMeshFilePath, \(fileName), invalid mesh file extension")
             return false
         }
 
         var isDirectory = ObjCBool(false)
         let exists = FileManager.default.fileExists(atPath: fileName, isDirectory: &isDirectory)
         if !exists && isDirectory.boolValue {
-            print("error: MeshStorageSettings, validateMeshFilePath, \(fileName), not exists")
+            meshLog("error: MeshStorageSettings, validateMeshFilePath, \(fileName), not exists")
             return false
         }
 

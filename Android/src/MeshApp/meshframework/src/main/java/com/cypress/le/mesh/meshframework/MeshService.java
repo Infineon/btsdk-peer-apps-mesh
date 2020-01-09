@@ -217,15 +217,16 @@ public class MeshService extends Service implements IMeshGattClientCallback {
 
     public int startOtaUpgrade(String componentName, byte upgradeType) {
         Log.d(TAG,"otaUpgrade fileName:"+mFileName + ", upgradeType = " + upgradeType);
-        if(upgradeType == MeshController.DFU_METHOD_PROXY_TO_ALL || upgradeType == MeshController.DFU_METHOD_APP_TO_ALL) {
-            return mMeshNativeHelper.meshClientDfuStart(upgradeType, componentName);
-        } else if (upgradeType == MeshController.DFU_METHOD_APPLY) {
-            mMeshGattClient.otaUpgradeApply();
-            return 0;
-        } else {
-            mMeshGattClient.startOtaUpgrade(componentName, mFileName, mMetadataFile, upgradeType);
-            return 0;
-        }
+//        if(upgradeType == MeshController.DFU_METHOD_PROXY_TO_ALL || upgradeType == MeshController.DFU_METHOD_APP_TO_ALL) {
+//            return mMeshNativeHelper.meshClientDfuStart(upgradeType, componentName);
+//        } else if (upgradeType == MeshController.DFU_METHOD_APPLY) {
+//            mMeshGattClient.otaUpgradeApply();
+//            return 0;
+//        } else {
+//            mMeshGattClient.startOtaUpgrade(componentName, mFileName, mMetadataFile, upgradeType);
+//            return 0;
+//        }
+        return mMeshGattClient.startOtaUpgrade(componentName, mFileName, mMetadataFile, upgradeType);
     }
 
     public void setOTAFiles(String fwFile, String metadataFile) {
@@ -941,6 +942,14 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         @Override
         public void meshClientLightnessStateCb(String deviceName, int target, int present, int remainingTime) {
             mMeshControllerCb.onLightnessStateChanged(deviceName, target, present, remainingTime);
+        }
+
+        @Override
+        public void meshClientDfuStartCb() {
+            Log.i(TAG, "meshClientDfuStartCb");
+            if (mMeshGattClient != null) {
+                mMeshGattClient.startOta();
+            }
         }
 
         @Override

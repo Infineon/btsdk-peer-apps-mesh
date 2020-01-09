@@ -105,7 +105,7 @@ class MenuViewController: UIViewController {
         if let touch = touches.first {
             let location: CGPoint = touch.location(in: backgroundView)
             if location.x > menuTableView.frame.size.width {
-                print("MenuViewController, clicked the gray area, dismiss menu UI")
+                meshLog("MenuViewController, clicked the gray area, dismiss menu UI")
                 // TODO: dismiss the menu UI when clicked the gray area.
                 //self.navigationController?.popViewController(animated: true)
                 self.dismiss(animated: true, completion: nil)
@@ -168,7 +168,7 @@ extension MenuViewController: UITableViewDataSource, UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        print("MenuViewController, tableView didSelectRowAt: \(indexPath.row)")
+        meshLog("MenuViewController, tableView didSelectRowAt: \(indexPath.row)")
 
         let item = menuItems[indexPath.row]
         switch item {

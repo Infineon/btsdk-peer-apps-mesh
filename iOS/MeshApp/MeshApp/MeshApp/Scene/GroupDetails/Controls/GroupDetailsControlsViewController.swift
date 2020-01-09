@@ -233,7 +233,7 @@ class GroupDetailsControlsViewController: UIViewController {
         brightnessSlider.addTarget(self, action: #selector(brightnessSliderDidEndTouch), for: [.touchUpInside, .touchUpOutside])
 
         guard let deviceName = self.deviceName else {
-            print("error: GroupDetailsControlsViewController, defaultSettingInit, invalid devicename is nil")
+            meshLog("error: GroupDetailsControlsViewController, defaultSettingInit, invalid devicename is nil")
             return
         }
 
@@ -259,13 +259,13 @@ class GroupDetailsControlsViewController: UIViewController {
                         DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + .milliseconds(5000)) {
                             MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
                                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                                    print("error: GroupDetailsControlsViewController, defaultSettingInit, failed to connect to mesh netowrk, error=\(error)")
+                                    meshLog("error: GroupDetailsControlsViewController, defaultSettingInit, failed to connect to mesh netowrk, error=\(error)")
                                     return
                                 }
 
                                 self.getDeviceOnOffTime = Date().timeIntervalSince1970
                                 let error = MeshFrameworkManager.shared.meshClientOnOffGet(deviceName: deviceName)
-                                print("GroupDetailsControlsViewController, defaultSettingInit, meshClientOnOffGet, error=\(error)")
+                                meshLog("GroupDetailsControlsViewController, defaultSettingInit, meshClientOnOffGet, error=\(error)")
                             }
                         }
                         return
@@ -273,7 +273,7 @@ class GroupDetailsControlsViewController: UIViewController {
 
                     self.getDeviceOnOffTime = Date().timeIntervalSince1970
                     let error = MeshFrameworkManager.shared.meshClientOnOffGet(deviceName: deviceName)
-                    print("GroupDetailsControlsViewController, defaultSettingInit, meshClientOnOffGet, error=\(error)")
+                    meshLog("GroupDetailsControlsViewController, defaultSettingInit, meshClientOnOffGet, error=\(error)")
                 }
             }
         }
@@ -296,12 +296,12 @@ class GroupDetailsControlsViewController: UIViewController {
             if let networkName = MeshNotificationConstants.getNetworkName(userInfo: userInfo) {
                 self.showToast(message: "Database of mesh network \(networkName) has changed.")
                 NetworkManager.shared.uploadMeshFiles { (error) in
-                    print("GroupDetailsControlsViewController, MESH_NETWORK_DATABASE_CHANGED, uploadMeshFiles, error=\(error)")
+                    meshLog("GroupDetailsControlsViewController, MESH_NETWORK_DATABASE_CHANGED, uploadMeshFiles, error=\(error)")
                 }
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_ON_OFF_STATUS):
             if let onOffStatus = MeshNotificationConstants.getOnOffStatus(userInfo: userInfo) {
-                print("GroupDetailsControlsViewController, onOffStatusNotificationHandler, onOffStatus=\(onOffStatus)")
+                meshLog("GroupDetailsControlsViewController, onOffStatusNotificationHandler, onOffStatus=\(onOffStatus)")
                 if onOffStatus.deviceName == self.deviceName {
                     deviceIsOn = onOffStatus.isOn
                     // TODO[optional]: change the device icon images if required.
@@ -314,13 +314,13 @@ class GroupDetailsControlsViewController: UIViewController {
                     switch pickerType {
                     case .LIGHT_HSL:
                         let error = MeshFrameworkManager.shared.meshClientHslGet(deviceName: onOffStatus.deviceName)
-                        print("GroupDetailsControlsViewController, onOffStatusNotificationHandler, meshClientHslGet, error=\(error)")
+                        meshLog("GroupDetailsControlsViewController, onOffStatusNotificationHandler, meshClientHslGet, error=\(error)")
                     case .LIGHT_CTL:
                         let error = MeshFrameworkManager.shared.meshClientCtlGet(deviceName: onOffStatus.deviceName)
-                        print("GroupDetailsControlsViewController, onOffStatusNotificationHandler, meshClientCtlGet, error=\(error)")
+                        meshLog("GroupDetailsControlsViewController, onOffStatusNotificationHandler, meshClientCtlGet, error=\(error)")
                     case .LIGHT_DIMMABLE:
                         let error = MeshFrameworkManager.shared.meshClientLightnessGet(deviceName: onOffStatus.deviceName)
-                        print("GroupDetailsControlsViewController, onOffStatusNotificationHandler, meshClientLightnessGet, error=\(error)")
+                        meshLog("GroupDetailsControlsViewController, onOffStatusNotificationHandler, meshClientLightnessGet, error=\(error)")
                     default:
                         break
                     }
@@ -332,7 +332,7 @@ class GroupDetailsControlsViewController: UIViewController {
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LEVEL_STATUS):
             if let levelStatus = MeshNotificationConstants.getLevelStatus(userInfo: userInfo) {
-                print("GroupDetailsControlsViewController, levelStatusNotificationHandler, levelStatus=\(levelStatus)")
+                meshLog("GroupDetailsControlsViewController, levelStatusNotificationHandler, levelStatus=\(levelStatus)")
 
                 if levelStatus.deviceName == self.deviceName {
                     deviceIsOn = (levelStatus.level == 0) ? false : true
@@ -348,7 +348,7 @@ class GroupDetailsControlsViewController: UIViewController {
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_HSL_STATUS):
             if let hslStatus = MeshNotificationConstants.getHslStatus(userInfo: userInfo) {
-                print("GroupDetailsControlsViewController, hslStatusNotificationHandler, hslStatus=\(hslStatus)")
+                meshLog("GroupDetailsControlsViewController, hslStatusNotificationHandler, hslStatus=\(hslStatus)")
 
                 if hslStatus.deviceName == self.deviceName {
                     deviceIsOn = (hslStatus.lightness == 0) ? false : true
@@ -370,7 +370,7 @@ class GroupDetailsControlsViewController: UIViewController {
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_CTL_STATUS):
             if let ctlStatus = MeshNotificationConstants.getCtlStatus(userInfo: userInfo) {
-                print("GroupDetailsControlsViewController, ctlStatusNotificationHandler, ctlStatus=\(ctlStatus)")
+                meshLog("GroupDetailsControlsViewController, ctlStatusNotificationHandler, ctlStatus=\(ctlStatus)")
 
                 if ctlStatus.deviceName == self.deviceName {
                     deviceIsOn = (ctlStatus.targetLightness == 0) ? false : true
@@ -390,7 +390,7 @@ class GroupDetailsControlsViewController: UIViewController {
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LIGHTNESS_STATUS):
             if let lightnessStatus = MeshNotificationConstants.getLightnessStatus(userInfo: userInfo) {
-                print("GroupDetailsControlsViewController, lightnessStatusNotificationHandler, lightnessStatus=\(lightnessStatus)")
+                meshLog("GroupDetailsControlsViewController, lightnessStatusNotificationHandler, lightnessStatus=\(lightnessStatus)")
 
                 if lightnessStatus.deviceName == self.deviceName {
                     deviceIsOn = (lightnessStatus.targetLightness == 0) ? false : true
@@ -435,9 +435,11 @@ class GroupDetailsControlsViewController: UIViewController {
         case .LIGHT_CTL:
             self.pickerImage.image = UIImage(named: MeshAppImageNames.ctlColorImage)
             self.currentLightnessValue = values[MeshComponentValueKeys.ctlLightness] as? CGFloat ?? MeshAppConstants.LIGHT_MIN_VISIBLE_LIGHTNESS
+            self.sliderGroupView.isHidden = false
         case .LIGHT_DIMMABLE:
             self.pickerImage.image = UIImage(named: MeshAppImageNames.cypressLogoImage)
             self.currentLightnessValue = values[MeshComponentValueKeys.dimmableLightness] as? CGFloat ?? MeshAppConstants.LIGHT_MIN_VISIBLE_LIGHTNESS
+            self.sliderGroupView.isHidden = false
         case .GENERIC_ON_OFF:
             self.pickerImage.image = UIImage(named: MeshAppImageNames.cypressLogoImage)
             self.currentOnOffValue = values[MeshComponentValueKeys.onoff] as? Bool ?? false
@@ -446,6 +448,7 @@ class GroupDetailsControlsViewController: UIViewController {
         default:
             self.currentLightnessValue = values[MeshComponentValueKeys.hslLightness] as? CGFloat ?? MeshAppConstants.LIGHT_MIN_VISIBLE_LIGHTNESS
             self.pickerImage.image = UIImage(named: MeshAppImageNames.hslColorImage)
+            self.sliderGroupView.isHidden = false
         }
         self.currentLightnessValue = (self.currentLightnessValue! < MeshAppConstants.LIGHT_MIN_VISIBLE_LIGHTNESS) ? MeshAppConstants.LIGHT_MIN_VISIBLE_LIGHTNESS : self.currentLightnessValue
 
@@ -476,10 +479,10 @@ class GroupDetailsControlsViewController: UIViewController {
     }
 
     @IBAction func onControlTypeButtonClick(_ sender: UIButton) {
-        print("GroupDetailsControlsViewController, onControlTypeButtonClick")
+        meshLog("GroupDetailsControlsViewController, onControlTypeButtonClick")
         let choices = MeshControlPickerType.allValues
         let controller = PopoverChoiceTableViewController(choices: choices) { (index: Int, selection: String) in
-            print("onControlTypeButtonClick, index=\(index), selection=\(selection)")
+            meshLog("onControlTypeButtonClick, index=\(index), selection=\(selection)")
             guard let choice = MeshControlPickerType.init(rawValue: selection) else { return }
             self.setControlType(type: choice)
         }
@@ -492,7 +495,7 @@ class GroupDetailsControlsViewController: UIViewController {
         lightness = (lightness < MeshAppConstants.LIGHT_MIN_VISIBLE_LIGHTNESS) ? MeshAppConstants.LIGHT_MIN_VISIBLE_LIGHTNESS : lightness
         self.currentLightnessValue = lightness.rounded()
         self.sliderPercentageLabel.text = String(format: "%.0f", lightness) + "%"
-        print("GroupDetailsControlsViewController, onBrightnessValueChanged, value:\(sender.value), lightness=\(lightness)")
+        meshLog("GroupDetailsControlsViewController, onBrightnessValueChanged, value:\(sender.value), lightness=\(lightness)")
 
         if !TrackingHelper.shared.isTracking {
             TrackingHelper.shared.startTracking(componentType: MeshControlPickerType.convertPickerTypeToMeshComponentType(pickerType: pickerType))
@@ -501,21 +504,21 @@ class GroupDetailsControlsViewController: UIViewController {
     }
 
     @IBAction func onTurnOnButtonClick(_ sender: UIButton) {
-        print("GroupDetailsControlsViewController, onTurnOnButtonClick, deviceName:\(String(describing: self.deviceName)), isDeviceControl:\(self.isDeviceControl)")
+        meshLog("GroupDetailsControlsViewController, onTurnOnButtonClick, deviceName:\(String(describing: self.deviceName)), isDeviceControl:\(self.isDeviceControl)")
         turnDeviceOnOff(isOn: true)
     }
 
     @IBAction func onTurnOffButtonClick(_ sender: UIButton) {
-        print("GroupDetailsControlsViewController, onTurnOffButtonClick, deviceName:\(String(describing: self.deviceName)), isDeviceControl:\(self.isDeviceControl)")
+        meshLog("GroupDetailsControlsViewController, onTurnOffButtonClick, deviceName:\(String(describing: self.deviceName)), isDeviceControl:\(self.isDeviceControl)")
         turnDeviceOnOff(isOn: false)
     }
 
     @IBAction func onLightLCSettingsButtonClick(_ sender: UIButton) {
-        print("GroupDetailsControlsViewController, onLightLCSettingsButtonClick, deviceName:\(String(describing: self.deviceName)), isDeviceControl:\(self.isDeviceControl)")
+        meshLog("GroupDetailsControlsViewController, onLightLCSettingsButtonClick, deviceName:\(String(describing: self.deviceName)), isDeviceControl:\(self.isDeviceControl)")
     }
 
     @objc func brightnessSliderDidEndTouch() {
-        print("GroupDetailsControlsViewController, brightnessSliderDidEndTouch")
+        meshLog("GroupDetailsControlsViewController, brightnessSliderDidEndTouch")
         // TODO: for test purpose, some device may do not support get status command.
         if false, isDeviceControl, deviceIsOn == nil, let startTime = getDeviceOnOffTime,
             (Date().timeIntervalSince1970 - startTime) > GroupDetailsControlsViewController.GET_DEVICE_ONOFF_STATE_TIMEOUT {
@@ -537,11 +540,11 @@ class GroupDetailsControlsViewController: UIViewController {
         if let deviceName = self.deviceName {
             MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: GroupDetailsControlsViewController, trackingDataUpdate, failed to connect to mesh network, error=\(error)")
+                    meshLog("error: GroupDetailsControlsViewController, trackingDataUpdate, failed to connect to mesh network, error=\(error)")
                     return
                 }
 
-                print("GroupDetailsControlsViewController, trackingDataUpdate, pickerType=\(self.pickerType.rawValue)")
+                meshLog("GroupDetailsControlsViewController, trackingDataUpdate, pickerType=\(self.pickerType.rawValue)")
                 switch self.pickerType {
                 case .LIGHT_HSL:
                     if let hue = self.currentHueValue, let satuation = self.currentSaturationValue, let lightness = self.currentLightnessValue {
@@ -552,7 +555,7 @@ class GroupDetailsControlsViewController: UIViewController {
                                                                                  reliable: true,
                                                                                  transitionTime: UInt32(MeshAppConstants.LIGHT_HSL_TRANSITION_TIME),
                                                                                  delay: MeshAppConstants.LIGHT_HSL_DELAY_TIME)
-                        print("GroupDetailsControlsViewController, trackingDataUpdate, meshClientHslSet, error=\(error)")
+                        meshLog("GroupDetailsControlsViewController, trackingDataUpdate, meshClientHslSet, error=\(error)")
 
                         // store the latest setting into UserSetting.
                         if error == MeshErrorCode.MESH_SUCCESS {
@@ -571,7 +574,7 @@ class GroupDetailsControlsViewController: UIViewController {
                                                                                  reliable: true,
                                                                                  transitionTime: UInt32(MeshAppConstants.LIGHT_CTL_TRANSITION_TIME),
                                                                                  delay: MeshAppConstants.LIGHT_CTL_DELAY_TIME)
-                        print("GroupDetailsControlsViewController, trackingDataUpdate, meshClientCtlSet, error=\(error)")
+                        meshLog("GroupDetailsControlsViewController, trackingDataUpdate, meshClientCtlSet, error=\(error)")
 
                         // store the latest setting into UserSetting.
                         if error == MeshErrorCode.MESH_SUCCESS {
@@ -587,7 +590,7 @@ class GroupDetailsControlsViewController: UIViewController {
                                                                                        reliable: true,
                                                                                        transitionTime: UInt32(MeshAppConstants.LIGHT_CTL_TRANSITION_TIME),
                                                                                        delay: MeshAppConstants.LIGHT_CTL_DELAY_TIME)
-                        print("GroupDetailsControlsViewController, trackingDataUpdate, meshClientLightnessSet, error=\(error)")
+                        meshLog("GroupDetailsControlsViewController, trackingDataUpdate, meshClientLightnessSet, error=\(error)")
 
                         // store the latest setting into UserSetting.
                         if error == MeshErrorCode.MESH_SUCCESS {
@@ -606,16 +609,16 @@ class GroupDetailsControlsViewController: UIViewController {
         if let deviceName = self.deviceName {
             MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: GroupDetailsControlsViewController, turnDeviceOnOff(deviceName:\(deviceName), isOn:\(isOn)), failed to connect to the mesh network")
+                    meshLog("error: GroupDetailsControlsViewController, turnDeviceOnOff(deviceName:\(deviceName), isOn:\(isOn)), failed to connect to the mesh network")
                     return
                 }
 
                 let error = MeshFrameworkManager.shared.meshClientOnOffSet(deviceName: deviceName, isOn: isOn, reliable: reliable)
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: GroupDetailsControlsViewController, meshClientOnOffSet(deviceName:\(deviceName), isOn:\(isOn), reliable=\(reliable)) failed, error=\(error)")
+                    meshLog("error: GroupDetailsControlsViewController, meshClientOnOffSet(deviceName:\(deviceName), isOn:\(isOn), reliable=\(reliable)) failed, error=\(error)")
                     return
                 }
-                print("GroupDetailsControlsViewController, meshClientOnOffSet(deviceName:\(deviceName), isOn:\(isOn), reliable=\(reliable)) message sent out success")
+                meshLog("GroupDetailsControlsViewController, meshClientOnOffSet(deviceName:\(deviceName), isOn:\(isOn), reliable=\(reliable)) message sent out success")
 
                 // if not reliable, simulating to send notification data to update the brightness image.
                 if self.isDeviceControl, !reliable {
@@ -626,6 +629,36 @@ class GroupDetailsControlsViewController: UIViewController {
                                                                       MeshNotificationConstants.USER_INFO_KEY_PRESENT: (isOn ? 0 : 1),
                                                                       MeshNotificationConstants.USER_INFO_KEY_REMAINING_TIME: 0])
                     self.notificationHandler(notification)
+                }
+
+                if !self.isDeviceControl {
+                    if isOn {
+                        if self.brightnessSlider.value < 2 {
+                            if let componentStatus = UserSettings.shared.getComponentStatus(componentName: deviceName) {
+                                switch self.pickerType {
+                                case .LIGHT_CTL:
+                                    self.currentLightnessValue = componentStatus[MeshComponentValueKeys.ctlLightness] as? CGFloat ?? 0.0
+                                case .LIGHT_DIMMABLE:
+                                    self.currentLightnessValue = componentStatus[MeshComponentValueKeys.dimmableLightness] as? CGFloat ?? 0.0
+                                default:
+                                    self.currentLightnessValue = componentStatus[MeshComponentValueKeys.hslLightness] as? CGFloat ?? 0.0
+                                }
+                            } else {
+                                self.currentLightnessValue = 0.0
+                            }
+                            if self.currentLightnessValue! < 2.0 {
+                                self.currentLightnessValue = 2.0
+                            }
+                            self.brightnessSlider.value = Float(self.currentLightnessValue!)
+                            self.sliderPercentageLabel.text = String(format: "%.0f", self.currentLightnessValue!) + "%"
+                            meshLog("GroupDetailsControlsViewController, meshClientOnOffSet group: \(String(describing: self.groupName)) to ON, update the group light level slider to 2")
+                        }
+                    } else {
+                        self.brightnessSlider.value = 0.0
+                        self.currentLightnessValue = 0.0
+                        self.sliderPercentageLabel.text = "%0"
+                        meshLog("GroupDetailsControlsViewController, meshClientOnOffSet group: \(String(describing: self.groupName)) to OFF, update the group light level slider to 0")
+                    }
                 }
 
                 // store the latest setting into UserSetting.
@@ -642,7 +675,7 @@ class GroupDetailsControlsViewController: UIViewController {
         // Get the new view controller using segue.destination.
         // Pass the selected object to the new view controller.
         if let identifier = segue.identifier {
-            print("GroupDetailsControlsViewController, segue.identifier=\(identifier)")
+            meshLog("GroupDetailsControlsViewController, segue.identifier=\(identifier)")
             switch identifier {
             case MeshAppStoryBoardIdentifires.SEGUE_LIGHT_LC_SETTINGS:
                 if let lightLcSettingsVC = segue.destination as? LightLCSettingsViewController {
@@ -843,7 +876,7 @@ extension GroupDetailsControlsViewController {
             saturationPercentage = (distance / maxDistance * CGFloat(MeshConstants.LIGHT_SATURATION_PERCENTAGE_MAX)).rounded()
         }
         self.currentSaturationValue = saturationPercentage
-        print("calculateColorSaturationPercentage, saturationPercentage=\(saturationPercentage) %")
+        meshLog("calculateColorSaturationPercentage, saturationPercentage=\(saturationPercentage) %")
     }
 
     func calculateCTLTempreture(at position: CGPoint) {
@@ -855,8 +888,8 @@ extension GroupDetailsControlsViewController {
             let temperature: CGFloat = MeshAppConstants.LIGHT_TEMPERATURE_MIN + deviceTemperatureRange * positionYPoints / maxYPoints
             self.currentTemperatureValue = temperature.rounded()
 
-            print("calculateCTLTempreture, temperature:\(String(describing: self.currentTemperatureValue)), LIGHT_TEMPERATURE_MIN:\(MeshAppConstants.LIGHT_TEMPERATURE_MIN)")
-            print("calculateCTLTempreture, positionYPoints:\(positionYPoints), maxYPoints:\(maxYPoints)")
+            meshLog("calculateCTLTempreture, temperature:\(String(describing: self.currentTemperatureValue)), LIGHT_TEMPERATURE_MIN:\(MeshAppConstants.LIGHT_TEMPERATURE_MIN)")
+            meshLog("calculateCTLTempreture, positionYPoints:\(positionYPoints), maxYPoints:\(maxYPoints)")
         }
     }
 }
@@ -864,7 +897,7 @@ extension GroupDetailsControlsViewController {
 extension UIImage {
     func getPixelColor(at location: CGPoint, in frame: CGRect) -> UIColor {
         guard let pixelData = self.cgImage?.dataProvider?.data else {
-            print("error: GroupDetailsControlsViewController, getPixelColor is nil")
+            meshLog("error: GroupDetailsControlsViewController, getPixelColor is nil")
             return UIColor.white
         }
         let x: CGFloat = self.size.width * location.x / frame.width

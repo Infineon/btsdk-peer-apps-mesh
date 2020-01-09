@@ -46,7 +46,7 @@ class MeshOtaDfuViewController: UIViewController {
     private var otaBasicDate = Date(timeIntervalSinceNow: 0)
     private var dfustatusTimer: Timer?
 
-    private let OTA_GET_DFU_STATUS_MONITOR_INTERVAL = 10    // unit: seconds.
+    private let OTA_GET_DFU_STATUS_MONITOR_INTERVAL = 30    // unit: seconds.
 
     var deviceName: String?
     var groupName: String?  // When groupName is not nil, it comes from CmponentViewControl; if groupName is nil, it comes from FirmwareUpgradeViewController.
@@ -68,7 +68,7 @@ class MeshOtaDfuViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("MeshOtaDfuViewController, viewDidLoad")
+        meshLog("MeshOtaDfuViewController, viewDidLoad")
 
         // Do any additional setup after loading the view.c
         otaDevice = OtaManager.shared.activeOtaDevice
@@ -122,6 +122,13 @@ class MeshOtaDfuViewController: UIViewController {
     }
 
     func viewInit() {
+        /*
+         * Note, the Apply function has been implemented in the internal of the DFU devices, so not used any more.
+         * When implementing any new desgin, the Apply button should be removed.
+         */
+        applyDfuButton.isEnabled = false
+        applyDfuButton.isHidden = true
+
         dfuNavigationItem.title = "Mesh DFU"
         versionLabel.text = "Not Avaiable"
         upgradeLogTextView.text = ""
@@ -151,14 +158,14 @@ class MeshOtaDfuViewController: UIViewController {
         if let dfuType = OtaUpgrader.activeDfuType, let dfuTypeString = MeshDfuType.getDfuTypeText(type: dfuType) {
             dfuTypeDropDownButton.setSelection(select: dfuTypeString)
         } else {
-            dfuTypeDropDownButton.setSelection(select: MeshDfuType.getDfuTypeText(type: MeshDfuType.APP_OTA_TO_DEVICE)!)
+            dfuTypeDropDownButton.setSelection(select: MeshDfuType.getDfuTypeText(type: MeshDfuType.PROXY_DFU_TO_ALL)!)
         }
 
         selectedProxyToDeviceName = toDeviceChoseDropDownButton.selectedString
         updateVersionAndToDeviceUI(dfuType: MeshDfuType.getDfuType(by: dfuTypeDropDownButton.selectedString) ?? 0)
 
         guard let otaDevice = self.otaDevice else {
-            print("error: MeshOtaDfuViewController, viewInit, invalid otaDevice instance nil")
+            meshLog("error: MeshOtaDfuViewController, viewInit, invalid otaDevice instance nil")
             log("error: invalid nil OTA device object")
             DispatchQueue.main.async {
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil OTA device object.", title: "Error")
@@ -284,7 +291,7 @@ class MeshOtaDfuViewController: UIViewController {
                                 // OTA VERSION 2, apply completed.
                                 // All DFU process has been finished, so try to stop DFU.
                                 let error = OtaUpgrader.shared.otaDfuStop()     // try to stop any started DFU.
-                                print("MeshOtaDfuViewController, notificationHandler, Apply completed, do otaDfuStop, error:\(error)")
+                                meshLog("MeshOtaDfuViewController, notificationHandler, Apply completed, do otaDfuStop, error:\(error)")
                                 self.log("Try to stop DFU upgrading, \(error).", force: true)
 
                                 if otaStatus.errorCode == MeshErrorCode.MESH_SUCCESS {
@@ -295,7 +302,7 @@ class MeshOtaDfuViewController: UIViewController {
                                 self.stopAnimating()
                             } else {
                                 if MeshDfuType.getDfuType(by: dfuTypeDropDownButton.selectedString) == MeshDfuType.APP_OTA_TO_DEVICE {
-                                    self.log("done: OTA image downloading completed success.")
+                                    self.log("done: OTA image download completed success.")
                                     self.stopAnimating()
                                 } else if OtaUpgrader.isDfuStarted {
                                     self.startAnimating()
@@ -359,10 +366,10 @@ class MeshOtaDfuViewController: UIViewController {
             }
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_DFU_STATUS):
             if let dfuStatus = MeshNotificationConstants.getDfuStatus(userInfo: userInfo) {
-                print("MeshOtaDfuViewController, notificationHandler, DFU device: \(dfuStatus.componentName), DFU status: \(dfuStatus.status), progress: \(dfuStatus.progress)%")
+                meshLog("MeshOtaDfuViewController, notificationHandler, DFU device: \(dfuStatus.componentName), DFU status: \(dfuStatus.status), progress: \(dfuStatus.progress)%")
                 switch dfuStatus.status {
                 case OtaConstants.MESH_DFU_FW_DISTR_PHASE_IDLE:
-                    print("MeshOtaDfuViewController, notificationHandler, MESH_DFU_FW_DISTR_PHASE_IDLE, progress:\(dfuStatus.progress)%")
+                    meshLog("MeshOtaDfuViewController, notificationHandler, MESH_DFU_FW_DISTR_PHASE_IDLE, progress:\(dfuStatus.progress)%")
                     if MeshDfuType.getDfuType(by: dfuTypeDropDownButton.selectedString) != MeshDfuType.APP_OTA_TO_DEVICE {
                         if OtaUpgrader.isDfuStarted, OtaUpgrader.dfuState != OtaDfuState.DFU_STATE_UPLOADING {
                             self.log("DFU start uploading ...", force: true)
@@ -384,7 +391,7 @@ class MeshOtaDfuViewController: UIViewController {
                             startDfuUpgradingTimer(fwDistrPhase: "transfer DFU firmware image")
                         }
                     }
-                    print("MeshOtaDfuViewController, notificationHandler, MESH_DFU_FW_DISTR_PHASE_TRANSFER_ACTIVE, progress:\(dfuStatus.progress)%")
+                    meshLog("MeshOtaDfuViewController, notificationHandler, MESH_DFU_FW_DISTR_PHASE_TRANSFER_ACTIVE, progress:\(dfuStatus.progress)%")
                     if OtaUpgrader.isDfuStarted, OtaUpgrader.dfuState != OtaDfuState.DFU_STATE_UPDATING {
                         self.log("DFU uploading completed", force: true)
                         self.log("DFU start updating ...", force: true)
@@ -393,13 +400,13 @@ class MeshOtaDfuViewController: UIViewController {
                     self.log("DFU updating progress=\(dfuStatus.progress)%%", force: true)
                     break
                 case OtaConstants.MESH_DFU_FW_DISTR_PHASE_TRANSFER_SUCCESS:
-                    print("MeshOtaDfuViewController, notificationHandler, MESH_DFU_FW_DISTR_PHASE_TRANSFER_SUCCESS, progress:\(dfuStatus.progress)%")
+                    meshLog("MeshOtaDfuViewController, notificationHandler, MESH_DFU_FW_DISTR_PHASE_TRANSFER_SUCCESS, progress:\(dfuStatus.progress)%")
                     self.log("DFU updating completed", force: true)
 
                     self.otaDfuProgressUpdated(percentage: Double(100.0))
                     break
                 case OtaConstants.MESH_DFU_FW_DISTR_PHASE_APPLY_ACTIVE:
-                    print("MeshOtaDfuViewController, notificationHandler, MESH_DFU_FW_DISTR_PHASE_APPLY_ACTIVE, progress:\(dfuStatus.progress)%")
+                    meshLog("MeshOtaDfuViewController, notificationHandler, MESH_DFU_FW_DISTR_PHASE_APPLY_ACTIVE, progress:\(dfuStatus.progress)%")
                     self.log("DFU status=APPLY_ACTIVE, progress: \(dfuStatus.progress)%%.", force: true)
                     if dfuStatus.progress >= 100 {
                         self.otaDfuProgressUpdated(percentage: Double(100.0))
@@ -463,10 +470,10 @@ class MeshOtaDfuViewController: UIViewController {
             if group.hasPrefix("dfu_") {
                 MeshFrameworkManager.shared.deleteMeshGroup(groupName: group) { (networkName: String?, _ error: Int) in
                     guard error == MeshErrorCode.MESH_SUCCESS else {
-                        print("error: MeshOtaDfuViewController, clearDfuGroups, failed to delete DFU group:\(group), error:\(error)")
+                        meshLog("error: MeshOtaDfuViewController, clearDfuGroups, failed to delete DFU group:\(group), error:\(error)")
                         return
                     }
-                    print("MeshOtaDfuViewController, clearDfuGroups, delete DFU group:\(group) done")
+                    meshLog("MeshOtaDfuViewController, clearDfuGroups, delete DFU group:\(group) done")
                 }
             }
         }
@@ -479,7 +486,7 @@ class MeshOtaDfuViewController: UIViewController {
     //
     func doOtaUpgradePrepare() {
         guard let otaDevice = self.otaDevice else {
-            print("error: MeshOtaDfuViewController, otaUpgradePrepare, invalid OTA device instance")
+            meshLog("error: MeshOtaDfuViewController, otaUpgradePrepare, invalid OTA device instance")
             log("error: invalid nil OTA device object")
             if let dfuTimer = self.dfustatusTimer, dfuTimer.isValid {
                 return  // do not raise up the alter view when triggerred by the DFU upgrading get status timer.
@@ -496,7 +503,7 @@ class MeshOtaDfuViewController: UIViewController {
             if error == OtaErrorCode.BUSYING {
                 return
             }
-            print("error: MeshOtaDfuViewController, otaUpgradePrepare, failed to prepare for OTA")
+            meshLog("error: MeshOtaDfuViewController, otaUpgradePrepare, failed to prepare for OTA")
             if let dfuTimer = self.dfustatusTimer, dfuTimer.isValid {
                 return  // do not raise up the alter view when triggerred by the DFU upgrading get status timer.
             }
@@ -524,7 +531,7 @@ class MeshOtaDfuViewController: UIViewController {
         let foundInMesh = addFirmwareImageNames(atPath: fwImagesSearchPath, prefix: meshPath)
         let foundInDocuments = addFirmwareImageNames(atPath: defaultDocumentsPath)
         if !foundInFwImages, !foundInMesh, !foundInDocuments {
-            print("error: MeshOtaDfuViewController, firmwareImagesInit, no valid firmware images found")
+            meshLog("error: MeshOtaDfuViewController, firmwareImagesInit, no valid firmware images found")
             UtilityManager.showAlertDialogue(parentVC: self, message: "No valid firmware images found under App's \"Documents/mesh/fwImages\", \"Documents/mesh\" and  \"Documents\" directories. Please copy valid firmware images into your device, then try again later.", title: "Error")
         }
     }
@@ -533,7 +540,7 @@ class MeshOtaDfuViewController: UIViewController {
         var isDirectory = ObjCBool(false)
         let exists = FileManager.default.fileExists(atPath: atPath, isDirectory: &isDirectory)
         if !exists || !isDirectory.boolValue {
-            print("error: MeshOtaDfuViewController, addFirmwareImageNames, \(atPath) not exsiting")
+            meshLog("error: MeshOtaDfuViewController, addFirmwareImageNames, \(atPath) not exsiting")
             return false
         }
 
@@ -543,10 +550,10 @@ class MeshOtaDfuViewController: UIViewController {
                 // ecdsa256_genkey.exe tool will auto append .signed extension to the signed image file name.
                 if fileName.hasSuffix(".bin") || fileName.hasSuffix(".bin.signed") {
                     otaFwImageNames.append(namePrefix + fileName)
-                    print("MeshOtaDfuViewController, addFirmwareImageNames, found image: \(namePrefix + fileName)")
+                    meshLog("MeshOtaDfuViewController, addFirmwareImageNames, found image: \(namePrefix + fileName)")
                 } else if fileName.hasPrefix("image_info") || fileName.hasSuffix("image_info") {
                     otaMetadataImageNames.append(namePrefix + fileName)
-                    print("MeshOtaDfuViewController, addFirmwareImageNames, found metadata image: \(namePrefix + fileName)")
+                    meshLog("MeshOtaDfuViewController, addFirmwareImageNames, found metadata image: \(namePrefix + fileName)")
                 }
             }
         }
@@ -567,7 +574,7 @@ class MeshOtaDfuViewController: UIViewController {
         if percentage <= 0.0 {
             upgradePercentageLabel.text = String(format: "%d%%", latestPercentage)
         } else {
-            upgradePercentageLabel.text = String(format: "%d", latestPercentage) + "%, Downloading"
+            upgradePercentageLabel.text = String(format: "%d", latestPercentage) + ((latestPercentage >= 100) ? "%, Completed" : "%, Downloading")
         }
         progressView.progress = pct
 
@@ -632,15 +639,15 @@ class MeshOtaDfuViewController: UIViewController {
     */
 
     @IBAction func onDfuNavigationLeftButtonItemClick(_ sender: UIBarButtonItem) {
-        print("MeshOtaDfuViewController, onDfuNavigationLeftButtonItemClick")
+        meshLog("MeshOtaDfuViewController, onDfuNavigationLeftButtonItemClick")
         OtaManager.shared.resetOtaUpgradeStatus()
         if let otaDevice = self.otaDevice, otaDevice.getDeviceType() == .mesh, let groupName = self.groupName {
-            print("MeshOtaDfuViewController, navigate back to ComponentViewController page)")
+            meshLog("MeshOtaDfuViewController, navigate back to ComponentViewController page)")
             UserSettings.shared.currentActiveGroupName = groupName
             UserSettings.shared.currentActiveComponentName = otaDevice.getDeviceName()
             UtilityManager.navigateToViewController(targetClass: ComponentViewController.self)
         } else {
-            print("MeshOtaDfuViewController, navigate to FirmwareUpgradeViewController page)")
+            meshLog("MeshOtaDfuViewController, navigate to FirmwareUpgradeViewController page)")
             if let otaDevice = self.otaDevice, otaDevice.getDeviceType() != .mesh {
                 otaDevice.disconnect()
             }
@@ -654,7 +661,7 @@ class MeshOtaDfuViewController: UIViewController {
 
     @IBAction func onDfuTypeDropDownButtonClick(_ sender: CustomDropDownButton) {
         dfuTypeDropDownButton.showDropList(width: 220, parent: self) {
-            print("\(self.dfuTypeDropDownButton.selectedIndex), \(self.dfuTypeDropDownButton.selectedString)")
+            meshLog("\(self.dfuTypeDropDownButton.selectedIndex), \(self.dfuTypeDropDownButton.selectedString)")
             self.log("Selected DFU type: \(self.dfuTypeDropDownButton.selectedString) for firmware OTA.")
             self.updateVersionAndToDeviceUI(dfuType: MeshDfuType.getDfuType(by: self.dfuTypeDropDownButton.selectedString) ?? 0)
 
@@ -667,7 +674,7 @@ class MeshOtaDfuViewController: UIViewController {
     @IBAction func onToDeviceChoseDropDownButtonCLick(_ sender: CustomDropDownButton) {
         let width = Int(meshDfuContentView.bounds.size.width) - 16
         toDeviceChoseDropDownButton.showDropList(width: width, parent: self) {
-            print("selectedProxyToDevice, \(self.toDeviceChoseDropDownButton.selectedIndex), \(self.toDeviceChoseDropDownButton.selectedString)")
+            meshLog("selectedProxyToDevice, \(self.toDeviceChoseDropDownButton.selectedIndex), \(self.toDeviceChoseDropDownButton.selectedString)")
             self.log("Selected proxy to device name: \(self.toDeviceChoseDropDownButton.selectedString)")
             self.selectedProxyToDeviceName = self.toDeviceChoseDropDownButton.selectedString
         }
@@ -677,7 +684,7 @@ class MeshOtaDfuViewController: UIViewController {
     @IBAction func onDfuFwImagesDropDownButtonClick(_ sender: CustomDropDownButton) {
         let width = Int(meshDfuContentView.bounds.size.width) - 16
         dfuFwImagesDropDownButton.showDropList(width: width, parent: self) {
-            print("selectedFwImageName, \(self.dfuFwImagesDropDownButton.selectedIndex), \(self.dfuFwImagesDropDownButton.selectedString)")
+            meshLog("selectedFwImageName, \(self.dfuFwImagesDropDownButton.selectedIndex), \(self.dfuFwImagesDropDownButton.selectedString)")
             self.log("Selected image name: \(self.dfuFwImagesDropDownButton.selectedString) for firmware OTA.")
             self.selectedFwImageName = self.dfuFwImagesDropDownButton.selectedString
             if let firmwareFile = self.selectedFwImageName {
@@ -693,7 +700,7 @@ class MeshOtaDfuViewController: UIViewController {
     @IBAction func onDfuMetadataImagesDropDownButtonClick(_ sender: CustomDropDownButton) {
         let width = Int(meshDfuContentView.bounds.size.width) - 16
         dfuMetadataImagesDropDownButton.showDropList(width: width, parent: self) {
-            print("selectedMetadataImageName, \(self.dfuMetadataImagesDropDownButton.selectedIndex), \(self.dfuMetadataImagesDropDownButton.selectedString)")
+            meshLog("selectedMetadataImageName, \(self.dfuMetadataImagesDropDownButton.selectedIndex), \(self.dfuMetadataImagesDropDownButton.selectedString)")
             self.log("Selected image info name: \(self.dfuMetadataImagesDropDownButton.selectedString) for firmware OTA.")
             self.selectedMetadataImageName = self.dfuMetadataImagesDropDownButton.selectedString
             if let metadataFile = self.selectedMetadataImageName {
@@ -707,7 +714,7 @@ class MeshOtaDfuViewController: UIViewController {
     }
 
     @IBAction func onGetDfuStatusButtonClick(_ sender: CustomLayoutButton) {
-        print("MeshOtaDfuViewController, onGetDfuStatusButtonClick")
+        meshLog("MeshOtaDfuViewController, onGetDfuStatusButtonClick")
         self.getDfuStatusButton.isEnabled = false
         if self.otaDevice?.otaDevice == nil {
             // The CoreBlutooth peripheral object will been cleaned when disconnected.
@@ -716,7 +723,7 @@ class MeshOtaDfuViewController: UIViewController {
         }
         guard let _ = self.deviceName, let otaDevice = self.otaDevice else {
             self.getDfuStatusButton.isEnabled = true
-            print("error: MeshOtaDfuViewController, onGetDfuStatusButtonClick, invalid device name, nil")
+            meshLog("error: MeshOtaDfuViewController, onGetDfuStatusButtonClick, invalid device name, nil")
             self.log("error: failed to get DFU status with invalid componenent name, nil")
             return
         }
@@ -728,7 +735,7 @@ class MeshOtaDfuViewController: UIViewController {
         let error = OtaUpgrader.shared.otaGetDfuStatus(for: otaDevice)
         guard error == MeshErrorCode.MESH_SUCCESS else {
             self.getDfuStatusButton.isEnabled = true
-            print("error: MeshOtaDfuViewController, onGetDfuStatusButtonClick, failed to call meshClientDfuGetStatus, error=\(error)")
+            meshLog("error: MeshOtaDfuViewController, onGetDfuStatusButtonClick, failed to call meshClientDfuGetStatus, error=\(error)")
             self.log("error: failed to send DFU get status command, error:\(error)\(error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED ? ". Device not connected." : "").", force: true)
 
             if error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED {
@@ -744,20 +751,28 @@ class MeshOtaDfuViewController: UIViewController {
     }
 
     @IBAction func onApplyDfuButtonClick(_ sender: CustomLayoutButton) {
-        print("MeshOtaDfuViewController, onApplyDfuButtonClick")
+        meshLog("MeshOtaDfuViewController, onApplyDfuButtonClick")
+        #if true
+        /*
+         * Note, the Apply function has been implemented in the internal of the DFU devices, so not used any more.
+         * When implementing any new desgin, the Apply button should be removed.
+         */
+        UtilityManager.showAlertDialogue(parentVC: self, message: "DFU firmware Apply function has been implemented in mesh devices, so this function is not required and do nothing currently. Please ignored this button in the UI if exists.", title: "Warning")
+        return
+        #else
         if self.otaDevice?.otaDevice == nil {
             // The CoreBlutooth peripheral object will been cleaned when disconnected.
             // So, if use keep state this OTA page, try to restore the peripheral object to speed up the process.
             self.otaDevice?.otaDevice = tmpCBDeviceObject
         }
         guard let _ = self.deviceName, let otaDevice = self.otaDevice else {
-            print("error: MeshOtaDfuViewController, onApplyDfuButtonClick, invalid device name, nil")
+            meshLog("error: MeshOtaDfuViewController, onApplyDfuButtonClick, invalid device name, nil")
             return
         }
 
         let error = OtaUpgrader.shared.otaDfuApply(for: otaDevice)
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: MeshOtaDfuViewController, onApplyDfuButtonClick, failed to do otaDfuApply, error=\(error)\(error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED ? ". Device not connected." : "")")
+            meshLog("error: MeshOtaDfuViewController, onApplyDfuButtonClick, failed to do otaDfuApply, error=\(error)\(error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED ? ". Device not connected." : "")")
             self.log("error: failed to send DFU Apply command, error:\(error)\(error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED ? ". Device not connected." : "")")
 
             if error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED {
@@ -767,30 +782,30 @@ class MeshOtaDfuViewController: UIViewController {
             }
             return
         }
-        print("MeshOtaDfuViewController, onApplyDfuButtonClick, OtaUpgrader.shared.otaDfuApply called")
+        meshLog("MeshOtaDfuViewController, onApplyDfuButtonClick, OtaUpgrader.shared.otaDfuApply called")
+        #endif
     }
 
     @IBAction func onStartUpgradeButtonClick(_ sender: CustomLayoutButton) {
-        print("MeshOtaDfuViewController, onStartUpgradeButtonClick")
-        // TODO: require mesh library and firmware support it firstly, or it won't support at all.
+        meshLog("MeshOtaDfuViewController, onStartUpgradeButtonClick")
         let selectedDfuType = MeshDfuType.getDfuType(by: dfuTypeDropDownButton.selectedString)!
         guard let componentName = self.deviceName, let otaDevice = self.otaDevice else {
-            print("error: MeshOtaDfuViewController, onStartUpgradeButtonClick, invalid device or device name, nil")
+            meshLog("error: MeshOtaDfuViewController, onStartUpgradeButtonClick, invalid device or device name, nil")
             log("error: invalid nil OTA device instance")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil OTA device instance.")
             return
         }
         guard let firmwareFile = self.selectedFwImageName, let otaDfuFirmware = OtaUpgrader.readParseFirmwareImage(at: firmwareFile) else {
-                print("error: MeshOtaDfuViewController, onGetDfuStatusButtonClick, failed to read and parse firmware image file")
+                meshLog("error: MeshOtaDfuViewController, onStartUpgradeButtonClick, failed to read and parse firmware image file")
                 self.log("error: failed to read and parse firmware image file")
                 return
         }
         guard let metadataFile = self.selectedMetadataImageName, let otaDfuMetadata = OtaUpgrader.readParseMetadataImage(at: metadataFile) else {
-            print("error: MeshOtaDfuViewController, onGetDfuStatusButtonClick, failed to read and parse firmware metadata file")
+            meshLog("error: MeshOtaDfuViewController, onStartUpgradeButtonClick, failed to read and parse firmware metadata file")
             self.log("error: failed to read and parse firmware metadata file")
             return
         }
-        print("MeshOtaDfuViewController, onStartUpgradeButtonClick, read firmwareFile=\(firmwareFile) metadataFile=\(metadataFile), firmware version=\(otaDfuMetadata.firmwareVersionMajor).\(otaDfuMetadata.firmwareVersionMinor).\(otaDfuMetadata.firmwareVersionRevision), DFU Type=\(selectedDfuType)")
+        meshLog("MeshOtaDfuViewController, onStartUpgradeButtonClick, read new firmwareFile=\(firmwareFile) metadataFile=\(metadataFile), firmware version=\(otaDfuMetadata.firmwareVersionMajor).\(otaDfuMetadata.firmwareVersionMinor).\(otaDfuMetadata.firmwareVersionRevision), DFU Type=\(selectedDfuType)")
 
         otaUpdatedStarted = false
         lastTransferredPercentage = -1  // indicates invalid value, will be udpated.
@@ -803,15 +818,15 @@ class MeshOtaDfuViewController: UIViewController {
 
         self.isPreparingForOta = false
         self.startAnimating()
-        let error = OtaUpgrader.shared.otaDfuStart(for: otaDevice, dfuType: selectedDfuType, fwImage: otaDfuFirmware, metadata: otaDfuMetadata, proxyToDevice: self.selectedProxyToDeviceName)
+        let error = OtaUpgrader.shared.otaDfuStart(for: otaDevice, dfuType: selectedDfuType, fwImage: otaDfuFirmware, metadata: otaDfuMetadata)
         guard error == MeshErrorCode.MESH_SUCCESS else {
             self.stopAnimating()
-            print("error: MeshOtaDfuViewController, onStartUpgradeButtonClick, failed to call otaDfuStart for \(componentName), error=\(error)")
+            meshLog("error: MeshOtaDfuViewController, onStartUpgradeButtonClick, failed to call otaDfuStart for \(componentName), error=\(error)")
             self.log("error: failed to start OTA process, error:\(error).\(error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED ? " Mesh network not connected." : "")")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to start OTA process. Error Code: \(error).\(error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED ? " Mesh network not connected." : "")", title: "Error")
             return
         }
-        print("MeshOtaDfuViewController, onStartUpgradeButtonClick, OTA process running")
+        meshLog("MeshOtaDfuViewController, onStartUpgradeButtonClick, OTA process running")
         self.otaUpdatedStarted = true
         if selectedDfuType == MeshDfuType.APP_OTA_TO_DEVICE {
             self.log("OTA upgrade process started")
@@ -822,14 +837,15 @@ class MeshOtaDfuViewController: UIViewController {
     }
 
     @IBAction func onStopUpgradeButtonClick(_ sender: CustomLayoutButton) {
-        print("MeshOtaDfuViewController, onStopUpgradeButtonClick")
+        meshLog("MeshOtaDfuViewController, onStopUpgradeButtonClick")
+        let selectedDfuType = MeshDfuType.getDfuType(by: dfuTypeDropDownButton.selectedString)!
         if self.otaDevice?.otaDevice == nil {
             // The CoreBlutooth peripheral object will been cleaned when disconnected.
             // So, if use keep state this OTA page, try to restore the peripheral object to speed up the process.
             self.otaDevice?.otaDevice = tmpCBDeviceObject
         }
         guard let _ = self.deviceName, let _ = self.otaDevice else {
-            print("error: MeshOtaDfuViewController, onStopUpgradeButtonClick, invalid device or device name, nil")
+            meshLog("error: MeshOtaDfuViewController, onStopUpgradeButtonClick, invalid device or device name, nil")
             log("error: invalid nil OTA device instance")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil OTA device instance.")
             return
@@ -840,7 +856,7 @@ class MeshOtaDfuViewController: UIViewController {
         self.stopAnimating()
         let error = OtaUpgrader.shared.otaDfuStop()
         guard error == MeshErrorCode.MESH_SUCCESS else {
-            print("error: MeshOtaDfuViewController, onStopUpgradeButtonClick, failed to call meshClientDfuStop, error=\(error)\(error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED ? ". Device not connected." : "")")
+            meshLog("error: MeshOtaDfuViewController, onStopUpgradeButtonClick, failed to call meshClientDfuStop, error=\(error)\(error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED ? ". Device not connected." : "")")
             self.log("error: failed to send DFU stop command, error:\(error)\(error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED ? ". Device not connected." : "")")
 
             if error == MeshErrorCode.MESH_ERROR_NOT_CONNECTED {
@@ -850,7 +866,7 @@ class MeshOtaDfuViewController: UIViewController {
             }
             return
         }
-        print("MeshOtaDfuViewController, onStopUpgradeButtonClick, done: DFU stop command send success")
+        meshLog("MeshOtaDfuViewController, onStopUpgradeButtonClick, done: DFU stop command send success")
         self.log("done: OTA DFU upgrade stopped by user.")
     }
 

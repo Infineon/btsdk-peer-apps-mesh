@@ -73,27 +73,27 @@ class DeletingDevicesTableViewCell: UITableViewCell {
     }
 
     @IBAction func onDeviceSyncingIconButtonClick(_ sender: UIButton) {
-        print("DeletingDevicesTableViewCell, onDeviceSyncingIconButtonClick")
+        meshLog("DeletingDevicesTableViewCell, onDeviceSyncingIconButtonClick")
         deviceConnectSync()
     }
 
     @IBAction func onDeviceConnectButtonClick(_ sender: UIButton) {
-        print("DeletingDevicesTableViewCell, onDeviceConnectButtonClick")
+        meshLog("DeletingDevicesTableViewCell, onDeviceConnectButtonClick")
         deviceConnectSync()
     }
 
     @IBAction func onDeviceDeleteButtonClick(_ sender: UIButton) {
-        print("DeletingDevicesTableViewCell, onDeviceDeleteButtonClick")
+        meshLog("DeletingDevicesTableViewCell, onDeviceDeleteButtonClick")
         guard let deviceName = self.deviceName else {
             return
         }
         MeshFrameworkManager.shared.meshClientDeleteDevice(deviceName: deviceName) { (networkName: String?, error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("DeletingDevicesTableViewCell, onDeviceDeleteButtonClick, failed to delete the device, error=\(error)")
+                meshLog("DeletingDevicesTableViewCell, onDeviceDeleteButtonClick, failed to delete the device, error=\(error)")
                 return
             }
 
-            print("DeletingDevicesTableViewCell, onDeviceDeleteButtonClick, delete the device success")
+            meshLog("DeletingDevicesTableViewCell, onDeviceDeleteButtonClick, delete the device success")
         }
     }
 
@@ -107,7 +107,7 @@ class DeletingDevicesTableViewCell: UITableViewCell {
         self.deviceStatusMessageLabel.text = messageDeviceIsInSyncing
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: DeletingDevicesTableViewCell, deviceConnectSync, failed to connect to mesh network, error=\(error)")
+                meshLog("error: DeletingDevicesTableViewCell, deviceConnectSync, failed to connect to mesh network, error=\(error)")
                 self.deviceSyncingIconButton.imageView?.stopRotate()
                 self.operationStatusView.backgroundColor = UIColor.red
                 self.deviceStatusMessageLabel.text = self.messageDeviceNotResponsable
@@ -122,7 +122,7 @@ class DeletingDevicesTableViewCell: UITableViewCell {
                 self.deviceSyncingIconButton.imageView?.stopRotate()
 
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: DeletingDevicesTableViewCell, deviceConnectSync, meshClientOnOffGet failed, error=\(error)")
+                    meshLog("error: DeletingDevicesTableViewCell, deviceConnectSync, meshClientOnOffGet failed, error=\(error)")
                     self.operationStatusView.backgroundColor = UIColor.red
                     self.deviceStatusMessageLabel.text = self.messageDeviceNotResponsable
 
@@ -134,7 +134,7 @@ class DeletingDevicesTableViewCell: UITableViewCell {
 
                 self.operationStatusView.backgroundColor = UIColor.green
                 self.deviceStatusMessageLabel.text = self.messageDeviceIsReachable
-                print("error: DeletingDevicesTableViewCell, deviceConnectSync, meshClientOnOffGet success")
+                meshLog("error: DeletingDevicesTableViewCell, deviceConnectSync, meshClientOnOffGet success")
             }
         }
     }

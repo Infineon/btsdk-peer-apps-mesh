@@ -150,7 +150,7 @@ class FirmwareUpgradeViewController: UIViewController, OtaManagerDelegate {
     }
 
     @IBAction func onMenuBarButtonItemClick(_ sender: UIBarButtonItem) {
-        print("FirmwareUpgradeViewController, onMenuBarButtonItemClick")
+        meshLog("FirmwareUpgradeViewController, onMenuBarButtonItemClick")
         if let _ = UserSettings.shared.activeEmail {
             UtilityManager.navigateToViewController(sender: self, targetVCClass: MenuViewController.self, modalPresentationStyle: UIModalPresentationStyle.overCurrentContext)
         } else {
@@ -159,7 +159,7 @@ class FirmwareUpgradeViewController: UIViewController, OtaManagerDelegate {
     }
 
     @IBAction func onRightBarButtonItemClick(_ sender: UIBarButtonItem) {
-        print("FirmwareUpgradeViewController, onRightBarButtonItemClick")
+        meshLog("FirmwareUpgradeViewController, onRightBarButtonItemClick")
     }
 }
 
@@ -195,7 +195,7 @@ extension FirmwareUpgradeViewController: UITableViewDataSource, UITableViewDeleg
             return
         }
 
-        print("FirmwareUpgradeViewController, tableView didSelectRowAt, row=\(indexPath.row)")
+        meshLog("FirmwareUpgradeViewController, tableView didSelectRowAt, row=\(indexPath.row)")
         stopScan()
         OtaManager.shared.activeOtaDevice = OtaManager.shared.otaDevices[indexPath.row]
         if let _ = MeshFrameworkManager.shared.getOpenedMeshNetworkName() {

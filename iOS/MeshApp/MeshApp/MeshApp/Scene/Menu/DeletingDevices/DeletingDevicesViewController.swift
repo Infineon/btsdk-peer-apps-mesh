@@ -91,12 +91,12 @@ class DeletingDevicesViewController: UIViewController {
 
 
     @IBAction func onMenuButtonItemClick(_ sender: UIBarButtonItem) {
-        print("DeletingDevicesViewController, onMenuButtonItemClick")
+        meshLog("DeletingDevicesViewController, onMenuButtonItemClick")
         UtilityManager.navigateToViewController(sender: self, targetVCClass: MenuViewController.self, modalPresentationStyle: UIModalPresentationStyle.overCurrentContext)
     }
 
     @IBAction func onRightBarButtonItemClick(_ sender: UIBarButtonItem) {
-        print("DeletingDevicesViewController, onRightBarButtonItemClick")
+        meshLog("DeletingDevicesViewController, onRightBarButtonItemClick")
     }
 }
 
@@ -131,7 +131,7 @@ extension DeletingDevicesViewController: UITableViewDataSource, UITableViewDeleg
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        print("DeletingDevicesViewController, tableView didSelectRowAt \(indexPath.row), deletingDevices.count=\(deletingDevices.count)")
+        meshLog("DeletingDevicesViewController, tableView didSelectRowAt \(indexPath.row), deletingDevices.count=\(deletingDevices.count)")
         guard !deletingDevices.isEmpty, indexPath.row < deletingDevices.count else {
             return
         }

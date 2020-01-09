@@ -83,7 +83,7 @@ class StartViewController: UIViewController {
         self.statusContentLable.text = "Initializing Mesh Storage ..."
         var error = MeshFrameworkManager.shared.initMeshStorage(forUser: name)  // use default storage for each user.
         guard error == MeshErrorCode.MESH_SUCCESS, let _ = MeshFrameworkManager.shared.getUserStoragePath() else {
-            print("error: StartViewController, meshInitializing, initMeshStorage failed, error=\(error)")
+            meshLog("error: StartViewController, meshInitializing, initMeshStorage failed, error=\(error)")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to create mesh stroage directory! Please double check that the mesh storage directory is readable and writable.", title: "Error")
             UtilityManager.navigateToViewController(targetClass: LoginViewController.self)
             return
@@ -91,11 +91,11 @@ class StartViewController: UIViewController {
 
         // For auto login, the mesh App and account mesh data must be existing already, so do not need to download from network.
         if UserSettings.shared.isAutoLoginning && MeshFrameworkManager.shared.isProvisionerUuidFileExits() {
-            print("StartViewController, meshInitializing, provisionerName=\(UserSettings.shared.provisionerName), isProvisionerUuidFileExits=\(MeshFrameworkManager.shared.isMeshNetworkConnected())")
+            meshLog("StartViewController, meshInitializing, provisionerName=\(UserSettings.shared.provisionerName), isProvisionerUuidFileExits=\(MeshFrameworkManager.shared.isMeshNetworkConnected())")
             self.statusContentLable.text = "Initializing Mesh Library ..."
             error = MeshFrameworkManager.shared.initMeshLibrary(forUser: name)
             if error != MeshErrorCode.MESH_SUCCESS {
-                print("error: StartViewController, meshInitializing, initMeshLibrary failed, error=\(error)")
+                meshLog("error: StartViewController, meshInitializing, initMeshLibrary failed, error=\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to initialize the Mesh Library! Please try to login again later.", title: "Error")
                 UtilityManager.navigateToViewController(targetClass: LoginViewController.self)
                 return
@@ -110,17 +110,17 @@ class StartViewController: UIViewController {
         self.statusContentLable.text = "Downloading to your Networks ..."
         NetworkManager.shared.restoreMeshFiles() { (status) in
             if status != 0 {
-                print("error: StartViewController, meshInitializing, initMeshLibrary failed, error=\(error)")
+                meshLog("error: StartViewController, meshInitializing, initMeshLibrary failed, error=\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to download your mesh data! Please double check the newtork is accessable, then try to login again", title: "Error")
                 UtilityManager.navigateToViewController(targetClass: LoginViewController.self)
                 return
             }
 
-            print("StartViewController, meshInitializing, provisionerName=\(UserSettings.shared.provisionerName), isProvisionerUuidFileExits=\(MeshFrameworkManager.shared.isMeshNetworkConnected())")
+            meshLog("StartViewController, meshInitializing, provisionerName=\(UserSettings.shared.provisionerName), isProvisionerUuidFileExits=\(MeshFrameworkManager.shared.isMeshNetworkConnected())")
             self.statusContentLable.text = "Initializing Mesh Library ..."
             error = MeshFrameworkManager.shared.initMeshLibrary(forUser: name)
             if error != MeshErrorCode.MESH_SUCCESS {
-                print("error: StartViewController, meshInitializing, initMeshLibrary failed, error=\(error)")
+                meshLog("error: StartViewController, meshInitializing, initMeshLibrary failed, error=\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to initialize the Mesh Library! Please try to login again later.", title: "Error")
                 UtilityManager.navigateToViewController(targetClass: LoginViewController.self)
                 return

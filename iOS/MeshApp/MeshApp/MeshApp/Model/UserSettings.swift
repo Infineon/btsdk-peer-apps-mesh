@@ -30,6 +30,10 @@ struct UserSettingsConstants {
     static let KEY_STATUS_COMPONENT_NAME_ARRAY = "key_status_component_name_array"
 
     static let KEY_PUBLISH_DATA_SUBSCRIBED_COMPONENTS = "key_publish_data_subscribed_comonents"
+
+    static let KEY_IS_SENSOR_FAST_CADENCE_ENABLED = "key_is_sensor_fast_cadence_enabled"
+    static let KEY_IS_SENSOR_TRIGGER_PUB_ENABLED = "key_is_sensor_trigger_pub_enabled"
+    static let KEY_SENSOR_FAST_CADENCE_MEASURE_TYPE = "key_sensor_fast_cadence_measure_type"
 }
 
 class UserSettings: NSObject {
@@ -45,7 +49,7 @@ class UserSettings: NSObject {
         if let db = _database {
             return db
         } else {
-            print("error: failed to create App UserDefaults with bundleIdentifier")
+            meshLog("error: failed to create App UserDefaults with bundleIdentifier")
             return UserDefaults.standard
         }
     }
@@ -146,7 +150,7 @@ class UserSettings: NSObject {
                 return name
             }
             if self.activeEmail == nil {
-                print("error: UserSettings, provisionerName is read before user account logged in")
+                meshLog("error: UserSettings, provisionerName is read before user account logged in")
             }
             return generateProvisionerName(account: self.activeEmail)
         }
@@ -284,7 +288,7 @@ extension UserSettings {
                 return nameList
             }
         } else {
-            print("error: invalid active user name, the mesh library must be initialized before using the getMeshFilesList API")
+            meshLog("error: invalid active user name, the mesh library must be initialized before using the getMeshFilesList API")
         }
         return nil
     }
@@ -296,7 +300,7 @@ extension UserSettings {
             database.set(archivedData, forKey: key)
             database.synchronize()
         } else {
-            print("error: invalid active user name, the mesh library must be initialized before using the setMeshFilesList API")
+            meshLog("error: invalid active user name, the mesh library must be initialized before using the setMeshFilesList API")
         }
     }
 
@@ -308,7 +312,7 @@ extension UserSettings {
                 return data
             }
         } else {
-            print("error: invalid active user name, the mesh library must be initialized before using the getMeshFile API")
+            meshLog("error: invalid active user name, the mesh library must be initialized before using the getMeshFile API")
         }
         return nil
     }
@@ -320,7 +324,7 @@ extension UserSettings {
             database.set(archivedData, forKey: key)
             database.synchronize()
         } else {
-            print("error: invalid active user name, the mesh library must be initialized before using the setMeshFile API")
+            meshLog("error: invalid active user name, the mesh library must be initialized before using the setMeshFile API")
         }
     }
 
@@ -338,7 +342,7 @@ extension UserSettings {
             }
             database.synchronize()
         } else {
-            print("error: invalid active user name, the mesh library must be initialized before using the deleteMeshFile API")
+            meshLog("error: invalid active user name, the mesh library must be initialized before using the deleteMeshFile API")
         }
     }
 }
@@ -447,5 +451,35 @@ extension UserSettings {
     }
     func hasComponentSubscribedPublishData(componentName: String) -> Bool {
         return publishDataSubscribedComponents.filter({$0 == componentName}).count > 0 ? true : false
+    }
+
+    var isSensorFastCadenceEnabled: Bool {
+        get {
+            return database.value(forKey: UserSettingsConstants.KEY_IS_SENSOR_FAST_CADENCE_ENABLED) as? Bool ?? false
+        }
+        set(value) {
+            database.set(value, forKey: UserSettingsConstants.KEY_IS_SENSOR_FAST_CADENCE_ENABLED)
+            database.synchronize()
+        }
+    }
+
+    var isSensorTriggerPubEnabled: Bool {
+        get {
+            return database.value(forKey: UserSettingsConstants.KEY_IS_SENSOR_TRIGGER_PUB_ENABLED) as? Bool ?? false
+        }
+        set(value) {
+            database.set(value, forKey: UserSettingsConstants.KEY_IS_SENSOR_TRIGGER_PUB_ENABLED)
+            database.synchronize()
+        }
+    }
+
+    var sensorFastCadenceMeasureType: String {
+        get {
+            return database.value(forKey: UserSettingsConstants.KEY_SENSOR_FAST_CADENCE_MEASURE_TYPE) as? String ?? MeshControl.getMeasurementTypeText(type: MeshControl.MEASUREMENT_TYPE_INSIDE)!
+        }
+        set(value) {
+            database.set(value, forKey: UserSettingsConstants.KEY_SENSOR_FAST_CADENCE_MEASURE_TYPE)
+            database.synchronize()
+        }
     }
 }

@@ -202,7 +202,7 @@ public class LightController extends AppCompatActivity implements View.OnClickLi
         {
             Thread t = new Thread(new Runnable() {
                 public void run() {
-                    serviceReference.getMesh().setLightLcOnOff(mComponentName, (byte) 1, true,0,0);
+                    serviceReference.getMesh().setLightLcOnOff(mComponentName, (byte) 1, true,Constants.DEFAULT_TRANSITION_TIME,0);
                 }
             });
             t.start();
@@ -211,7 +211,7 @@ public class LightController extends AppCompatActivity implements View.OnClickLi
         {
             Thread t = new Thread(new Runnable() {
                 public void run() {
-                    serviceReference.getMesh().setLightLcOnOff(mComponentName, (byte) 0, true,0,0);
+                    serviceReference.getMesh().setLightLcOnOff(mComponentName, (byte) 0, true,Constants.DEFAULT_TRANSITION_TIME,0);
                 }
             });
             t.start();

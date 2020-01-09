@@ -370,7 +370,7 @@ public class ActivityGroup extends AppCompatActivity implements LightingService.
         });
 
         transtime = (TextView) findViewById(R.id.trans_time);
-        transtime.setText("0");
+        transtime.setText("");
 
         transtime.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -389,7 +389,7 @@ public class ActivityGroup extends AppCompatActivity implements LightingService.
                 if (!transtime.getText().toString().matches(""))
                     time = Integer.parseInt(transtime.getText().toString());
                 else
-                    time = 0;
+                    time = Constants.DEFAULT_TRANSITION_TIME;
                 serviceReference.getMesh().onoffSet(groupName, true, false,time, (short) 0);
 
             }
@@ -401,7 +401,7 @@ public class ActivityGroup extends AppCompatActivity implements LightingService.
                 if (!transtime.getText().toString().matches(""))
                     time = Integer.parseInt(transtime.getText().toString());
                 else
-                    time = 0;
+                    time = Constants.DEFAULT_TRANSITION_TIME;
                 serviceReference.getMesh().onoffSet(groupName, false, false,time, (short) 0);
 
             }
@@ -728,15 +728,17 @@ public class ActivityGroup extends AppCompatActivity implements LightingService.
     void setGroupColor(int color) {
         float hsl[] = new float[3];
         ColorUtils.colorToHSL(color,hsl);
-        int hue = (int)hsl[0];
-        int saturation = (int)(hsl[1]*100) ;
-        int lightness = (int)(hsl[2]*100);
+        final int hue = Math.round(((float)(65535 * (int)hsl[0]))/(float)360);
+        final int saturation = Math.round(65535 * (hsl[1]));
+        final int lightness = Math.round(65535 * (hsl[2]));
 
-        Log.d(TAG, "Hue : "+hue);
-        Log.d(TAG, "Saturation : "+saturation);
-        Log.d(TAG, "Lightness : "+lightness);
-        serviceReference.onHslValueChange(groupName, hue, saturation, lightness);
-
+        Log.d(TAG, "sendHSLSet hue: "+hsl[0]+ " saturation"+hsl[1]*100+ " lightness"+hsl[2]*100);
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                serviceReference.onHslValueChange(groupName, hue, saturation, lightness);
+            }
+        });
+        t.start();
     }
 
     @Override

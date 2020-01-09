@@ -95,6 +95,9 @@ struct MeshAppStoryBoardIdentifires {
     static let SEGUE_GROUP_DETAIL_TO_ADD_DEVICE = "GroupDetailsToAddDviceSegue"
     static let SEGUE_SENSOR_CONFIGURE = "SensorToSensorSettingSegue"
     static let SEGUE_LIGHT_LC_SETTINGS = "LightLCSettingsSegue"
+
+    static let SCAN_PROVISION_TEST_VIEW = "ScanProvisionTestViewController"
+    static let SEGUE_SCAN_PROVISION_BACK = "ScanProvisionTestViewControllerBackSegue"
 }
 
 struct MeshAppImageNames {

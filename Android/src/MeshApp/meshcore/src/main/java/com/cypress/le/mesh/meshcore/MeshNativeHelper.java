@@ -434,8 +434,9 @@ public class MeshNativeHelper {
 
     //DFU APIS
     public static native int meshClientDfuGetStatus(String componentName);
-    public static native int meshClientDfuStart(byte dfuMethod, String componentName);
+    public static native int meshClientDfuStart(byte dfuMethod, boolean otaSupported, String componentName);
     public static native int meshClientDfuStop();
+    public static native void meshClientDfuOtaFinished(byte status);
     public static native void meshClientSetDfuFiles(String fw_fileName, String metadata_file);
 
     //SENSOR APIS
@@ -503,6 +504,11 @@ public class MeshNativeHelper {
     static void meshClientSetAdvScanTypeCb(byte scantype) {
         Log.d(TAG, "meshClientSetAdvScanTypeCb");
         mCallback.meshClientSetScanTypeCb(scantype);
+    }
+
+    static void meshClientDfuStartCb() {
+        Log.d(TAG, "meshClientDfuStartCb");
+        mCallback.meshClientDfuStartCb();
     }
 
     static void meshClientDfuStatusCb(byte status, byte progress) {

@@ -90,7 +90,7 @@ class GroupListViewController: UIViewController {
     func meshGroupsInit() {
         meshGropusData.removeAll()
         guard let networkName = MeshFrameworkManager.shared.getOpenedMeshNetworkName() else {
-            print("error: GroupListViewController, meshGroupsInit, UserSettings.shared.currentActiveMeshNetworkName is nil")
+            meshLog("error: GroupListViewController, meshGroupsInit, UserSettings.shared.currentActiveMeshNetworkName is nil")
             return
         }
 
@@ -101,12 +101,12 @@ class GroupListViewController: UIViewController {
             let error = MeshFrameworkManager.shared.createMeshGroup(groupName: MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME)
             allGroups = MeshFrameworkManager.shared.getAllMeshNetworkGroups(networkName: networkName) ?? []
             if error != MeshErrorCode.MESH_SUCCESS || allGroups.count == 0 {
-                print("error: GroupListViewController, meshGroupsInit, network name:\(networkName) failed to create default group:\(MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME)")
+                meshLog("error: GroupListViewController, meshGroupsInit, network name:\(networkName) failed to create default group:\(MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME)")
                 return
             }
-            print("GroupListViewController, meshGroupsInit, network name:\(networkName), create default group:\(MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME) success")
+            meshLog("GroupListViewController, meshGroupsInit, network name:\(networkName), create default group:\(MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME) success")
         }
-        print("GroupListViewController, meshGroupsInit, network name:\(networkName), allGroups=\(allGroups)")
+        meshLog("GroupListViewController, meshGroupsInit, network name:\(networkName), allGroups=\(allGroups)")
 
         // Add non-default group names.
         var defaultHomeGroupName: String?
@@ -137,16 +137,16 @@ class GroupListViewController: UIViewController {
     }
 
     @IBAction func onMenuBarButtonItemClick(_ sender: UIBarButtonItem) {
-        print("GroupListViewController, onMenuBarButtonItemClick")
+        meshLog("GroupListViewController, onMenuBarButtonItemClick")
         UtilityManager.navigateToViewController(sender: self, targetVCClass: MenuViewController.self, modalPresentationStyle: UIModalPresentationStyle.overCurrentContext)
     }
 
     @IBAction func onMoreSettingsButtonClick(_ sender: UIBarButtonItem) {
-        print("GroupListViewController, onMoreSettingsButtonClick")
+        meshLog("GroupListViewController, onMoreSettingsButtonClick")
     }
 
     @IBAction func onAddGroupButtonClick(_ sender: CustomRoundedRectButton) {
-        print("GroupListViewController, onAddGroupButtonClick")
+        meshLog("GroupListViewController, onAddGroupButtonClick")
         let alertController = UIAlertController(title: "Add a Group", message: nil, preferredStyle: .alert)
         alertController.addTextField { (textField: UITextField) in
             textField.placeholder = "Enter the Group Name"
@@ -157,10 +157,10 @@ class GroupListViewController: UIViewController {
                 // Always create new groups as subgroup of the defualt group, so can control all devices in the different groups in on parent group.
                 let error = MeshFrameworkManager.shared.createMeshGroup(groupName: newGroupName, parentGroupName: MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME)
                 if error != MeshErrorCode.MESH_SUCCESS {
-                    print("GroupListViewController, failed to createMeshGroup with name=\"\(newGroupName)\"")
+                    meshLog("GroupListViewController, failed to createMeshGroup with name=\"\(newGroupName)\"")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to Create Group with name: \"\(newGroupName)\". Error Code: \(error)")
                 } else {
-                    print("GroupListViewController, createMeshGroup with name=\"\(newGroupName)\" success")
+                    meshLog("GroupListViewController, createMeshGroup with name=\"\(newGroupName)\" success")
                     self.meshGroupsInit()
                     self.updateGroupCount()
                     self.groupsTableView.reloadData()

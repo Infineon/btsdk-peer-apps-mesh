@@ -1,5 +1,5 @@
 /*
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -704,6 +704,11 @@ BOOL CBtWin10Interface::SetDescriptorValue(const GUID *p_guidServ, const GUID *p
         if (result != GattCommunicationStatus_Success) {
             CMeshClientDlg *pDlg = (CMeshClientDlg *)m_NotificationContext;
             pDlg->PostMessage(WM_MESH_DEVICE_DISCONNECTED, (WPARAM)0, (LPARAM)0);
+            return S_OK;
+        }
+        if (result == GattCommunicationStatus_Success) {
+            CMeshClientDlg *pDlg = (CMeshClientDlg *)m_NotificationContext;
+            pDlg->PostMessage(WM_MESH_DEVICE_CCCD_PUT_COMPLETE, (WPARAM)0, (LPARAM)0);
             return S_OK;
         }
         return S_OK;

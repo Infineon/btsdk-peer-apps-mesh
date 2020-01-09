@@ -43,7 +43,7 @@ class DeviceOtaUpgradeViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("DeviceOtaUpgradeViewController, viewDidLoad")
+        meshLog("DeviceOtaUpgradeViewController, viewDidLoad")
 
         // Do any additional setup after loading the view.
         otaDevice = OtaManager.shared.activeOtaDevice
@@ -80,7 +80,7 @@ class DeviceOtaUpgradeViewController: UIViewController {
         otaProgressUpdated(percentage: 0.0)
 
         guard let otaDevice = self.otaDevice else {
-            print("error: DeviceOtaUpgradeViewController, viewInit, invalid otaDevice instance nil")
+            meshLog("error: DeviceOtaUpgradeViewController, viewInit, invalid otaDevice instance nil")
             log("error: invalid nil OTA device object")
             DispatchQueue.main.async {
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil OTA device object.", title: "Error")
@@ -241,7 +241,7 @@ class DeviceOtaUpgradeViewController: UIViewController {
     //
     func doOtaUpgradePrepare() {
         guard let otaDevice = self.otaDevice else {
-            print("error: DeviceOtaUpgradeViewController, otaUpgradePrepare, invalid OTA device instance")
+            meshLog("error: DeviceOtaUpgradeViewController, otaUpgradePrepare, invalid OTA device instance")
             log("error: invalid nil OTA device object")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil OTA device object.")
             return
@@ -255,7 +255,7 @@ class DeviceOtaUpgradeViewController: UIViewController {
             if error == OtaErrorCode.BUSYING {
                 return
             }
-            print("error: DeviceOtaUpgradeViewController, otaUpgradePrepare, failed to prepare for OTA")
+            meshLog("error: DeviceOtaUpgradeViewController, otaUpgradePrepare, failed to prepare for OTA")
             self.log("error: failed to prepare for OTA, error:\(error)")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to prepare for OTA. Error Code: \(error).", title: "Error")
             return
@@ -268,47 +268,49 @@ class DeviceOtaUpgradeViewController: UIViewController {
     }
 
     func firmwareImagesInit() {
-        let appDocumentsPath = NSHomeDirectory() + "/Documents"
-        let meshFwPath = "mesh/fwImages"
-        let fwImagesPath = appDocumentsPath + "/" + meshFwPath
-        var isDirectory = ObjCBool(false)
-        let exists = FileManager.default.fileExists(atPath: fwImagesPath, isDirectory: &isDirectory)
-        if !exists || !isDirectory.boolValue {
-            print("DeviceOtaUpgradeViewController, firmwareImagesInit, \(fwImagesPath) not exsiting")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Firmware images under App Document dirctory with path \"\(meshFwPath)\" not found. Please copy valid firmware images into your device, then try again later.", title: "Error")
-            return
-        }
+        let defaultDocumentsPath = NSHomeDirectory() + "/Documents"
+        let meshPath = "mesh"
+        let fwImagePath = "\(meshPath)/fwImages"
+        let meshSearchPath = "\(defaultDocumentsPath)/\(meshPath)"
+        let fwImagesSearchPath = "\(defaultDocumentsPath)/\(fwImagePath)"
 
         otaFwImageNames.removeAll()
-        if let files = try? FileManager.default.contentsOfDirectory(atPath: fwImagesPath) {
+        let foundInFwImages = addFirmwareImageNames(atPath: meshSearchPath, prefix: fwImagePath)
+        let foundInMesh = addFirmwareImageNames(atPath: fwImagesSearchPath, prefix: meshPath)
+        let foundInDocuments = addFirmwareImageNames(atPath: defaultDocumentsPath)
+        if !foundInFwImages, !foundInMesh, !foundInDocuments {
+            meshLog("error: DeviceOtaUpgradeViewController, firmwareImagesInit, no valid firmware images found")
+            UtilityManager.showAlertDialogue(parentVC: self, message: "No valid firmware images found under App's \"Documents/mesh/fwImages\", \"Documents/mesh\" and  \"Documents\" directories. Please copy valid firmware images into your device, then try again later.", title: "Error")
+        }
+    }
+
+    func addFirmwareImageNames(atPath: String, prefix: String? = nil) -> Bool {
+        var isDirectory = ObjCBool(false)
+        let exists = FileManager.default.fileExists(atPath: atPath, isDirectory: &isDirectory)
+        if !exists || !isDirectory.boolValue {
+            meshLog("error: DeviceOtaUpgradeViewController, addFirmwareImageNames, \(atPath) not exsiting")
+            return false
+        }
+
+        let namePrefix = ((prefix == nil) || (prefix?.isEmpty ?? true)) ? "" : (prefix! + "/")
+        if let files = try? FileManager.default.contentsOfDirectory(atPath: atPath) {
             for fileName in files {
                 // ecdsa256_genkey.exe tool will auto append .signed extension to the signed image file name.
                 if fileName.hasSuffix(".bin") || fileName.hasSuffix(".bin.signed") {
-                    let imageName = meshFwPath + "/" + fileName
-                    otaFwImageNames.append(imageName)
-                    print("DeviceOtaUpgradeViewController, firmwareImagesInit, found images: \(imageName)")
+                    otaFwImageNames.append(namePrefix + fileName)
+                    meshLog("DeviceOtaUpgradeViewController, addFirmwareImageNames, found image: \(namePrefix + fileName)")
                 }
             }
         }
 
-        if let files = try? FileManager.default.contentsOfDirectory(atPath: appDocumentsPath + "/mesh") {
-            for fileName in files {
-                if fileName.hasSuffix(".bin") || fileName.hasSuffix(".bin.signed") {
-                    let imageName = "mesh/" + fileName
-                    otaFwImageNames.append(imageName)
-                    print("DeviceOtaUpgradeViewController, firmwareImagesInit, found images: \(imageName)")
-                }
-            }
+        if otaFwImageNames.isEmpty {
+            return false
         }
+        return true
+    }
 
-        if let files = try? FileManager.default.contentsOfDirectory(atPath: appDocumentsPath) {
-            for fileName in files {
-                if fileName.hasSuffix(".bin") || fileName.hasSuffix(".bin.signed") {
-                    otaFwImageNames.append(fileName)
-                    print("DeviceOtaUpgradeViewController, firmwareImagesInit, found images: \(fileName)")
-                }
-            }
-        }
+    func getFullPath(for selectFileName: String) -> String {
+        return NSHomeDirectory() + "/Documents/" + selectFileName
     }
 
     func otaProgressUpdated(percentage: Float) {
@@ -332,21 +334,21 @@ class DeviceOtaUpgradeViewController: UIViewController {
     }
 
     @IBAction func onOtaFirmwareUpgradeButtonClick(_ sender: UIButton) {
-        print("DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick")
+        meshLog("DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick")
         log("OTA update button triggerred")
         otaUpdatedStarted = false
         lastTransferredPercentage = -1  // indicates invalid value, will be udpated.
         otaProgressUpdated(percentage: 0.0)
 
         guard let otaDevice = self.otaDevice else {
-            print("error: DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick, invalid OTA device instance")
+            meshLog("error: DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick, invalid OTA device instance")
             log("error: invalid nil OTA device object")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil OTA device object.")
             return
         }
         var fwImagePath = NSHomeDirectory() + "/Documents/"
         guard let fwImageName = self.selectedFwImageName else {
-            print("error: DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick, no firmware image selected")
+            meshLog("error: DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick, no firmware image selected")
             log("error: no firmware image selected")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Please select a firmware image firstly, then try again.")
             return
@@ -356,12 +358,12 @@ class DeviceOtaUpgradeViewController: UIViewController {
         var isDirectory = ObjCBool(false)
         let exists = FileManager.default.fileExists(atPath: fwImagePath, isDirectory: &isDirectory)
         guard exists, !isDirectory.boolValue, let fwImageData = FileManager.default.contents(atPath: fwImagePath) else {
-            print("error: DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick, selected firmware image not exists")
+            meshLog("error: DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick, selected firmware image not exists")
             log("error: unable to read the content of the selected firmware image")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Firmware image \"\(fwImagePath)\" not found or failed to read the image file. Please copy and select valid firmware images into your device, then retry later.", title: "Error")
             return
         }
-        print("DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick, otaDevice=\(otaDevice), fwImagePath=\(fwImagePath), imageSize=\(fwImageData.count)")
+        meshLog("DeviceOtaUpgradeViewController, onOtaFirmwareUpgradeButtonClick, otaDevice=\(otaDevice), fwImagePath=\(fwImagePath), imageSize=\(fwImageData.count)")
 
         // the CoreBlutooth peripheral object has been cleaned when disconnected, here try to restore it for quick action if possible.
         if self.otaDevice?.otaDevice == nil {
@@ -389,27 +391,27 @@ class DeviceOtaUpgradeViewController: UIViewController {
             let error = otaDevice.startOta(fwImage: fwImage)
             guard error == OtaErrorCode.SUCCESS else {
                 self.stopOtaUpgradingAnimating()
-                print("error: DeviceOtaUpgradeViewController, doOtaFirmwareUpgrade, failed to start OTA process")
+                meshLog("error: DeviceOtaUpgradeViewController, doOtaFirmwareUpgrade, failed to start OTA process")
                 self.log("error: failed to start OTA process, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to start OTA process. Error Code: \(error).", title: "Error")
                 return
             }
-            print("DeviceOtaUpgradeViewController, doOtaFirmwareUpgrade, OTA process running")
+            meshLog("DeviceOtaUpgradeViewController, doOtaFirmwareUpgrade, OTA process running")
             self.log("OTA upgrade process started")
             self.otaUpdatedStarted = true
         }
     }
 
     @IBAction func onLeftBarButtonItemClick(_ sender: UIBarButtonItem) {
-        print("DeviceOtaUpgradeViewController, onLeftBarButtonItemClick")
+        meshLog("DeviceOtaUpgradeViewController, onLeftBarButtonItemClick")
         OtaManager.shared.resetOtaUpgradeStatus()
         if let otaDevice = self.otaDevice, otaDevice.getDeviceType() == .mesh, let groupName = self.groupName {
-            print("DeviceOtaUpgradeViewController, navigate back to ComponentViewController page)")
+            meshLog("DeviceOtaUpgradeViewController, navigate back to ComponentViewController page)")
             UserSettings.shared.currentActiveGroupName = groupName
             UserSettings.shared.currentActiveComponentName = otaDevice.getDeviceName()
             UtilityManager.navigateToViewController(targetClass: ComponentViewController.self)
         } else {
-            print("DeviceOtaUpgradeViewController, navigate to FirmwareUpgradeViewController page)")
+            meshLog("DeviceOtaUpgradeViewController, navigate to FirmwareUpgradeViewController page)")
             if let otaDevice = self.otaDevice, otaDevice.getDeviceType() != .mesh {
                 otaDevice.disconnect()
             }
@@ -419,7 +421,7 @@ class DeviceOtaUpgradeViewController: UIViewController {
     }
 
     @IBAction func onRightBarButtonItemClick(_ sender: UIBarButtonItem) {
-        print("DeviceOtaUpgradeViewController, onRightBarButtonItemClick")
+        meshLog("DeviceOtaUpgradeViewController, onRightBarButtonItemClick")
     }
 
     func startOtaUpgradingAnimating() {
@@ -437,11 +439,11 @@ class DeviceOtaUpgradeViewController: UIViewController {
 
 extension DeviceOtaUpgradeViewController: CustomDropDownViewDelegate {
     func customDropDwonViewWillShowDropList(_ dropDownView: CustomDropDownView) {
-        print("customDropDwonViewWillShowDropList, dropListItems=\(dropDownView.dropListItems)")
+        meshLog("customDropDwonViewWillShowDropList, dropListItems=\(dropDownView.dropListItems)")
     }
 
     func customDropDownViewDidUpdateValue(_ dropDownView: CustomDropDownView, selectedIndex: Int) {
-        print("customDropDownViewDidUpdateValue, selectedIndex=\(selectedIndex), text=\(String(describing: dropDownView.text))")
+        meshLog("customDropDownViewDidUpdateValue, selectedIndex=\(selectedIndex), text=\(String(describing: dropDownView.text))")
         if let selectedText = dropDownView.text, selectedText.count > 0 {
             selectedFwImageName = selectedText
             if !isPreparingForOta {

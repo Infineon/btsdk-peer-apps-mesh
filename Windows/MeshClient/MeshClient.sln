@@ -9,6 +9,7 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		MTB-Release|Win32 = MTB-Release|Win32
+		MTB-Debug|Win32 = MTB-Debug|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
@@ -16,6 +17,8 @@ Global
 		{5C51C3A6-522C-4085-B956-026F7D642701}.Debug|Win32.Build.0 = Debug|Win32
 		{5C51C3A6-522C-4085-B956-026F7D642701}.MTB-Release|Win32.ActiveCfg = MTB-Release|Win32
 		{5C51C3A6-522C-4085-B956-026F7D642701}.MTB-Release|Win32.Build.0 = MTB-Release|Win32
+		{5C51C3A6-522C-4085-B956-026F7D642701}.MTB-Debug|Win32.ActiveCfg = MTB-Debug|Win32
+		{5C51C3A6-522C-4085-B956-026F7D642701}.MTB-Debug|Win32.Build.0 = MTB-Debug|Win32
 		{5C51C3A6-522C-4085-B956-026F7D642701}.Release|Win32.ActiveCfg = Release|Win32
 		{5C51C3A6-522C-4085-B956-026F7D642701}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection

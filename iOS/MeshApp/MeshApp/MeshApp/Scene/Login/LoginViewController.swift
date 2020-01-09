@@ -122,11 +122,11 @@ class LoginViewController: UIViewController {
                 if status != 0 {
                     self?.accountPasswordTextField.text = ""
                     self?.errorInfoView.isHidden = false
-                    print("error: onLoginButtonUp, NetworkManager.shared.accountLogin status=\(status)")
+                    meshLog("error: onLoginButtonUp, NetworkManager.shared.accountLogin status=\(status)")
                     return
                 }
 
-                print("onLoginButtonUp, success")
+                meshLog("onLoginButtonUp, success")
                 UserSettings.shared.activeEmail = email
                 UserSettings.shared.activeName = UserSettings.shared.accountsName["email"]
                 UserSettings.shared.activePssword = password

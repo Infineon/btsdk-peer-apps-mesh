@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -46,6 +46,7 @@
 #  include <linux/time.h>
 #elif defined(__APPLE__)
 #  include <stdarg.h>
+#  include <unistd.h>
 #  include <time.h>
 #  include <sys/time.h>
 #  ifndef HAVE_CLOCK_GETTIME    // aimed to suppot platforms: iOS *.* < iOS 10.0
@@ -63,15 +64,6 @@
 typedef void (TIMER_CBACK)(void *p_tle);
 #undef TIMER_PARAM_TYPE
 #define TIMER_PARAM_TYPE    void *
-
-#define WICED_BT_MESH_MODEL_TRACE(...) WICED_BT_TRACE(__VA_ARGS__)
-
-#ifdef __ANDROID__
-#define  LOGY(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
-#else
-#define  LOGY(...)  printf(__VA_ARGS__); printf("\n");
-#endif
-
 
 extern uint32_t start_timer(int32_t timeout,  uint16_t type);
 extern void stop_timer(uint32_t timer_id);
@@ -103,92 +95,6 @@ extern wiced_bool_t mesh_bt_gatt_le_connect(wiced_bt_device_address_t bd_addr, w
     wiced_bt_ble_conn_mode_t conn_mode, wiced_bool_t is_direct);
 extern wiced_bool_t mesh_bt_gatt_le_disconnect(uint32_t conn_id);
 extern uint32_t restart_timer(uint32_t timeout, uint32_t timer_id);
-
-void Log(char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-#ifdef __ANDROID__
-    __android_log_vprint(ANDROID_LOG_INFO, LOG_TAG, fmt, ap);
-#else
-    vprintf(fmt, ap);
-    if (fmt && fmt[strlen(fmt) - 1] != '\n')
-    {
-        printf("\n");
-    }
-#endif
-    va_end(ap);
-}
-
-int wiced_printf(char * buffer, int len, char * fmt_str, ...)
-{
-#ifdef __ANDROID__
-    unsigned int i;
-    for( i=0; i<len; i++){
-        Log("%x",*fmt_str);
-        fmt_str++;
-    }
-#else
-    va_list ap;
-    va_start(ap, fmt_str);
-    vprintf(fmt_str, ap);
-    va_end(ap);
-    if (buffer && len > 0)
-    {
-        Logn((uint8_t *)buffer,len);
-    }
-#endif
-    return 0;
-}
-
-void ods(char * fmt_str, ...) {
-    va_list ap;
-    va_start(ap, fmt_str);
-#ifdef __ANDROID__
-    __android_log_vprint(ANDROID_LOG_INFO, LOG_TAG, fmt_str, ap);
-#else
-    vprintf(fmt_str, ap);
-    if (fmt_str && fmt_str[strlen(fmt_str) - 1] != '\n')
-    {
-        printf("\n");
-    }
-#endif
-    va_end(ap);
-}
-/**
-* mesh trace functions.
-* These are just wrapper function for WICED trace function call. We use these
-* wrapper functions to make the mesh code easier to port on different platforms.
-*/
-void ble_trace0(const char *p_str)
-{
-    Log((char *)p_str,1);
-}
-
-void ble_trace1(const char *fmt_str, UINT32 p1)
-{
-    Log((char *)fmt_str, p1);
-}
-
-void ble_trace2(const char *fmt_str, UINT32 p1, UINT32 p2)
-{
-    Log((char *)fmt_str, p1, p2);
-}
-
-void ble_trace3(const char *fmt_str, UINT32 p1, UINT32 p2, UINT32 p3)
-{
-    Log((char *)fmt_str, p1, p2, p3);
-}
-
-void ble_trace4(const char *fmt_str, UINT32 p1, UINT32 p2, UINT32 p3, UINT32 p4)
-{
-    Log((char *)fmt_str, p1, p2, p3, p4);
-}
-
-void ble_tracen(const char *p_str, UINT32 len)
-{
-    Logn((uint8_t *)p_str,len);
-}
 
 void* wiced_memory_allocate(UINT32 length)
 {
@@ -264,7 +170,7 @@ TIMER_LIST_ENT *wiced_find_timer(uint32_t idTimer)
         }
     }
 
-    ods("!!! wiced_find_timer, not found queued timer with idTimer=%u\n", idTimer);
+    //ods("!!! wiced_find_timer, not found queued timer with idTimer=%u\n", idTimer);
     return NULL;
 }
 
@@ -304,6 +210,7 @@ wiced_result_t wiced_init_timer(wiced_timer_t *wt, wiced_timer_callback_t TimerC
     p_timer->param = cBackparam;
     p_timer->type = type;
 
+    //ods("wiced_init_timer, p_timer:0x%lx\n", p_timer);
     LeaveCriticalSection();
     return WICED_BT_SUCCESS;
 }
@@ -312,7 +219,11 @@ wiced_result_t wiced_deinit_timer(wiced_timer_t* wt)
 {
     EnterCriticalSection();
     // Make sure that we are not running the timer and removed from the timer list.
-    wiced_stop_timer(wt);
+    if (wiced_is_timer_in_use(wt))
+    {
+        ods("!!! wiced_deinit_timer, p_timer:0x%lx is in using, trying to stop it firstly\n", wt);
+        wiced_stop_timer(wt);
+    }
     //ods("wiced_deinit_timer, p_timer:0x%lx\n", wt);
     memset(wt, 0, sizeof(TIMER_LIST_ENT));
     LeaveCriticalSection();
@@ -335,7 +246,7 @@ wiced_result_t wiced_start_timer(wiced_timer_t *wt, uint32_t timeout)
     {
         if (is_queued_timer(wt))
         {
-            ods("wiced_start_timer, restart timer p_timer:0x%lx, type=%d, idTimer=%u, timeout=%u, p_cback=0x%lx, flags=0x%04x, p_next=0x%lx\n", p_timer, p_timer->type, p_timer->idTimer, timeout, p_timer->p_cback, p_timer->flags, p_timer->p_next);
+            ods("!!! wiced_start_timer, restart timer p_timer:0x%lx, type=%d, idTimer=%u, timeout=%u, p_cback=0x%lx, flags=0x%04x, p_next=0x%lx\n", p_timer, p_timer->type, p_timer->idTimer, timeout, p_timer->p_cback, p_timer->flags, p_timer->p_next);
             p_timer->idTimer = restart_timer(timeout, p_timer->idTimer);
             if (p_timer->idTimer != 0)
             {
@@ -358,7 +269,7 @@ wiced_result_t wiced_start_timer(wiced_timer_t *wt, uint32_t timeout)
     p_timer->idTimer = start_timer(timeout, p_timer->type);
     if (p_timer->idTimer == 0)
     {
-        ods("!!! wiced_start_timer, failed to start_timer\n");
+        ods("!!! wiced_start_timer, failed to do start_timer, p_timer=0x%lx\n", p_timer);
         return WICED_START_ERROR;
     }
     p_timer->timeout = timeout;
@@ -377,6 +288,7 @@ wiced_result_t wiced_stop_timer(wiced_timer_t* wt)
     TIMER_LIST_ENT *p_cur;
 
     EnterCriticalSection();
+    //ods("wiced_stop_timer, p_timer:0x%lx, type=%d, idTimer=%u, flags=0x%04x, p_next=0x%lx\n", p_timer, p_timer->type, p_timer->idTimer, p_timer->flags, p_timer->p_next);
     if (!is_queued_timer(wt))
     {
         if (p_timer->idTimer != 0)
@@ -413,9 +325,9 @@ wiced_result_t wiced_stop_timer(wiced_timer_t* wt)
         }
     }
 
-    ods("!!! stop timer not found in the timer list, p_timer:0x%lx, type=%d, idTimer=%u, flags=0x%04x, p_next=0x%lx\n", p_timer, p_timer->type, p_timer->idTimer, p_timer->flags, p_timer->p_next);
+    ods("!!! wiced_stop_timer, not found in queued timer list, p_timer:0x%lx, type=%d, idTimer=%u, flags=0x%04x, p_next=0x%lx\n", p_timer, p_timer->type, p_timer->idTimer, p_timer->flags, p_timer->p_next);
     LeaveCriticalSection();
-    return WICED_BT_SUCCESS;
+    return WICED_NO_INSTANCE;
 }
 
 wiced_bool_t wiced_is_timer_in_use(wiced_timer_t *wt)
@@ -448,7 +360,7 @@ void MeshTimerFunc(long timer_id)
 
         if (p_timer->p_cback)
         {
-            //ods("MeshTimerFunc, invoking the timer callback p_timer=0x%lx, p_cback=0x%lx param=0x%lx\n", p_timer, p_timer->p_cback, p_timer->param);
+            //ods("MeshTimerFunc, invoking the timer callback p_timer=0x%lx, timer_id=%ld, p_cback=0x%lx param=0x%lx\n", p_timer, p_timer->idTimer, p_timer->p_cback, p_timer->param);
             p_timer->p_cback(p_timer->param);
         }
     }
@@ -545,84 +457,6 @@ wiced_bt_gatt_status_t wiced_bt_util_set_gatt_client_config_descriptor(uint16_t 
     return WICED_BT_GATT_SUCCESS;
 }
 
-void Logn(uint8_t* data, int len)
-{
-    int count = 0;
-    int i;
-    for (i = 0; i < len; i += count){
-        count = len - i;
-        if (count >= 16) {
-            count = 16;
-            LOGY("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                data[0],  data[1],  data[2],  data[3], data[4],  data[5],  data[6],  data[7],
-                data[8],  data[9],  data[10], data[11],data[12], data[13], data[14], data[15]);
-        }
-        else if (count == 15) {
-            LOGY("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                data[0],  data[1],  data[2],  data[3], data[4],  data[5],  data[6],  data[7],
-                data[8],  data[9],  data[10], data[11],data[12], data[13], data[14]);
-        }
-        else if (count == 14) {
-            LOGY("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                data[0],  data[1],  data[2],  data[3], data[4],  data[5],  data[6],  data[7],
-                data[8],  data[9],  data[10], data[11],data[12], data[13]);
-        }
-        else if (count == 13) {
-            LOGY("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                data[0],  data[1],  data[2],  data[3], data[4],  data[5],  data[6],  data[7],
-                data[8],  data[9],  data[10], data[11],data[12]);
-        }
-        else if (count == 12) {
-            LOGY("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                data[0],  data[1],  data[2],  data[3], data[4],  data[5],  data[6],  data[7],
-                data[8],  data[9],  data[10], data[11]);
-        }
-        else if (count == 11) {
-            LOGY("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                data[0],  data[1],  data[2],  data[3], data[4],  data[5],  data[6],  data[7],
-                data[8],  data[9],  data[10]);
-        }
-        else if (count == 10) {
-            LOGY("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                data[0],  data[1],  data[2],  data[3],
-                data[4],  data[5],  data[6],  data[7], data[8],  data[9]);
-        }
-        else if (count == 9) {
-            LOGY("%02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                data[0],  data[1],  data[2],  data[3],
-                data[4],  data[5],  data[6],  data[7], data[8]);
-        }
-        else if (count == 8) {
-            LOGY("%02x %02x %02x %02x %02x %02x %02x %02x",
-                data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
-        }
-        else if (count == 7) {
-            LOGY("%02x %02x %02x %02x %02x %02x %02x",
-                data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
-        }
-        else if (count == 6) {
-            LOGY("%02x %02x %02x %02x %02x %02x",
-                data[0], data[1], data[2], data[3], data[4], data[5]);
-        }
-        else if (count == 5) {
-            LOGY("%02x %02x %02x %02x %02x", data[0], data[1], data[2], data[3], data[4]);
-        }
-        else if (count == 4) {
-            LOGY("%02x %02x %02x %02x", data[0], data[1], data[2], data[3]);
-        }
-        else if (count == 3) {
-            LOGY("%02x %02x %02x", data[0], data[1], data[2]);
-        }
-        else if (count == 2) {
-            LOGY("%02x %02x", data[0], data[1]);
-        }
-        else {
-            LOGY("%02x", data[0]);
-        }
-        data += count;
-    }
-}
-
 inline void EnterCriticalSection()
 {
     pthread_mutex_lock(&cs);
@@ -638,8 +472,8 @@ wiced_bool_t initTimer()
     if(!timer_initialized ) {
         if (sizeof(wiced_timer_t) < sizeof(TIMER_LIST_ENT)) {
             // used to check the data size is correctly, because the wiced_timer_t data size may be udpated and cause inconsistent issue.
-            printf("\nerror: initTimer, invalid wiced_time_t size:%lu < TIMER_LIST_ENT size:%lu\n", sizeof(wiced_timer_t), sizeof(TIMER_LIST_ENT));
-            printf("please check the WICED_TIMER_INSTANCE_SIZE_IN_WORDS value in wiced_timer.h or update the TIMER_LIST_ENT to fix the new size.\n");
+            ods("\nerror: initTimer, invalid wiced_time_t size:%lu < TIMER_LIST_ENT size:%lu\n", sizeof(wiced_timer_t), sizeof(TIMER_LIST_ENT));
+            ods("please check the WICED_TIMER_INSTANCE_SIZE_IN_WORDS value in wiced_timer.h or update the TIMER_LIST_ENT to fix the new size.\n");
             return WICED_FALSE;
         }
 
@@ -648,7 +482,7 @@ wiced_bool_t initTimer()
         pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
         if (pthread_mutex_init(&cs, &Attr) != 0)
         {
-            printf("\nerror: initTimer, failed to initialize recursive mutex lock\n");
+            ods("\nerror: initTimer, failed to initialize recursive mutex lock\n");
             return WICED_FALSE;
         }
         timer_initialized = WICED_TRUE;

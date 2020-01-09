@@ -57,7 +57,7 @@ class GroupDetailsViewController: UIViewController {
 
     lazy var controlsVC: UIViewController = {
         guard let groupControlsVC = self.storyboard?.instantiateViewController(withIdentifier: MeshAppStoryBoardIdentifires.GROUP_DETAILS_CONTROLS) as? GroupDetailsControlsViewController else {
-            print("error: GroupDetailsViewController, failed to load \(MeshAppStoryBoardIdentifires.GROUP_DETAILS_CONTROLS) ViewController from Main storyboard")
+            meshLog("error: GroupDetailsViewController, failed to load \(MeshAppStoryBoardIdentifires.GROUP_DETAILS_CONTROLS) ViewController from Main storyboard")
             return UIViewController()
         }
         return groupControlsVC as UIViewController
@@ -65,7 +65,7 @@ class GroupDetailsViewController: UIViewController {
 
     lazy var deviceListVC: UIViewController = {
         guard let groupDeviceListVC = self.storyboard?.instantiateViewController(withIdentifier: MeshAppStoryBoardIdentifires.GROUP_DETAILS_DEVICE_LIST) as? GroupDetailsDeviceListViewController else {
-            print("error: GroupDetailsViewController, failed to load \(MeshAppStoryBoardIdentifires.GROUP_DETAILS_DEVICE_LIST) ViewController from Main storyboard")
+            meshLog("error: GroupDetailsViewController, failed to load \(MeshAppStoryBoardIdentifires.GROUP_DETAILS_DEVICE_LIST) ViewController from Main storyboard")
             return UIViewController()
         }
         return groupDeviceListVC as UIViewController
@@ -138,7 +138,7 @@ class GroupDetailsViewController: UIViewController {
             for name in deviceNames {
                 let componentType = MeshFrameworkManager.shared.getMeshComponentType(componentName: name)
                 self.groupComponents.append(GroupComponentData(name: name, type: componentType))
-                print("GroupDetailsViewController, group: \(groupName) has component: name=\(name), type=\(componentType)")
+                meshLog("GroupDetailsViewController, group: \(groupName) has component: name=\(name), type=\(componentType)")
             }
         }
     }
@@ -164,7 +164,7 @@ class GroupDetailsViewController: UIViewController {
         self.currentSegmentedSelectedIndex = selectedSegmentIndex
         if self.segmentedControl.selectedSegmentIndex > 0 {
             // show Group Details Device List content.
-            print("GroupDetailsViewController, content of group Controls selected")
+            meshLog("GroupDetailsViewController, content of group Controls selected")
             if let deviceListVC = self.deviceListVC as? GroupDetailsDeviceListViewController {
                 deviceListVC.groupName = self.groupName
                 deviceListVC.groupComponents = self.groupComponents
@@ -172,7 +172,7 @@ class GroupDetailsViewController: UIViewController {
             displaySegmentedControlContent(for: self.deviceListVC)
         } else {
             // show Group Details Controls content.
-            print("GroupDetailsViewController, content of group Device List selected")
+            meshLog("GroupDetailsViewController, content of group Device List selected")
 
             if let controlVC = self.controlsVC as? GroupDetailsControlsViewController {
                 controlVC.isDeviceControl = false
@@ -200,15 +200,15 @@ class GroupDetailsViewController: UIViewController {
     }
 
     @IBAction func onBackBarButtonItemClick(_ sender: UIBarButtonItem) {
-        print("GroupDetailsViewController, onBackBarButtonItemClick, go back to network list")
+        meshLog("GroupDetailsViewController, onBackBarButtonItemClick, go back to network list")
         // Do nothing, controlled by segue.
     }
 
     @IBAction func onSettingsBarButtonItemClick(_ sender: UIBarButtonItem) {
-        print("GroupDetailsViewController, onSettingsBarButtonItemClick")
+        meshLog("GroupDetailsViewController, onSettingsBarButtonItemClick")
         let choices = GroupDetailsPopoverChoices.allValues
         let controller = PopoverChoiceTableViewController(choices: choices) { (index: Int, selection: String) in
-            print("GroupDetailsViewController, onSettingsBarButtonItemClick, index=\(index), selection=\(selection)")
+            meshLog("GroupDetailsViewController, onSettingsBarButtonItemClick, index=\(index), selection=\(selection)")
             guard let choice = GroupDetailsPopoverChoices.init(rawValue: selection) else { return }
 
             switch choice {
@@ -223,7 +223,7 @@ class GroupDetailsViewController: UIViewController {
     }
 
     @IBAction func onAddDeviceButtonClick(_ sender: CustomRoundedRectButton) {
-        print("GroupDetailsViewController, onAddDeviceButtonClick")
+        meshLog("GroupDetailsViewController, onAddDeviceButtonClick")
     }
 
     // MARK: - Navigation
@@ -233,7 +233,7 @@ class GroupDetailsViewController: UIViewController {
         // Get the new view controller using segue.destination.
         // Pass the selected object to the new view controller.
         if let identifier = segue.identifier {
-            print("GroupDetailsViewController, segue.identifier=\(identifier)")
+            meshLog("GroupDetailsViewController, segue.identifier=\(identifier)")
             switch identifier {
             case MeshAppStoryBoardIdentifires.SEGUE_GROUP_DETAIL_TO_ADD_DEVICE:
                 if let unprovisionedDevicesVC = segue.destination as? UnprovisionedDevicesViewController {
@@ -246,7 +246,7 @@ class GroupDetailsViewController: UIViewController {
     }
 
     func onGroupRename() {
-        print("GroupDetailsViewController, onGroupRename, show input new group dialogue")
+        meshLog("GroupDetailsViewController, onGroupRename, show input new group dialogue")
         let alertController = UIAlertController(title: GroupDetailsPopoverChoices.rename.rawValue, message: nil, preferredStyle: .alert)
         alertController.addTextField { (textField: UITextField) in
             textField.placeholder = "Enter New Group Name"
@@ -259,12 +259,12 @@ class GroupDetailsViewController: UIViewController {
                 MeshFrameworkManager.shared.meshClientRename(oldName: oldGroupName, newName: newGroupName, completion: { (networkName: String?, error: Int) in
                     self.indicatorView.stopAnimating()
                     guard networkName == UserSettings.shared.currentActiveMeshNetworkName, error == MeshErrorCode.MESH_SUCCESS else {
-                        print("error: GroupDetailsViewController, failed to call meshClientRename with oldGroupName:\(oldGroupName), newGroupName=\(newGroupName), error=\(error)")
+                        meshLog("error: GroupDetailsViewController, failed to call meshClientRename with oldGroupName:\(oldGroupName), newGroupName=\(newGroupName), error=\(error)")
                         UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to rename \"\(oldGroupName)\" mesh group. Error Code: \(error)")
                         return
                     }
 
-                    print("GroupDetailsViewController, rename \"\(oldGroupName)\" group to new name=\"\(newGroupName)\" success")
+                    meshLog("GroupDetailsViewController, rename \"\(oldGroupName)\" group to new name=\"\(newGroupName)\" success")
                     // update GUI and instance data.
                     self.groupName = newGroupName
                     UserSettings.shared.currentActiveGroupName = newGroupName
@@ -285,15 +285,15 @@ class GroupDetailsViewController: UIViewController {
     }
 
     func onGroupDelete() {
-        print("GroupDetailsViewController, onGroupDelete")
+        meshLog("GroupDetailsViewController, onGroupDelete")
         guard let currentGroupName = UserSettings.shared.currentActiveGroupName else {
-            print("error: ComponentViewController, invalid group name, failed to delete group:\(String(describing: UserSettings.shared.currentActiveGroupName))")
+            meshLog("error: ComponentViewController, invalid group name, failed to delete group:\(String(describing: UserSettings.shared.currentActiveGroupName))")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to delete the group, invalid group name!", title: "Error")
             return
         }
         // The default group is not allowed to be deleted, it's aimed to demo the function to control all devices that added to the mesh network whatever it in any groups.
         guard currentGroupName != MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME else {
-            print("error: ComponentViewController, not allowed to default all components group: \(MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME).")
+            meshLog("error: ComponentViewController, not allowed to default all components group: \(MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME).")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Not allowed to delete the default group \"\(MeshAppConstants.MESH_DEFAULT_ALL_COMPONENTS_GROUP_NAME)\" which including all provisioned components. If you want to delete all devices in the mesh network, please try to delete the mesh network instead.", title: "Error")
             return
         }
@@ -317,12 +317,12 @@ class GroupDetailsViewController: UIViewController {
         MeshFrameworkManager.shared.deleteMeshGroup(groupName: groupName) { (networkName: String?, error: Int) in
             self.indicatorView.stopAnimating()
             guard networkName == UserSettings.shared.currentActiveMeshNetworkName, error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: ComponentViewController, failed to delete group:\(groupName)")
+                meshLog("error: ComponentViewController, failed to delete group:\(groupName)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to delete group \"\(groupName)\". Error Code: \(error).", title: "Error")
                 return
             }
 
-            print("ComponentViewController, delete group:\(groupName) success")
+            meshLog("ComponentViewController, delete group:\(groupName) success")
             // update group status values in UserSettings
             UserSettings.shared.removeComponentStatus(componentName: groupName)
 
@@ -336,7 +336,7 @@ class GroupDetailsViewController: UIViewController {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 self.indicatorView.stopAnimating()
-                print("GroupDetailsViewController, onGroupDelete, unable to connect to the mesh network")
+                meshLog("GroupDetailsViewController, onGroupDelete, unable to connect to the mesh network")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to connect to mesh network, unable to delete the group.")
                 return
             }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -54,6 +54,7 @@
 #define WM_MESH_DEVICE_ADV_REPORT       (WM_USER + 108)
 #define WM_USER_LOG                     (WM_USER + 109)
 #define WM_TIMER_CALLBACK               (WM_USER + 110)
+#define WM_MESH_DEVICE_CCCD_PUT_COMPLETE    (WM_USER + 111)
 
 #define WM_SOCKET (WM_USER + 181)
 
@@ -127,6 +128,7 @@ protected:
     LRESULT OnMeshDeviceConnect(WPARAM state, LPARAM param);
     LRESULT OnMeshDeviceDisconnect(WPARAM state, LPARAM param);
     LRESULT OnSocketMessage(WPARAM wParam, LPARAM lParam);
+    LRESULT OnMeshDeviceCCCDPutComplete(WPARAM state, LPARAM param);
 
     // Generated message map functions
     virtual BOOL OnInitDialog();
@@ -150,6 +152,7 @@ public:
 
     void trace(char * fmt_str, ...);
 public:
+    void CMeshClientDlg::updateProvisionerUuid();
     void SetHexValue(DWORD id, LPBYTE val, DWORD val_len);
     void OnOtaUpgradeContinue();
     void OnOtaUpgradeApply();
@@ -159,6 +162,7 @@ public:
     BOOL GetDfuImageInfo(void *p_fw_id, void *p_va_data);
     void OnDfuStatusCallback(uint8_t status, uint8_t progress);
     void ConnectDfuDistributor();
+    void StartOta();
 
 public:
     afx_msg void OnTimer(UINT_PTR nIDEvent);

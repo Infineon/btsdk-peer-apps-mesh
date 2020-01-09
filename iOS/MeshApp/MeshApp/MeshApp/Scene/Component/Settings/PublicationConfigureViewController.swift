@@ -141,37 +141,37 @@ class PublicationConfigureViewController: UIViewController {
 
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_ON_OFF_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getOnOffStatus(userInfo: userInfo) else { return }
-            print("Device \"\(notificationStatus.deviceName)\" is \(notificationStatus.isOn ? "ON" : "OFF").")
+            meshLog("Device \"\(notificationStatus.deviceName)\" is \(notificationStatus.isOn ? "ON" : "OFF").")
             self.log("Device \"\(notificationStatus.deviceName)\" is \(notificationStatus.isOn ? "ON" : "OFF").")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" is \(notificationStatus.isOn ? "ON" : "OFF").")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LEVEL_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getLevelStatus(userInfo: userInfo) else { return }
-            print("Device \"\(notificationStatus.deviceName)\" level status is \(notificationStatus.level).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" level status is \(notificationStatus.level).")
             self.log("Device \"\(notificationStatus.deviceName)\" level status is \(notificationStatus.level).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" level status is \(notificationStatus.level).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LIGHTNESS_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getLightnessStatus(userInfo: userInfo) else { return }
-            print("Device \"\(notificationStatus.deviceName)\" lightness status is \(notificationStatus.targetLightness).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" lightness status is \(notificationStatus.targetLightness).")
             self.log("Device \"\(notificationStatus.deviceName)\" lightness status is \(notificationStatus.targetLightness).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" lightness status is \(notificationStatus.targetLightness).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_HSL_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getHslStatus(userInfo: userInfo) else { return }
-            print("Device \"\(notificationStatus.deviceName)\" HSL status, hue: \(notificationStatus.hue), saturation: \(notificationStatus.saturation), lightness: \(notificationStatus.lightness).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" HSL status, hue: \(notificationStatus.hue), saturation: \(notificationStatus.saturation), lightness: \(notificationStatus.lightness).")
             self.log("Device \"\(notificationStatus.deviceName)\" HSL status, hue: \(notificationStatus.hue), saturation: \(notificationStatus.saturation), lightness: \(notificationStatus.lightness).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" HSL status, hue: \(notificationStatus.hue), saturation: \(notificationStatus.saturation), lightness: \(notificationStatus.lightness).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_CTL_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getCtlStatus(userInfo: userInfo) else { return }
-            print("Device \"\(notificationStatus.deviceName)\" CTL status, temperature: \(notificationStatus.targetTemperature), lightness: \(notificationStatus.targetLightness).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" CTL status, temperature: \(notificationStatus.targetTemperature), lightness: \(notificationStatus.targetLightness).")
             self.log("Device \"\(notificationStatus.deviceName)\" CTL status, temperature: \(notificationStatus.targetTemperature), lightness: \(notificationStatus.targetLightness).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" CTL status, temperature: \(notificationStatus.targetTemperature), lightness: \(notificationStatus.targetLightness).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_SENSOR_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getSensorStatus(userInfo: userInfo) else { return }
-            print("Device \"\(notificationStatus.deviceName)\" sensor data, Property ID: \(notificationStatus.propertyId), data: \(notificationStatus.data.dumpHexBytes()).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" sensor data, Property ID: \(notificationStatus.propertyId), data: \(notificationStatus.data.dumpHexBytes()).")
             self.log("Device \"\(notificationStatus.deviceName)\" sensor data, Property ID: \(notificationStatus.propertyId), data: \(notificationStatus.data.dumpHexBytes()).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" sensor data, Property ID: \(notificationStatus.propertyId), data: \(notificationStatus.data.dumpHexBytes()).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_VENDOR_SPECIFIC_DATA_CHANGED):
             guard let notificationStatus = MeshNotificationConstants.getVendorSpecificData(userInfo: userInfo) else { return }
-            print("Device \"\(notificationStatus.deviceName)\" vendor specific data, Company ID: \(notificationStatus.companyId), Model ID: \(notificationStatus.modelId), Opcode: \(notificationStatus.opcode), data: \(notificationStatus.data.dumpHexBytes()).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" vendor specific data, Company ID: \(notificationStatus.companyId), Model ID: \(notificationStatus.modelId), Opcode: \(notificationStatus.opcode), data: \(notificationStatus.data.dumpHexBytes()).")
             self.log("Device \"\(notificationStatus.deviceName)\" vendor specific data, Company ID: \(notificationStatus.companyId), Model ID: \(notificationStatus.modelId), Opcode: \(notificationStatus.opcode), data: \(notificationStatus.data.dumpHexBytes()).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" vendor specific data, Company ID: \(notificationStatus.companyId), Model ID: \(notificationStatus.modelId), Opcode: \(notificationStatus.opcode), data: \(notificationStatus.data.dumpHexBytes()).")
         default:
@@ -188,41 +188,41 @@ class PublicationConfigureViewController: UIViewController {
 
     @IBAction func onPublishStatusCustomDropDownButtonClick(_ sender: CustomDropDownButton) {
         publishStatusCustomDropDownButton.showDropList(width: 300, parent: self) {
-            print("PublicationConfigureViewController, onPublishStatusCustomDropDownButtonClick, \(self.publishStatusCustomDropDownButton.selectedIndex), \(self.publishStatusCustomDropDownButton.selectedString)")
+            meshLog("PublicationConfigureViewController, onPublishStatusCustomDropDownButtonClick, \(self.publishStatusCustomDropDownButton.selectedIndex), \(self.publishStatusCustomDropDownButton.selectedString)")
         }
     }
 
     @IBAction func onPublishToCustomDropDownButtonClick(_ sender: CustomDropDownButton) {
         publishToCustomDropDownButton.showDropList(width: 300, parent: self) {
-            print("PublicationConfigureViewController, publishToCustomDropDownButton, \(self.publishToCustomDropDownButton.selectedIndex), \(self.publishToCustomDropDownButton.selectedString)")
+            meshLog("PublicationConfigureViewController, publishToCustomDropDownButton, \(self.publishToCustomDropDownButton.selectedIndex), \(self.publishToCustomDropDownButton.selectedString)")
         }
     }
 
     @IBAction func onPublishSetButtonClick(_ sender: UIButton) {
         guard let componentName = self.deviceName else {
-            print("error: PublicationConfigureViewController, onPublishSetButtonClick, invalid nil mesh component name")
+            meshLog("error: PublicationConfigureViewController, onPublishSetButtonClick, invalid nil mesh component name")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Internal error, invalid mesh component name.")
             return
         }
         guard let seconds = UtilityManager.convertDigitStringToInt(digit: publishPeriodTextField.text) else {
-            print("error: PublicationConfigureViewController, onPublishSetButtonClick, period textField is empty or not set")
+            meshLog("error: PublicationConfigureViewController, onPublishSetButtonClick, period textField is empty or not set")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Please input the publish period time firstly before click the Publsh Set button.")
             return
         }
         let publishTarget = publishToCustomDropDownButton.selectedString
         let publishPeriod = Int(seconds)
-        print("PublicationConfigureViewController, onPublishSetButtonClick, componentName=\(componentName), publishTarget:\(publishTarget), publishPeriod:\(publishPeriod)")
+        meshLog("PublicationConfigureViewController, onPublishSetButtonClick, componentName=\(componentName), publishTarget:\(publishTarget), publishPeriod:\(publishPeriod)")
 
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: PublicationConfigureViewController, onPublishSetButtonClick, failed to connect to mesh network, error:\(error)")
+                meshLog("error: PublicationConfigureViewController, onPublishSetButtonClick, failed to connect to mesh network, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the mesh network. Error Code: \(error).")
                 return
             }
 
             var error = MeshFrameworkManager.shared.setMeshPublicationConfiguration()
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: PublicationConfigureViewController, onPublishSetButtonClick, failed to call setMeshPublicationConfiguration API, error:\(error)")
+                meshLog("error: PublicationConfigureViewController, onPublishSetButtonClick, failed to call setMeshPublicationConfiguration API, error:\(error)")
                 if error == MeshErrorCode.MESH_ERROR_INVALID_STATE {
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network is busying, please try again a little later.")
                 } else {
@@ -233,7 +233,7 @@ class PublicationConfigureViewController: UIViewController {
 
             error = MeshFrameworkManager.shared.configureMeshPublication(componentName: componentName, isClient: false, method: self.publishStatusCustomDropDownButton.selectedString, targetName: publishTarget, publishPeriod: publishPeriod)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: PublicationConfigureViewController, onPublishSetButtonClick, failed to call setMeshPublicationConfiguration API, error:\(error)")
+                meshLog("error: PublicationConfigureViewController, onPublishSetButtonClick, failed to call setMeshPublicationConfiguration API, error:\(error)")
                 if error == MeshErrorCode.MESH_ERROR_INVALID_STATE {
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Mesh network is busying, please try again a little later.")
                 } else {
@@ -268,7 +268,7 @@ class PublicationConfigureViewController: UIViewController {
                 break
             }
 
-            print("PublicationConfigureViewController, onPublishSetButtonClick, configureMeshPublication success, publishTarget:\(publishTarget), publishPeriod:\(publishPeriod)")
+            meshLog("PublicationConfigureViewController, onPublishSetButtonClick, configureMeshPublication success, publishTarget:\(publishTarget), publishPeriod:\(publishPeriod)")
             UtilityManager.showAlertDialogue(parentVC: self, message: "Publish Set done successfully.", title: "Success")
         }
     }
@@ -276,14 +276,14 @@ class PublicationConfigureViewController: UIViewController {
     @IBAction func onStartScribeClick(_ sender: UIButton) {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: PublicationConfigureViewController, onPublishSetButtonClick, failed to connect to mesh network, error:\(error)")
+                meshLog("error: PublicationConfigureViewController, onPublishSetButtonClick, failed to connect to mesh network, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the mesh network. Error Code: \(error).")
                 return
             }
 
             let error = MeshFrameworkManager.shared.meshClientlistenForAppGroupBroadcast(controlMethod: self.publishStatusCustomDropDownButton.selectedString, groupName: self.publishToCustomDropDownButton.selectedString, startListening: true)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: PublicationConfigureViewController, onStartScribeClick, failed to call meshClientlistenForAppGroupBroadcast API, error:\(error)")
+                meshLog("error: PublicationConfigureViewController, onStartScribeClick, failed to call meshClientlistenForAppGroupBroadcast API, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to subscribe for \(self.publishToCustomDropDownButton.selectedString) data. Error Code: \(error).")
                 return
             }
@@ -296,14 +296,14 @@ class PublicationConfigureViewController: UIViewController {
     @IBAction func onStopScribeClick(_ sender: UIButton) {
         MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error: Int) in
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: PublicationConfigureViewController, onStopScribeClick, failed to connect to mesh network, error:\(error)")
+                meshLog("error: PublicationConfigureViewController, onStopScribeClick, failed to connect to mesh network, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Unable to connect to the mesh network. Error Code: \(error).")
                 return
             }
 
             let error = MeshFrameworkManager.shared.meshClientlistenForAppGroupBroadcast(controlMethod: self.publishStatusCustomDropDownButton.selectedString, groupName: self.publishToCustomDropDownButton.selectedString, startListening: false)
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: PublicationConfigureViewController, onStopScribeClick, failed to call meshClientlistenForAppGroupBroadcast API, error:\(error)")
+                meshLog("error: PublicationConfigureViewController, onStopScribeClick, failed to call meshClientlistenForAppGroupBroadcast API, error:\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to unsubscribe for \(self.publishToCustomDropDownButton.selectedString) data. Error Code: \(error).")
                 return
             }

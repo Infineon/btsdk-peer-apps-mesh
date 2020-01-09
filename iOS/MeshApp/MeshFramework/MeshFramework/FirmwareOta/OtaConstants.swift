@@ -257,3 +257,7 @@ public struct MeshDfuType {
         return nil
     }
 }
+
+public struct MeshDfuEvent {
+    static public let DFU_EVENT_START_OTA = 1
+}

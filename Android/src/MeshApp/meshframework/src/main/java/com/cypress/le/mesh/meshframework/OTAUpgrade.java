@@ -171,6 +171,7 @@ public class OTAUpgrade {
     private boolean mSecureService = false;
     private OTAUpgradeConstants constants;
     static byte mDfuMethod;
+    private boolean mOtaSupported = false;
     String mMetadataFile;
     String mFwFile;
     String mComponentName;
@@ -207,7 +208,7 @@ public class OTAUpgrade {
             scan = new Scanner(pFile);
             while (scan.hasNextLine())
             {
-                line = scan.next();
+                line = scan.nextLine();
 
                 if(line == null)
                     break;
@@ -259,9 +260,16 @@ public class OTAUpgrade {
         }
     }
 
-    void start(String componentName, IMeshGattClientCallback callback, String fwfileName, byte dfuMethod, String metadataFileName, BluetoothGatt gatt, BluetoothDevice device, int mtu, GattUtils.RequestQueue requestQueue) {
+    void start(String componentName, IMeshGattClientCallback callback, String fwfileName, byte dfuMethod,boolean otaSupported, String metadataFileName, BluetoothGatt gatt, BluetoothDevice device, int mtu, GattUtils.RequestQueue requestQueue) {
         Log.d(TAG, "START dfu method:"+dfuMethod);
+        Log.i(TAG, "start: componentName = " + componentName + ", dfuMethod = " + dfuMethod + ", otaSupported = " + otaSupported + ", mtu = " + mtu);
+        Log.i(TAG, "start: fwfileName = " + fwfileName + ", metadataFileName = " + metadataFileName);
+
         File fwFile = new File(fwfileName);
+        if (fwFile == null) {
+            Log.i(TAG, "start: fwFile = null");
+            return;
+        }
 
         mFwFile = fwfileName;
         mPickedDevice = device;
@@ -270,6 +278,7 @@ public class OTAUpgrade {
         mOTAstatusCb = callback;
         mRequestQueue = requestQueue;
         mDfuMethod = dfuMethod;
+        mOtaSupported = otaSupported;
         ota_state.peer_mtu = (short) mtu;
         mComponentName = componentName;
         constants = new OTAUpgradeConstants();
@@ -745,8 +754,10 @@ public class OTAUpgrade {
                 }
             } else {
                 //start dfu
-                int ret = mMeshNativeHelper.meshClientDfuStart(mDfuMethod, mComponentName);
-                Log.d(TAG, "dfustart ret"+ret+ " mComponentName"+mComponentName);
+                Log.d(TAG, "DFU transfer file finished");
+                mMeshNativeHelper.meshClientDfuOtaFinished(Constants.MESH_CLIENT_SUCCESS);
+//                int ret = mMeshNativeHelper.meshClientDfuStart(mDfuMethod, mOtaSupported, mComponentName);
+//                Log.d(TAG, "dfustart ret"+ret+ " mComponentName"+mComponentName);
             }
         }
         else if (state == WS_UPGRADE_STATE_ABORTED)

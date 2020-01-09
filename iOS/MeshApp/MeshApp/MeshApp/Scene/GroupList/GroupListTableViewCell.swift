@@ -38,17 +38,17 @@ class GroupListTableViewCell: UITableViewCell {
     }
 
     @IBAction func onGroupTurnOnButtonClick(_ sender: UIButton) {
-        print("GroupListTableViewCell, onGroupTurnOnButtonClick, TURN ON all devices within mesh group: \(String(describing: groupName))")
+        meshLog("GroupListTableViewCell, onGroupTurnOnButtonClick, TURN ON all devices within mesh group: \(String(describing: groupName))")
         turnGroupDevicesOnOff(groupName: groupName, isOn: true)
     }
 
     @IBAction func onGroupTurnOffButtonClick(_ sender: UIButton) {
-        print("GroupListTableViewCell, onGroupTurnOnButtonClick, TURN OFF all devices within mesh group: \(String(describing: groupName))")
+        meshLog("GroupListTableViewCell, onGroupTurnOnButtonClick, TURN OFF all devices within mesh group: \(String(describing: groupName))")
         turnGroupDevicesOnOff(groupName: groupName, isOn: false)
     }
 
     @IBAction func onShowGroupAllDevicesButtonClick(_ sender: UIButton) {
-        print("GroupListTableViewCell, onShowGroupAllDevicesButtonClick, group name: \(String(describing: groupName))")
+        meshLog("GroupListTableViewCell, onShowGroupAllDevicesButtonClick, group name: \(String(describing: groupName))")
         if let groupName = groupName {
             UserSettings.shared.currentActiveGroupName = groupName
             // do nothing, done through segue, navigate to the group detail scene and set defalut with all group devices item enabled.
@@ -56,7 +56,7 @@ class GroupListTableViewCell: UITableViewCell {
     }
 
     @IBAction func onShowGroupControlsButtonClick(_ sender: UIButton) {
-        print("GroupListTableViewCell, onShowGroupControlsButtonClick, group name: \(String(describing: groupName))")
+        meshLog("GroupListTableViewCell, onShowGroupControlsButtonClick, group name: \(String(describing: groupName))")
         if let groupName = groupName {
             UserSettings.shared.currentActiveGroupName = groupName
             // do nothing, done through segue, navigate to the group detail scene and set defalut with group controls item enabled.
@@ -79,16 +79,16 @@ class GroupListTableViewCell: UITableViewCell {
         if let groupName = groupName {
             MeshFrameworkManager.shared.runHandlerWithMeshNetworkConnected { (error) in
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: GroupListTableViewCell, turnGroupDevicesOnOff(groupName:\(groupName), isOn:\(isOn)), failed to connect to the mesh network")
+                    meshLog("error: GroupListTableViewCell, turnGroupDevicesOnOff(groupName:\(groupName), isOn:\(isOn)), failed to connect to the mesh network")
                     return
                 }
 
                 let error = MeshFrameworkManager.shared.meshClientOnOffSet(deviceName: groupName, isOn: isOn, reliable: reliable)
                 guard error == MeshErrorCode.MESH_SUCCESS else {
-                    print("error: GroupListTableViewCell, meshClientOnOffSet(groupName:\(groupName), isOn:\(isOn), reliable=\(reliable)) failed, error=\(error)")
+                    meshLog("error: GroupListTableViewCell, meshClientOnOffSet(groupName:\(groupName), isOn:\(isOn), reliable=\(reliable)) failed, error=\(error)")
                     return
                 }
-                print("GroupListTableViewCell, meshClientOnOffSet(groupName:\(groupName), isOn:\(isOn), reliable=\(reliable)) message sent out success")
+                meshLog("GroupListTableViewCell, meshClientOnOffSet(groupName:\(groupName), isOn:\(isOn), reliable=\(reliable)) message sent out success")
             }
         }
     }

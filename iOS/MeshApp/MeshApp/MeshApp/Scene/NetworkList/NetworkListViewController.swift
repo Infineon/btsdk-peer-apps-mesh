@@ -99,7 +99,7 @@ class NetworkListViewController: UIViewController {
     }
 
     @IBAction func onAddNetworkButtonUp(_ sender: UIButton) {
-        print("NetworkListViewController, onAddNetworkButtonUp")
+        meshLog("NetworkListViewController, onAddNetworkButtonUp")
         let alertController = UIAlertController(title: "Add Network", message: nil, preferredStyle: .alert)
         alertController.addTextField { (textField: UITextField) in
             textField.placeholder = "New Network Name"
@@ -109,10 +109,10 @@ class NetworkListViewController: UIViewController {
             if let textField = alertController.textFields?.first, let newNetworkName = textField.text, newNetworkName.count > 0 {
                 let error = MeshFrameworkManager.shared.createMeshNetwork(provisioinerName: UserSettings.shared.provisionerName, networkName: newNetworkName)
                 if error != MeshErrorCode.MESH_SUCCESS {
-                    print("NetworkListViewController, failed to createMeshNetwork with name=\"\(newNetworkName)\"")
+                    meshLog("NetworkListViewController, failed to createMeshNetwork with name=\"\(newNetworkName)\"")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to Create Network with name: \"\(newNetworkName)\". Error Code: \(error)")
                 } else {
-                    print("NetworkListViewController, createMeshNetwork with name=\"\(newNetworkName)\" success")
+                    meshLog("NetworkListViewController, createMeshNetwork with name=\"\(newNetworkName)\" success")
                     self.meshNetworkListInit()
                     self.updateNetworkListCount()
                     self.networkListTableview.reloadData()
@@ -125,16 +125,16 @@ class NetworkListViewController: UIViewController {
     }
 
     @IBAction func onNetworkListMenuButtonUp(_ sender: UIBarButtonItem) {
-        print("NetworkListViewController, onNetworkListMenuButtonUp")
+        meshLog("NetworkListViewController, onNetworkListMenuButtonUp")
         self.definesPresentationContext = true
         UtilityManager.navigateToViewController(sender: self, targetVCClass: MenuViewController.self, modalPresentationStyle: UIModalPresentationStyle.overCurrentContext)
     }
 
     @IBAction func onNetworkListMoreButtonUp(_ sender: UIBarButtonItem) {
-        print("NetworkListViewController, onNetworkListMoreButtonUp")
+        meshLog("NetworkListViewController, onNetworkListMoreButtonUp")
         let choices = NetworkListPopoverChoices.allValues
         let controller = PopoverChoiceTableViewController(choices: choices) { (index: Int, selection: String) in
-            print("NetworkListViewController, onNetworkListMoreButtonUp, index=\(index), selection=\(selection)")
+            meshLog("NetworkListViewController, onNetworkListMoreButtonUp, index=\(index), selection=\(selection)")
             guard let choice = NetworkListPopoverChoices.init(rawValue: selection) else { return }
 
             switch choice {
@@ -155,25 +155,26 @@ class NetworkListViewController: UIViewController {
     }
 
     func doMeshNetworkOpen(provisionerName: String, networkName: String) {
-        print("NetworkListViewController, openMeshNetwork, provisionerName=\(UserSettings.shared.provisionerName), networkName=\(networkName)")
+        meshLog("NetworkListViewController, openMeshNetwork, provisionerName=\(UserSettings.shared.provisionerName), networkName=\(networkName)")
         if provisionerName == MeshFrameworkManager.shared.getOpenedMeshProvisionerName(), networkName == MeshFrameworkManager.shared.getOpenedMeshNetworkName() {
             // The mesh network has already been opened, return earily.
-            print("NetworkListViewController, openMeshNetwork, networkName=\(networkName) already opened, return early.")
+            meshLog("NetworkListViewController, openMeshNetwork, networkName=\(networkName) already opened, return early.")
             UserSettings.shared.isCurrentActiveMeshNetworkOpenned = true
             UtilityManager.navigateToViewController(targetClass: GroupListViewController.self)
             return
         } else if let _ = MeshFrameworkManager.shared.getOpenedMeshNetworkName() {
+            meshLog("current opened mesh network name: \(String(describing: MeshFrameworkManager.shared.getOpenedMeshNetworkName()))")
             // Currenlty, mesh client has already opened with another mesh network, so should disconnect and close it firstly.
             self.indicatorView.showAnimating(parentView: self.view, isTransparent: true)
             MeshFrameworkManager.shared.disconnectMeshNetwork { (isConnected: Bool, connId: Int, addr: Int, isOverGatt: Bool, error: Int) in
-                print("isConnected=\(isConnected), error=\(error)")
+                meshLog("isConnected=\(isConnected), error=\(error)")
                 MeshFrameworkManager.shared.closeMeshNetwork()
-
                 self.tryToOpenMeshNetwork(provisionerName: provisionerName, openNetworkName: networkName)
             }
             return
         }
 
+        meshLog("tryToOpenMeshNetwork")
         self.tryToOpenMeshNetwork(provisionerName: provisionerName, openNetworkName: networkName)
     }
 
@@ -182,22 +183,22 @@ class NetworkListViewController: UIViewController {
         MeshFrameworkManager.shared.openMeshNetwork(provisioinerName: provisionerName, networkName: openNetworkName) { (_ networkName: String?, _ status: Int, _ error: Int) in
             self.indicatorView.stopAnimating()
             guard error == MeshErrorCode.MESH_SUCCESS else {
-                print("error: NetworkListViewController, failed to openMeshNetwork, error=\(error)")
+                meshLog("error: NetworkListViewController, failed to openMeshNetwork, error=\(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to open mesh mesh work: \(openNetworkName). Error Code: \(error)")
                 return
             }
             guard status == MeshErrorCode.MESH_SUCCESS else {
-                print("error: NetworkListViewController, failed to openMeshNetwork, completion with status=\(status)")
+                meshLog("error: NetworkListViewController, failed to openMeshNetwork, completion with status=\(status)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to open mesh mesh work: \(openNetworkName). Status: \(status)")
                 return
             }
 
-            print("NetworkListViewController, onOpenNetwork, mesh network: \(openNetworkName) opened success")
+            meshLog("NetworkListViewController, onOpenNetwork, mesh network: \(openNetworkName) opened success")
             // TransitionViewController will monitor on the open comletion callack and do navigation on the open completion status.
         }
 
         // Jump to TransitiionViewController when opening the network, after openned the network success, then go to GroupListViewController.
-        print("NetworkListViewController, onOpenNetwork, opening mesh network: \(openNetworkName), waiting open completion callback")
+        meshLog("NetworkListViewController, onOpenNetwork, opening mesh network: \(openNetworkName), waiting open completion callback")
         UtilityManager.navigateToViewController(targetClass: TransitionViewController.self)
     }
 
@@ -219,10 +220,25 @@ class NetworkListViewController: UIViewController {
     }
 
     func onDeleteNetwork() {
-        SelectNetworkPopoverViewController.popoverAction = .deleteNetwork
-        if let deleteSelectPopoverViewController = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: MeshAppStoryBoardIdentifires.NETWORK_LIST_SELECT_POPOVER) as? SelectNetworkPopoverViewController {
-            deleteSelectPopoverViewController.modalPresentationStyle = .custom
-            self.present(deleteSelectPopoverViewController, animated: true, completion: nil)
+        MeshFrameworkManager.shared.disconnectMeshNetwork { (isConnected: Bool, connId: Int, addr: Int, isOverGatt: Bool, error: Int) in
+            MeshFrameworkManager.shared.closeMeshNetwork()
+
+            DispatchQueue.main.async {
+                for index in 0..<self.meshNetworks.count {
+                    let indexPath = IndexPath(row: index, section: 0)
+                    if let cell = self.networkListTableview.cellForRow(at: indexPath) as? NetworkListTableViewCell {
+                        cell.networkOpenStatusSwitch.setOn(false, animated: true)
+                    }
+                }
+                UserSettings.shared.currentActiveMeshNetworkName = nil
+                UserSettings.shared.isCurrentActiveMeshNetworkOpenned = false
+
+                SelectNetworkPopoverViewController.popoverAction = .deleteNetwork
+                if let deleteSelectPopoverViewController = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: MeshAppStoryBoardIdentifires.NETWORK_LIST_SELECT_POPOVER) as? SelectNetworkPopoverViewController {
+                    deleteSelectPopoverViewController.modalPresentationStyle = .custom
+                    self.present(deleteSelectPopoverViewController, animated: true, completion: nil)
+                }
+            }
         }
     }
 
@@ -230,7 +246,7 @@ class NetworkListViewController: UIViewController {
         self.indicatorView.showAnimating(parentView: self.view, isTransparent: false)
         DispatchQueue.main.async {
             NetworkManager.shared.restoreMeshFiles { (status) in
-                print("NetworkListViewController, onDownloadNetworks, restoreMeshFiles status=\(status)")
+                meshLog("NetworkListViewController, onDownloadNetworks, restoreMeshFiles status=\(status)")
                 self.indicatorView.stopAnimating()
             }
         }
@@ -247,14 +263,29 @@ class NetworkListViewController: UIViewController {
     // Currently, as an example, only support importing networks under the exported networks storage.
     func onImportNetwork() {
         guard let networks = MeshFrameworkManager.shared.meshNetworksUnderExportedMeshStorage else {
-            print("NetworkListViewController, onImportNetwork, not networks found under \(MeshFrameworkManager.shared.defaultExportStorageFolderName)")
+            meshLog("NetworkListViewController, onImportNetwork, not networks found under \(MeshFrameworkManager.shared.defaultExportStorageFolderName)")
             UtilityManager.showAlertDialogue(parentVC: self, message: "No network found for importing", title: "Warnning")
             return
         }
-        print("NetworkListViewController, onImportNetwork, networks=\(networks)")
+        meshLog("NetworkListViewController, onImportNetwork, networks=\(networks)")
 
-        SelectNetworkPopoverViewController.popoverAction = .importNetwork
-        UtilityManager.navigateToViewController(sender: self, targetVCClass: SelectNetworkPopoverViewController.self, modalPresentationStyle: .custom)
+        MeshFrameworkManager.shared.disconnectMeshNetwork { (isConnected: Bool, connId: Int, addr: Int, isOverGatt: Bool, error: Int) in
+            MeshFrameworkManager.shared.closeMeshNetwork()
+
+            DispatchQueue.main.async {
+                for index in 0..<self.meshNetworks.count {
+                    let indexPath = IndexPath(row: index, section: 0)
+                    if let cell = self.networkListTableview.cellForRow(at: indexPath) as? NetworkListTableViewCell {
+                        cell.networkOpenStatusSwitch.setOn(false, animated: true)
+                    }
+                }
+                UserSettings.shared.currentActiveMeshNetworkName = nil
+                UserSettings.shared.isCurrentActiveMeshNetworkOpenned = false
+
+                SelectNetworkPopoverViewController.popoverAction = .importNetwork
+                UtilityManager.navigateToViewController(sender: self, targetVCClass: SelectNetworkPopoverViewController.self, modalPresentationStyle: .custom)
+            }
+        }
     }
 }
 
@@ -300,7 +331,7 @@ extension NetworkListViewController: UITableViewDataSource, UITableViewDelegate 
             UserSettings.shared.isCurrentActiveMeshNetworkOpenned = false
             doMeshNetworkOpen(provisionerName: UserSettings.shared.provisionerName, networkName: networkName)
         } else {
-            print("error: NetworkListViewController, failed to didSelectRowAt:\(indexPath.row), networkName;\(networkName)")
+            meshLog("error: NetworkListViewController, failed to didSelectRowAt:\(indexPath.row), networkName;\(networkName)")
         }
     }
 }

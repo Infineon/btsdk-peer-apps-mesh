@@ -32,7 +32,7 @@ class NetworkListTableViewCell: UITableViewCell {
             } else {
                 networkOpenStatusSwitch.setOn(false, animated: true)
             }
-            print("NetworkListTableViewCell, mesh network: \(cellNetworkName) is  \(networkOpenStatusSwitch.isOn ? "opened" : "closed")")
+            meshLog("NetworkListTableViewCell, mesh network: \(cellNetworkName) is  \(networkOpenStatusSwitch.isOn ? "opened" : "closed")")
         }
     }
 
@@ -49,7 +49,7 @@ class NetworkListTableViewCell: UITableViewCell {
         // Configure the view for the selected state
     }
     @IBAction func onNetworkOpenStatusSwitchClick(_ sender: UISwitch) {
-        print("NetworkListTableViewCell, onNetworkOpenStatusSwitchClick, switch button is \(networkOpenStatusSwitch.isOn ? "ON" : "OFF")")
+        meshLog("NetworkListTableViewCell, onNetworkOpenStatusSwitchClick, switch button is \(networkOpenStatusSwitch.isOn ? "ON" : "OFF")")
         // Note, this switch is not interactive UI controller, it's just to display the status of mesh network is opened or not.
     }
 }

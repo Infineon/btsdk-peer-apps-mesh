@@ -173,8 +173,13 @@ extension UnprovisionedDevicesViewController: UITableViewDataSource, UITableView
             return UITableViewCell()
         }
         //cell.deviceIconImage.image =
-        for (name, _) in unprovisionedDevices[indexPath.row] {
+        for (name, uuid) in unprovisionedDevices[indexPath.row] {
             cell.deviceNameLabel.text = name
+
+            cell.parentVC = self
+            cell.unprovisionedDeviceName = name
+            cell.unprovisionedDeviceUuid = uuid
+            cell.groupName = groupName
             break
         }
         let bgColorView = UIView(frame: cell.frame)
@@ -197,21 +202,22 @@ extension UnprovisionedDevicesViewController: UITableViewDataSource, UITableView
                 // Before starting the provisioning, call the stop scan firstly to avoid any collision caused provision failure issue.
                 stopScan()
 
+                provisioningStatusPopoverViewController.parentVc = self
                 provisioningStatusPopoverViewController.deviceName = deviceName
                 provisioningStatusPopoverViewController.deviceUuid = uuid
                 provisioningStatusPopoverViewController.groupName = groupName
                 provisioningStatusPopoverViewController.modalPresentationStyle = .custom
-                print("UnprovisionedDevicesViewController, tableView didSelectRowAt indexPath:\(indexPath.row), deviceName=\(deviceName), uuid=\(uuid), groupName=\(groupName)")
+                meshLog("UnprovisionedDevicesViewController, tableView didSelectRowAt indexPath:\(indexPath.row), deviceName=\(deviceName), uuid=\(uuid), groupName=\(groupName)")
                 self.present(provisioningStatusPopoverViewController, animated: true, completion: nil)
             } else {
-                print("error: UnprovisionedDevicesViewController, tableView didSelectRowAt indexPath:\(indexPath.row), failed to initialize ProvisioningStatusPopoverViewController")
+                meshLog("error: UnprovisionedDevicesViewController, tableView didSelectRowAt indexPath:\(indexPath.row), failed to initialize ProvisioningStatusPopoverViewController")
             }
         } else {
             // should not happen.
             let deviceName = unprovisionedDevices[indexPath.row].keys.first ?? "nil"
             let uuid = unprovisionedDevices[indexPath.row].values.first?.uuidString ?? "nil"
             let groupName = self.groupName ?? "nil"
-            print("error: UnprovisionedDevicesViewController, tableView didSelectRowAt indexPath:\(indexPath.row), deviceName:\(deviceName), uuid:\(uuid), groupName:\(groupName)")
+            meshLog("error: UnprovisionedDevicesViewController, tableView didSelectRowAt indexPath:\(indexPath.row), deviceName:\(deviceName), uuid:\(uuid), groupName:\(groupName)")
         }
     }
 }
