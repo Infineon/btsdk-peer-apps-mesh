@@ -979,10 +979,6 @@ open class MeshFrameworkManager {
             return error
         }
 
-        provisionTimer = Timer.scheduledTimer(timeInterval: TimeInterval(MeshConstants.MESH_CLIENT_PROVISION_TIMEOUT_DURATION),
-                                              target: self, selector: #selector(meshClientProvisionTimeoutCompleted),
-                                              userInfo: nil, repeats: false)
-
         error = Int(MeshNativeHelper.meshClientProvision(deviceName, groupName: groupName, uuid: uuid, identifyDuration: UInt8(identifyDuration)))
         if error != MeshErrorCode.MESH_SUCCESS {
             meshLog("error: meshClientProvision, failed to call meshClientProvision, error=\(error)")
@@ -1231,7 +1227,10 @@ open class MeshFrameworkManager {
      @return                None.
      */
     open func meshClientConnectionStateChanged(connId: Int) {
-        MeshNativeHelper.meshClientConnectionStateChanged(UInt16(connId), mtu: (connId != 0) ? UInt16(MeshFrameworkManager.shared.mtuSize) : 0)
+        // avoid mesh library crash issue when the mesh library not initalized yet. And it's meaningless for mesh library when the mesh network not opened.
+        if let _ = MeshFrameworkManager.shared.getOpenedMeshNetworkName() {
+            MeshNativeHelper.meshClientConnectionStateChanged(UInt16(connId), mtu: (connId != 0) ? UInt16(MeshFrameworkManager.shared.mtuSize) : 0)
+        }
     }
 
     open func isMeshProvisioningServiceAdvertisementData(advertisementData: [String : Any]) -> Bool {
@@ -2242,12 +2241,19 @@ extension MeshFrameworkManager: IMeshNativeCallback {
                 provisionTimer = nil
             }
             lock.unlock()
-            meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision configuration success")
+            meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision success")
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_END:
-            meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision completed")
+            meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision end")
+            #if true   // Just for test purpose. The mesh library has support the timer monitoring, so the App timer monitoring is not required.
+            let testMonitorTimeInterval = MeshConstants.MESH_CLIENT_PROVISION_TIMEOUT_DURATION * 2  // just for long enough test.
+            meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, MESH_CLIENT_PROVISION_STATUS_END, start configuring monitor timer, timeInterval(s): \(testMonitorTimeInterval)")
+            provisionTimer = Timer.scheduledTimer(timeInterval: TimeInterval(testMonitorTimeInterval),
+                                                  target: self, selector: #selector(meshClientProvisionTimeoutCompleted),
+                                                  userInfo: nil, repeats: false)
+            #endif
         default:
-            meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus)")
             if Int(provisionStatus) == MeshConstants.MESH_CLIENT_PROVISION_STATUS_FAILED {
+                meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision failed")
                 lock.lock()
                 provisionUuid = nil
                 if let provTimer = provisionTimer {
@@ -2255,6 +2261,8 @@ extension MeshFrameworkManager: IMeshNativeCallback {
                     provisionTimer = nil
                 }
                 lock.unlock()
+            } else {
+                meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus)")
             }
         }
 

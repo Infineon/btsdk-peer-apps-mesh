@@ -117,7 +117,7 @@ static uint32_t mesh_nvram_access(wiced_bool_t write, int inx, uint8_t* value, u
 
 typedef wiced_bool_t(*wiced_model_message_handler_t)(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
 
-static wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, wiced_bool_t *p_dont_save_rpl);
+static wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, uint8_t* p_rpl_delay);
 static void                     mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_active);
 void                            proxy_gatt_send_cb(uint32_t conn_id, uint32_t ref_data, const uint8_t *packet, uint32_t packet_len);
 static uint32_t                 mesh_nvram_access(wiced_bool_t write, int inx, uint8_t* node_info, uint16_t len, wiced_result_t *p_result);
@@ -204,12 +204,11 @@ void mesh_application_init(void)
 {
     static int core_initialized = 0;
 
-    extern uint8_t wiced_bt_mesh_model_trace_enabled;
-    wiced_bt_mesh_model_trace_enabled = WICED_TRUE;
-
-    extern void wiced_bt_mesh_core_set_trace_level(uint32_t fids_mask, uint8_t level);
-    wiced_bt_mesh_core_set_trace_level(0xffffffff, 4);      //(ALL, TRACE_DEBUG)
-    wiced_bt_mesh_core_set_trace_level(0x8, 3);             //(CORE_AES_CCM_C, TRACE_INFO)
+    // Set Debug trace level for mesh_models_lib and mesh_provisioner_lib
+    wiced_bt_mesh_models_set_trace_level(WICED_BT_MESH_CORE_TRACE_INFO);
+    // Set Debug trace level for all modules but Info level for CORE_AES_CCM module
+    wiced_bt_mesh_core_set_trace_level(WICED_BT_MESH_CORE_TRACE_FID_ALL, WICED_BT_MESH_CORE_TRACE_DEBUG);
+    wiced_bt_mesh_core_set_trace_level(WICED_BT_MESH_CORE_TRACE_FID_CORE_AES_CCM, WICED_BT_MESH_CORE_TRACE_INFO);
 
     if (!core_initialized)
     {
@@ -246,7 +245,7 @@ void mesh_application_deinit(void)
 /*
 * Application implements that function to handle received messages. Call each library that this device needs to support.
 */
-wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, wiced_bool_t *p_dont_save_rpl)
+wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, uint8_t* p_rpl_delay)
 {
     wiced_bt_mesh_core_received_msg_handler_t p_message_handler = NULL;
     uint8_t                                   idx_elem, idx_model;
@@ -263,7 +262,7 @@ wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t comp
         temp_event.company_id = company_id;
         temp_event.opcode = opcode;
         temp_event.model_id = 0xffff;   //it is sign of special mode for model to just return model_id without message handling
-                                        // model changes it to any other value if it wants do disable RPL saving for its messages
+        temp_event.status.rpl_delay = 0; // model can change that to indicate different rule
 
         for (idx_elem = 0; idx_elem < mesh_config.elements_num; idx_elem++)
         {
@@ -279,9 +278,8 @@ wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t comp
                 model_id = mesh_config.elements[idx_elem].models[idx_model].model_id;
                 if (p_model_id)
                     *p_model_id = model_id;
-                // Check if model wants to disable RPL saving for its messages
-                if (temp_event.model_id != 0xffff && p_dont_save_rpl != NULL)
-                    *p_dont_save_rpl = WICED_TRUE;
+                if (p_rpl_delay)
+                    *p_rpl_delay = temp_event.status.rpl_delay;
                 break;
             }
             if (idx_model < mesh_config.elements[idx_elem].models_num)
@@ -331,8 +329,8 @@ void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_scan_acti
 
 void mesh_app_init(wiced_bool_t is_provisioned)
 {
-    extern uint8_t wiced_bt_mesh_model_trace_enabled;
-    wiced_bt_mesh_model_trace_enabled = WICED_TRUE;
+    // Set Debug trace level for mesh_models_lib and mesh_provisioner_lib
+    wiced_bt_mesh_models_set_trace_level(WICED_BT_MESH_CORE_TRACE_INFO);
 
     wiced_bt_mesh_provision_client_init(mesh_provision_message_handler, is_provisioned);
     wiced_bt_mesh_client_init(mesh_provision_message_handler, is_provisioned);

@@ -1,14 +1,24 @@
 #ifndef __PLATFORM_H__
 #define __PLATFORM_H__
 
-// if it is FW build then define MESH_FW_20735
-#if 0 //ASIC
-#define MESH_FW_20735
+// if it is FW build then define MESH_FW
+#if 0
+#define MESH_FW
 #endif
 #ifndef MESH_OVER_GATT_ONLY
 #include "wiced_bt_ble.h"
-#ifdef MESH_FW_20735
-#include "wiced_bt_mesh_defs.h"
+#ifdef MESH_FW
+#define wiced_memory_permanent_allocate wiced_bt_get_buffer
+#define MULTI_ADV_MAX_NUM_INSTANCES LE_MULTI_ADV_MAX_NUM_INSTANCES
+enum
+{
+    WICED_BT_ADV_NOTIFICATION_READY,
+    WICED_BT_ADV_NOTIFICATION_DONE
+};
+#define wiced_timer_callback_t wiced_timer_callback_legacy_t
+#define p_256_init_curve(x) InitCurve(x)
+#define MULTI_ADV_TX_POWER_MAX MULTI_ADV_TX_POWER_MAX_INDEX
+#define TIMER_PARAM_TYPE WICED_TIMER_PARAM_TYPE
 #endif
 
 #ifdef WICEDX_LINUX

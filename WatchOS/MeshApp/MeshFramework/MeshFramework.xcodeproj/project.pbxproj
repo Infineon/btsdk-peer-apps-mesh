@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		18027A7C23FAE542004B3D1E /* wiced_hal_nvram.h in Headers */ = {isa = PBXBuildFile; fileRef = 18027A7B23FAE542004B3D1E /* wiced_hal_nvram.h */; };
 		1828D3B62384FD960006479C /* p_256_curvepara.c in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3AF2384FD960006479C /* p_256_curvepara.c */; };
 		1828D3B72384FD960006479C /* ccm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3B02384FD960006479C /* ccm.cpp */; };
 		1828D3B82384FD960006479C /* aes_cmac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1828D3B12384FD960006479C /* aes_cmac.cpp */; };
@@ -55,7 +56,6 @@
 		1828D45423854DD30006479C /* bt_target.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45223854DD30006479C /* bt_target.h */; };
 		1828D45523854DD30006479C /* clock_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45323854DD30006479C /* clock_timer.h */; };
 		1828D45923854DEE0006479C /* wiced_bt_trace.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45623854DED0006479C /* wiced_bt_trace.h */; };
-		1828D45A23854DEE0006479C /* wiced_hal_nvram.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45723854DED0006479C /* wiced_hal_nvram.h */; };
 		1828D45B23854DEE0006479C /* wiced_memory.h in Headers */ = {isa = PBXBuildFile; fileRef = 1828D45823854DEE0006479C /* wiced_memory.h */; };
 		185902102227CBFE0043D949 /* OtaDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859020C2227CBFE0043D949 /* OtaDevice.swift */; };
 		185902112227CBFE0043D949 /* OtaConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1859020D2227CBFE0043D949 /* OtaConstants.swift */; };
@@ -92,6 +92,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		18027A7B23FAE542004B3D1E /* wiced_hal_nvram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_hal_nvram.h; path = "../../../../../../../../../dev-kit/baselib/20819A1/include/hal/wiced_hal_nvram.h"; sourceTree = "<group>"; };
 		1828D3AF2384FD960006479C /* p_256_curvepara.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = p_256_curvepara.c; sourceTree = "<group>"; };
 		1828D3B02384FD960006479C /* ccm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ccm.cpp; sourceTree = "<group>"; };
 		1828D3B12384FD960006479C /* aes_cmac.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aes_cmac.cpp; sourceTree = "<group>"; };
@@ -140,7 +141,6 @@
 		1828D45223854DD30006479C /* bt_target.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bt_target.h; sourceTree = "<group>"; };
 		1828D45323854DD30006479C /* clock_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = clock_timer.h; sourceTree = "<group>"; };
 		1828D45623854DED0006479C /* wiced_bt_trace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_bt_trace.h; sourceTree = "<group>"; };
-		1828D45723854DED0006479C /* wiced_hal_nvram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_hal_nvram.h; sourceTree = "<group>"; };
 		1828D45823854DEE0006479C /* wiced_memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wiced_memory.h; sourceTree = "<group>"; };
 		1859020C2227CBFE0043D949 /* OtaDevice.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OtaDevice.swift; sourceTree = "<group>"; };
 		1859020D2227CBFE0043D949 /* OtaConstants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OtaConstants.swift; sourceTree = "<group>"; };
@@ -331,7 +331,7 @@
 			isa = PBXGroup;
 			children = (
 				1828D45623854DED0006479C /* wiced_bt_trace.h */,
-				1828D45723854DED0006479C /* wiced_hal_nvram.h */,
+				18027A7B23FAE542004B3D1E /* wiced_hal_nvram.h */,
 				1828D4202384FF6E0006479C /* wiced_hal_rand.h */,
 				1828D41C2384FF6E0006479C /* wiced_hal_wdog.h */,
 				1828D45823854DEE0006479C /* wiced_memory.h */,
@@ -416,7 +416,6 @@
 				1828D4032384FEE40006479C /* wiced_bt_gatt_util.h in Headers */,
 				18A692D221B8FD8200E4B3DC /* MeshFramework.h in Headers */,
 				1828D40F2384FF0A0006479C /* bt_types.h in Headers */,
-				1828D45A23854DEE0006479C /* wiced_hal_nvram.h in Headers */,
 				1828D43C2384FF9E0006479C /* wiced_bt_mesh_provision.h in Headers */,
 				1828D40C2384FF0A0006479C /* hcidefs.h in Headers */,
 				1828D45B23854DEE0006479C /* wiced_memory.h in Headers */,
@@ -443,6 +442,7 @@
 				1828D4052384FEE40006479C /* wiced.h in Headers */,
 				1828D3FF2384FEE40006479C /* wiced_bt_dev.h in Headers */,
 				186BF72A238F74630046247C /* brg_types.h in Headers */,
+				18027A7C23FAE542004B3D1E /* wiced_hal_nvram.h in Headers */,
 				186BF726238F74630046247C /* ccm.h in Headers */,
 				1828D4162384FF3B0006479C /* typedef.h in Headers */,
 				1828D45423854DD30006479C /* bt_target.h in Headers */,

@@ -119,6 +119,7 @@ public class OtaManager: NSObject {
     }
 
     public func resetOtaUpgradeStatus() {
+        self.isOtaScanning = false
         OtaUpgrader.shared.otaUpgradeStatusReset()
     }
 

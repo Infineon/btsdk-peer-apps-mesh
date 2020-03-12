@@ -53,7 +53,6 @@ GUID guidSvcWSUpgrade;
 GUID guidCharWSUpgradeControlPoint;
 GUID guidCharWSUpgradeData;
 
-extern "C" BOOL mesh_info_trace_enabled = TRUE;
 extern "C" void ecdh_init_curve(void);
 
 // CMeshClientApp

@@ -208,11 +208,11 @@ static int core_initialized = 0;
 void mesh_application_init(void)
 {
     WICED_BT_TRACE("mesh_application_init enter");
-    extern uint8_t wiced_bt_mesh_model_trace_enabled;
-    wiced_bt_mesh_model_trace_enabled = WICED_TRUE;
+    extern uint8_t mesh_model_trace_level;
+    mesh_model_trace_level = TRACE_DEBUG;
     extern void wiced_bt_mesh_core_set_trace_level(uint32_t fids_mask, uint8_t level);
-    wiced_bt_mesh_core_set_trace_level(0xFFFFFFFF, 4);      // (ALL, TRACE_DEBUG)
-    wiced_bt_mesh_core_set_trace_level(0x08, 3);            // (CORE_AES_CCM_C, TRACE_INFO)
+    wiced_bt_mesh_core_set_trace_level(0xFFFFFFFF, TRACE_DEBUG);      // (ALL, TRACE_DEBUG)
+    wiced_bt_mesh_core_set_trace_level(0x08, TRACE_INFO);             // (CORE_AES_CCM_C, TRACE_INFO)
 
     if(!core_initialized)
     {
@@ -309,8 +309,6 @@ void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_scan_acti
 void mesh_app_init(wiced_bool_t is_provisioned)
 {
     WICED_BT_TRACE("mesh_app_init\n");
-    extern uint8_t wiced_bt_mesh_model_trace_enabled;
-    wiced_bt_mesh_model_trace_enabled = WICED_TRUE;
 
     wiced_bt_mesh_provision_client_init(mesh_provision_message_handler, is_provisioned);
     wiced_bt_mesh_client_init(mesh_provision_message_handler, is_provisioned);
@@ -547,9 +545,5 @@ wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data
 }
 
 void wiced_bt_mesh_add_vendor_model(wiced_bt_mesh_add_vendor_model_data_t *p_data)
-{
-}
-
-void wiced_firmware_upgrade_finish(void)
 {
 }

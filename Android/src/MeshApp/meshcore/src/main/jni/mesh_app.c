@@ -70,7 +70,6 @@ extern void mesh_native_lib_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_
  ******************************************************/
 #define MESH_PID                0x3016
 #define MESH_VID                0x0002
-#define MESH_FWID               0x3016000101010000
 #define MESH_CACHE_REPLAY_SIZE  200
 #define APPEARANCE_GENERIC_TAG  512
 #define MESH_VENDOR_COMPANY_ID          0x131   // Cypress Company ID
@@ -161,7 +160,6 @@ wiced_bt_mesh_core_config_t  mesh_config =
     .company_id         = MESH_COMPANY_ID_CYPRESS,                  // Company identifier assigned by the Bluetooth SIG
     .product_id         = MESH_PID,                                 // Vendor-assigned product identifier
     .vendor_id          = MESH_VID,                                 // Vendor-assigned product version identifier
-    .firmware_id        = MESH_FWID,
     .replay_cache_size  = MESH_CACHE_REPLAY_SIZE,                   // Number of replay protection entries, i.e. maximum number of mesh devices that can send application messages to this device.
     .features                  = 0,                                 //
     .friend_cfg         =                                           // Empty Configuration of the Friend Feature
@@ -328,8 +326,8 @@ void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_scan_acti
 void mesh_app_init(wiced_bool_t is_provisioned)
 {
     WICED_BT_TRACE("mesh_app_init\n");
-    extern uint8_t wiced_bt_mesh_model_trace_enabled;
-    wiced_bt_mesh_model_trace_enabled = WICED_TRUE;
+    extern uint8_t mesh_model_trace_level;
+    mesh_model_trace_level = TRACE_INFO;
 
     wiced_bt_mesh_provision_client_init(mesh_provision_message_handler, is_provisioned);
     wiced_bt_mesh_client_init(mesh_provision_message_handler, is_provisioned);

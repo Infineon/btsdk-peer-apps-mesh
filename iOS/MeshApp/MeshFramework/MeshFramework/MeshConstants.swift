@@ -14,22 +14,22 @@ public struct MeshConstants {
     public static let MESH_DEFAULT_USE_GATT_PROXY              = 1
     public static let MESH_DEFAULT_SCAN_DURATION               = 30
 
-    public static let MESH_DEFAULT_IS_GATT_PROXY               = 1
-    public static let MESH_DEFAULT_IS_FRIEND                   = 1
-    public static let MESH_DEFAULT_IS_RELAY                    = 1
-    public static let MESH_DEFAULT_RELAY_XMIT_COUNT            = 3
-    public static let MESH_DEFAULT_RELAY_XMIT_INTERVAL         = 100
-    public static let MESH_DEFAULT_TTL                         = 63
-    public static let MESH_DEFAULT_NET_XMIT_COUNT              = 3
-    public static let MESH_DEFAULT_NET_XMIT_INTERVAL           = 100
-    public static let MESH_DEFAULT_BEACON                      = 1
+    public static let MESH_DEFAULT_IS_GATT_PROXY               = Int(MESH_DEVICE_DEFAULT_CONFIG_IS_GATT_PROXY)
+    public static let MESH_DEFAULT_IS_FRIEND                   = Int(MESH_DEVICE_DEFAULT_CONFIG_IS_FRIEND)
+    public static let MESH_DEFAULT_IS_RELAY                    = Int(MESH_DEVICE_DEFAULT_CONFIG_IS_RELAY)
+    public static let MESH_DEFAULT_RELAY_XMIT_COUNT            = Int(MESH_DEVICE_DEFAULT_CONFIG_RELAY_XMIT_COUNT)
+    public static let MESH_DEFAULT_RELAY_XMIT_INTERVAL         = Int(MESH_DEVICE_DEFAULT_CONFIG_RELAY_XMIT_INTERNAL)
+    public static let MESH_DEFAULT_TTL                         = Int(MESH_DEVICE_DEFAULT_CONFIG_DEFAULT_TTL)
+    public static let MESH_DEFAULT_NET_XMIT_COUNT              = Int(MESH_DEVICE_DEFAULT_CONFIG_NET_XMIT_COUNT)
+    public static let MESH_DEFAULT_NET_XMIT_INTERVAL           = Int(MESH_DEVICE_DEFAULT_CONFIG_NET_XMIT_INTERNVAL)
+    public static let MESH_DEFAULT_BEACON                      = Int(MESH_DEVICE_DEFAULT_CONFIG_SEND_NET_BEACON)
 
     public static let MESH_DEFAULT_DEVICE_TYPE_UNKNOWN         = 0
     public static let MESH_DEFAULT_PUBLISH_PERIOD              = 10
-    public static let MESH_DEFAULT_PUBLISH_CREDENTIAL_FLAG     = 0
-    public static let MESH_DEFAULT_RETRANSMIT_COUNT            = 0
-    public static let MESH_DEFAULT_RETRANSMIT_INTERVAL         = 500
-    public static let MESH_DEFAULT_PUBLISH_TTL                 = 63
+    public static let MESH_DEFAULT_PUBLISH_CREDENTIAL_FLAG     = Int(MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_CREDENTIAL_FLAG)
+    public static let MESH_DEFAULT_RETRANSMIT_COUNT            = Int(MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_RETRANSMIT_COUNT)
+    public static let MESH_DEFAULT_RETRANSMIT_INTERVAL         = Int(MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_RETRANSMIT_INTERVAL)
+    public static let MESH_DEFAULT_PUBLISH_TTL                 = Int(MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_TTL)
     public static let MESH_DEFAULT_TRANSITION_TIME: UInt32     = 0xFFFFFFFF
 
     // Public BLE device address, just a placeholder, useless.
@@ -78,7 +78,7 @@ public struct MeshConstants {
     public static let MESH_COMPONENT_VENDOR_SPECIFIC          = 13
 
     public static let MESH_CLIENT_PROVISION_IDENTIFY_DURATION   = 20                                            // unit: seconds
-    public static let MESH_CLIENT_PROVISION_TIMEOUT_DURATION    = MESH_CLIENT_PROVISION_IDENTIFY_DURATION * 3   // unit: seconds
+    public static let MESH_CLIENT_PROVISION_TIMEOUT_DURATION    = MESH_CLIENT_PROVISION_IDENTIFY_DURATION * 4   // unit: seconds, 3 retires + 1 redundancy
 
     public static let MESH_CLIENT_CONNECT_TIMETOUT              = 10     // unit: seconds.
     public static let MESH_CLIENT_NETWORK_OPEN_TIMETOUT         = 10     // unit: seconds.

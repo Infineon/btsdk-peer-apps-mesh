@@ -54,6 +54,20 @@ typedef NS_ENUM(NSInteger, MeshDfuEvent) {
 
 #define CRC32_INIT_VALUE 0xFFFFFFFF
 
+#define MESH_DEVICE_DEFAULT_CONFIG_IS_GATT_PROXY                1
+#define MESH_DEVICE_DEFAULT_CONFIG_IS_FRIEND                    1
+#define MESH_DEVICE_DEFAULT_CONFIG_IS_RELAY                     1
+#define MESH_DEVICE_DEFAULT_CONFIG_SEND_NET_BEACON              1
+#define MESH_DEVICE_DEFAULT_CONFIG_RELAY_XMIT_COUNT             3
+#define MESH_DEVICE_DEFAULT_CONFIG_RELAY_XMIT_INTERNAL          100
+#define MESH_DEVICE_DEFAULT_CONFIG_DEFAULT_TTL                  8
+#define MESH_DEVICE_DEFAULT_CONFIG_NET_XMIT_COUNT               3
+#define MESH_DEVICE_DEFAULT_CONFIG_NET_XMIT_INTERNVAL           100
+#define MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_CREDENTIAL_FLAG      0
+#define MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_TTL                  8
+#define MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_RETRANSMIT_COUNT     0
+#define MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_RETRANSMIT_INTERVAL  500
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface MeshNativeHelper : NSObject
@@ -256,6 +270,7 @@ NS_ASSUME_NONNULL_BEGIN
 +(Boolean) isMeshClientProvisionKeyRefreshing;
 +(void) meshClientLog:(NSString *)message;
 +(void) meshClientLogInit:(Boolean) is_console_enabled;
++(NSString * __nullable) meshClientGetNetworkName;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -137,15 +137,16 @@ class ProvisioningStatusPopoverViewController: UIViewController {
                 }
             }
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_CONNECTING:
-            self.viewDidUpdateProvisionStatus(message: "Provision Scanning", progressPercentage: 0.2)
+            self.viewDidUpdateProvisionStatus(message: "Provision Connecting", progressPercentage: 0.2)
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_PROVISIONING:
-            self.viewDidUpdateProvisionStatus(message: "Provision Connecting", progressPercentage: 0.4)
+            self.viewDidUpdateProvisionStatus(message: "Provision Data Exchanging", progressPercentage: 0.4)
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_END:
-            self.viewDidUpdateProvisionStatus(message: "Provision Data Exchanging", progressPercentage: 0.6)
+            self.viewDidUpdateProvisionStatus(message: "Provision End", progressPercentage: 0.5)
+            self.viewDidUpdateProvisionStatus(message: "Provision Rescanning/Reconnecting", progressPercentage: 0.6)
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_CONFIGURING:
             self.viewDidUpdateProvisionStatus(message: "Provision Configuring", progressPercentage: 0.8)
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_SUCCESS:
-            self.viewDidUpdateProvisionStatus(message: "Provision Success", progressPercentage: 1)
+            self.viewDidUpdateProvisionStatus(message: "Provision Completed Success", progressPercentage: 1)
             self.activityIndicator.stopAnimating()
             self.activityIndicator.isHidden = true
             self.okButton.isEnabled = true
@@ -191,7 +192,8 @@ class ProvisioningStatusPopoverViewController: UIViewController {
 
         var error = MeshErrorCode.MESH_ERROR_INVALID_ARGS
         if let name = self.deviceName, let uuid = self.deviceUuid, let group = self.groupName {
-            self.viewDidUpdateProvisionStatus(message: "Start Provisioning", progressPercentage: 0.1)
+            self.viewDidUpdateProvisionStatus(message: "Start Provisioning", progressPercentage: 0.0)
+            self.viewDidUpdateProvisionStatus(message: "Provision Scanning", progressPercentage: 0.1)
             error = MeshFrameworkManager.shared.meshClientProvision(deviceName: name, uuid: uuid, groupName: group)
         }
 

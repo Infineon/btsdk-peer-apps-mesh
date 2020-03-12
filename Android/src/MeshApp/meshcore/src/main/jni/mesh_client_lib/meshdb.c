@@ -3070,7 +3070,7 @@ void mesh_json_write_hex16(FILE *fp, int offset, char *tag, uint16_t value, int 
 
 void mesh_json_write_hex32(FILE *fp, int offset, char *tag, uint32_t value, int is_last)
 {
-    char buffer[80];
+    char buffer[80] = { 0 };
     int i;
 
     for (i = 0; i < offset; i++)

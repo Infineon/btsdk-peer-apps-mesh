@@ -242,14 +242,17 @@ void Log(char *fmt, ...)
 #ifdef __ANDROID__
     __android_log_vprint(ANDROID_LOG_INFO, LOG_TAG, fmt, ap);
 #else
+    va_list aplist;
+    va_start(aplist, fmt);
     print_current_time();
     if (is_debug_enabled) vprintf(fmt, ap);
-    if (log_fp) vfprintf(log_fp, fmt, ap);
+    if (log_fp) vfprintf(log_fp, fmt, aplist);
     if (fmt && fmt[strlen(fmt) - 1] != '\n')
     {
         if (is_debug_enabled) printf("\n");
         if (log_fp) fprintf(log_fp, "\n");
     }
+    va_end(aplist);
 #endif
     va_end(ap);
 }
@@ -261,14 +264,17 @@ void ods(char * fmt_str, ...)
 #ifdef __ANDROID__
     __android_log_vprint(ANDROID_LOG_INFO, LOG_TAG, fmt_str, ap);
 #else
+    va_list aplist;
+    va_start(aplist, fmt_str);
     print_current_time();
     if (is_debug_enabled) vprintf(fmt_str, ap);
-    if (log_fp) vfprintf(log_fp, fmt_str, ap);
+    if (log_fp) vfprintf(log_fp, fmt_str, aplist);
     if (fmt_str && fmt_str[strlen(fmt_str) - 1] != '\n')
     {
         if (is_debug_enabled) printf("\n");
         if (log_fp) fprintf(log_fp, "\n");
     }
+    va_end(aplist);
 #endif
     va_end(ap);
 }
@@ -285,12 +291,15 @@ int wiced_printf(char * buffer, int len, char *fmt_str, ...)
     print_current_time();
     va_list ap;
     va_start(ap, fmt_str);
+    va_list aplist;
+    va_start(aplist, fmt_str);
     if (buffer && len)
         vsnprintf(buffer, len, fmt_str, ap);
     else
         if (is_debug_enabled) vprintf(fmt_str, ap);
     if (log_fp)
-        vfprintf(log_fp, fmt_str, ap);
+        vfprintf(log_fp, fmt_str, aplist);
+    va_end(aplist);
     va_end(ap);
 #endif
     return 0;

@@ -103,7 +103,7 @@ typedef struct
 } device_config_params_t;
 #endif
 
-device_config_params_t DeviceConfig = { 1, 1, 1, 1, 3, 100, 63, 3, 100, 0, 63, 0, 500 };
+device_config_params_t DeviceConfig = { 1, 1, 1, 1, 3, 100, 8, 3, 100, 0, 8, 0, 500 };
 
 void network_opened(uint8_t status);
 /*extern "C" */ void unprovisioned_device(uint8_t *uuid, uint16_t oob, uint8_t *name_len, uint8_t name);
@@ -124,7 +124,6 @@ void network_opened(uint8_t status);
 
 WCHAR *dfuMethods[] = {
     L"Proxy DFU to all",
-    L"App DFU to all",
     L"App OTA to device",
 };
 
@@ -426,6 +425,7 @@ BEGIN_MESSAGE_MAP(CMeshClientDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BROWSE, &CMeshClientDlg::OnBnClickedBrowse)
     ON_BN_CLICKED(IDC_INFOBROWSE, &CMeshClientDlg::OnBnClickedInfoBrowse)
     ON_CBN_SELCHANGE(IDC_CONFIGURE_CONTROL_DEVICE, &CMeshClientDlg::OnCbnSelchangeConfigureControlDevice)
+    ON_CBN_SELCHANGE(IDC_CONFIGURE_MOVE_DEVICE, &CMeshClientDlg::OnCbnSelchangeConfigureMoveDevice)
     ON_BN_CLICKED(IDC_NETWORK_IMPORT, &CMeshClientDlg::OnBnClickedNetworkImport)
     ON_BN_CLICKED(IDC_NETWORK_EXPORT, &CMeshClientDlg::OnBnClickedNetworkExport)
     ON_BN_CLICKED(IDC_GET_COMPONENT_INFO, &CMeshClientDlg::OnBnClickedGetComponentInfo)
@@ -1103,7 +1103,7 @@ void CMeshClientDlg::OnBnClickedNetworkDelete()
             MultiByteToWideChar(CP_UTF8, 0, mesh_name, strlen(mesh_name) + 1, s, sizeof(s) / sizeof(WCHAR));
             Log(L"Network %s deleted\n", s);
 
-			// Clear the UUID after all mesh network deleted.
+            // Clear the UUID after all mesh network deleted.
             char *p = mesh_client_get_all_networks();
             int num_networks = 0;
             while (p != NULL && *p != NULL)
@@ -1169,7 +1169,6 @@ void CMeshClientDlg::DisplayCurrentGroup()
     CComboBox *p_current_group = (CComboBox *)GetDlgItem(IDC_CURRENT_GROUP);
     CComboBox *p_rename_devs = (CComboBox *)GetDlgItem(IDC_CONFIGURE_RENAME);
     CComboBox *p_move_devs = (CComboBox *)GetDlgItem(IDC_CONFIGURE_MOVE_DEVICE);
-    CComboBox* p_move_from_groups = (CComboBox*)GetDlgItem(IDC_CONFIGURE_MOVE_FROM_GROUP);
     CComboBox *p_move_groups = (CComboBox *)GetDlgItem(IDC_CONFIGURE_MOVE_TO_GROUP);
     CComboBox *p_configure_control_devs = (CComboBox *)GetDlgItem(IDC_CONFIGURE_CONTROL_DEVICE);
     CComboBox *p_configure_publish_to = (CComboBox *)GetDlgItem(IDC_CONFIGURE_PUBLISH_TO);
@@ -1180,7 +1179,6 @@ void CMeshClientDlg::DisplayCurrentGroup()
     p_current_group->ResetContent();
     p_rename_devs->ResetContent();
     p_move_devs->ResetContent();
-    p_move_from_groups->ResetContent();
     p_move_groups->ResetContent();
     p_configure_control_devs->ResetContent();
     p_configure_publish_to->ResetContent();
@@ -1190,7 +1188,6 @@ void CMeshClientDlg::DisplayCurrentGroup()
     p_network->GetLBText(p_network->GetCurSel(), szName);
     p_current_group->AddString(szName);
     p_target_devs_groups->AddString(szName);
-    p_move_from_groups->AddString(szName);
     p_move_groups->AddString(szName);
 
     p_configure_publish_to->AddString(L"none");
@@ -1200,7 +1197,7 @@ void CMeshClientDlg::DisplayCurrentGroup()
     p_configure_publish_to->AddString(L"all-relays");
     p_configure_publish_to->AddString(L"this-device");
 
-    char *p;
+    char *p, *p1, *p2;
     char *p_groups = mesh_client_get_all_groups(NULL);
     for (p = p_groups; p != NULL && *p != 0; p += (strlen(p) + 1))
     {
@@ -1208,9 +1205,32 @@ void CMeshClientDlg::DisplayCurrentGroup()
         p_current_group->AddString(szName);
         p_configure_publish_to->AddString(szName);
         p_target_devs_groups->AddString(szName);
-        p_move_from_groups->AddString(szName);
         p_move_groups->AddString(szName);
         p_rename_devs->AddString(szName);
+
+        char* p_groups1 = mesh_client_get_all_groups(p);
+        for (p1 = p_groups1; p1 != NULL && *p1 != 0; p1 += (strlen(p1) + 1))
+        {
+            MultiByteToWideChar(CP_UTF8, 0, p1, -1, szName, sizeof(szName) / sizeof(WCHAR));
+            p_current_group->AddString(szName);
+            p_configure_publish_to->AddString(szName);
+            p_target_devs_groups->AddString(szName);
+            p_move_groups->AddString(szName);
+            p_rename_devs->AddString(szName);
+
+            char* p_groups2 = mesh_client_get_all_groups(p1);
+            for (p2 = p_groups2; p2 != NULL && *p2 != 0; p2 += (strlen(p2) + 1))
+            {
+                MultiByteToWideChar(CP_UTF8, 0, p2, -1, szName, sizeof(szName) / sizeof(WCHAR));
+                p_current_group->AddString(szName);
+                p_configure_publish_to->AddString(szName);
+                p_target_devs_groups->AddString(szName);
+                p_move_groups->AddString(szName);
+                p_rename_devs->AddString(szName);
+            }
+            free(p_groups2);
+        }
+        free(p_groups1);
     }
     free(p_groups);
 
@@ -1319,6 +1339,13 @@ void CMeshClientDlg::OnBnClickedGroupDelete()
     EnterCriticalSection(&cs);
     mesh_client_group_delete(group_name);
     LeaveCriticalSection(&cs);
+
+    WCHAR szGroup[80];
+    char mesh_name[80];
+    GetDlgItemTextA(m_hWnd, IDC_NETWORK, mesh_name, sizeof(mesh_name));
+    MultiByteToWideChar(CP_UTF8, 0, mesh_name, strlen(mesh_name) + 1, szGroup, sizeof(szGroup) / sizeof(WCHAR));
+    wcscpy(m_szCurrentGroup, szGroup);
+
     DisplayCurrentGroup();
 }
 
@@ -1774,6 +1801,16 @@ void CMeshClientDlg::OnBnClickedMoveToGroup()
         pGroup->GetLBText(sel, szGroupName);
         WideCharToMultiByte(CP_UTF8, 0, szGroupName, -1, group_from_name, 80, NULL, FALSE);
     }
+
+    // We might need to use default pub params
+    FILE* fp = fopen("NetParameters.bin", "wb");
+    if (fp)
+    {
+        fwrite(&DeviceConfig, 1, sizeof(DeviceConfig), fp);
+        fclose(fp);
+    }
+    mesh_client_set_publication_config(DeviceConfig.publish_credential_flag, DeviceConfig.publish_retransmit_count, DeviceConfig.publish_retransmit_interval, DeviceConfig.publish_ttl);
+
     EnterCriticalSection(&cs);
     if (((group_from_name[0] == 0) || (strcmp(mesh_name, group_from_name) == 0)) && ((group_to_name[0] != 0) && (strcmp(mesh_name, group_to_name) != 0)))
         mesh_client_add_component_to_group(device_name, group_to_name);
@@ -1826,6 +1863,65 @@ void CMeshClientDlg::OnCbnSelchangeConfigureControlDevice()
     free(control_methods);
     if (p_method->GetCount() != 0)
         p_method->SetCurSel(0);
+}
+
+BOOL is_component_in_group(char* component_name, char* group_name)
+{
+    char* p_components = mesh_client_get_group_components(group_name);
+    for (char *p = p_components; p != NULL && *p != 0; p += (strlen(p) + 1))
+    {
+        if (strcmp(p, component_name) == 0)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+void CMeshClientDlg::OnCbnSelchangeConfigureMoveDevice()
+{
+    CComboBox* p_move_from_groups = (CComboBox*)GetDlgItem(IDC_CONFIGURE_MOVE_FROM_GROUP);
+    p_move_from_groups->ResetContent();
+
+    CComboBox* p_device = (CComboBox*)GetDlgItem(IDC_CONFIGURE_MOVE_DEVICE);
+    int sel = p_device->GetCurSel();
+    if (sel < 0)
+        return;
+
+    WCHAR szName[80] = { 0 };
+    char device_name[80] = { 0 };
+    p_device->GetLBText(sel, szName);
+    WideCharToMultiByte(CP_UTF8, 0, szName, -1, device_name, 80, NULL, FALSE);
+
+    char* p, * p1, * p2;
+    char* p_groups = mesh_client_get_all_groups(NULL);
+    for (p = p_groups; p != NULL && *p != 0; p += (strlen(p) + 1))
+    {
+        if (is_component_in_group(device_name, p))
+        {
+            MultiByteToWideChar(CP_UTF8, 0, p, -1, szName, sizeof(szName) / sizeof(WCHAR));
+            p_move_from_groups->AddString(szName);
+        }
+        char* p_groups1 = mesh_client_get_all_groups(p);
+        for (p1 = p_groups1; p1 != NULL && *p1 != 0; p1 += (strlen(p1) + 1))
+        {
+            if (is_component_in_group(device_name, p1))
+            {
+                MultiByteToWideChar(CP_UTF8, 0, p, -1, szName, sizeof(szName) / sizeof(WCHAR));
+                p_move_from_groups->AddString(szName);
+            }
+            char* p_groups2 = mesh_client_get_all_groups(p1);
+            for (p2 = p_groups2; p2 != NULL && *p2 != 0; p2 += (strlen(p2) + 1))
+            {
+                if (is_component_in_group(device_name, p2))
+                {
+                    MultiByteToWideChar(CP_UTF8, 0, p, -1, szName, sizeof(szName) / sizeof(WCHAR));
+                    p_move_from_groups->AddString(szName);
+                }
+            }
+            free(p_groups2);
+        }
+        free(p_groups1);
+    }
+    free(p_groups);
 }
 
 void CMeshClientDlg::OnBnClickedConfigurePub()
@@ -1970,7 +2066,7 @@ void CMeshClientDlg::OnBnClickedLightHslSet()
     char name[80];
     GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
     EnterCriticalSection(&cs);
-    mesh_client_hsl_set(name, target_lightness, target_hue, target_saturation, WICED_TRUE, 250 /*DEFAULT_TRANSITION_TIME*/, 0);
+    mesh_client_hsl_set(name, target_lightness, target_hue, target_saturation, WICED_TRUE, DEFAULT_TRANSITION_TIME, 0);
     LeaveCriticalSection(&cs);
 }
 

@@ -238,22 +238,23 @@ class ScanProvisionTestViewController: UIViewController {
         logContentTextView.scrollRangeToVisible(bottom)
     }
 
-    func doProvisionTest() {
-        log("start provision test ...")
-        scanProvisionTestStage = MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_PROVISIONING
-
+    func _doProvisionTest() {
         // The provisoning operation must wait until the mesh network is idle, otherwise will encounter invalid state immediately.
         // When there are multiple devices exsiting in the mesh network, especically there are some devices that unreachable,
         // there are much more time required for the mesh provisioner to update the keys after a mesh device deleted/changed.
-        while MeshFrameworkManager.shared.isMeshClientProvisionKeyRefreshing() {
+        guard !MeshFrameworkManager.shared.isMeshClientProvisionKeyRefreshing() else {
             stopTestBtn.isEnabled = true
             log("warning: mesh network is busying, waiting 5 senconds for it ready for idle")
-            Thread.sleep(forTimeInterval: 5)   // wait 5 seconds for the mesh network to be ready for idle.
-            if !self.isScanProvisionTestEnabled {
-                log("scan/provision test has been disable")
-                scanProvisionTestStage = MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_IDLE
-                onStopTestBtnClick(stopTestBtn)
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + .seconds(5)) {
+                if !self.isScanProvisionTestEnabled {
+                    self.log("scan/provision test has been disable")
+                    self.scanProvisionTestStage = MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_IDLE
+                    self.onStopTestBtnClick(self.stopTestBtn)
+                    return
+                }
+                self._doProvisionTest()
             }
+            return
         }
 
         guard let deviceName = ScanProvisionTestViewController.unprovisionedDeviceName,
@@ -285,6 +286,13 @@ class ScanProvisionTestViewController: UIViewController {
             scanProvisionTestStage = MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_IDLE
             onStopTestBtnClick(stopTestBtn)
         }
+    }
+
+    func doProvisionTest() {
+        log("start provision test ...")
+        scanProvisionTestStage = MeshNotificationConstants.MESH_SCAN_PROVISION_TEST_STAGE_PROVISIONING
+
+        _doProvisionTest()
     }
 
     func doDeleteTest(provisionedDeviceName: String) {

@@ -40,6 +40,39 @@ static char provisioner_uuid[40];  // Used to store provisioner UUID string.
 static dispatch_once_t onceToken;
 static dispatch_once_t zoneOnceToken;
 
+typedef struct mesh_device_config_params
+{
+    int is_gatt_proxy;
+    int is_friend;
+    int is_relay;
+    int send_net_beacon;
+    int relay_xmit_count;
+    int relay_xmit_interval;
+    int default_ttl;
+    int net_xmit_count;
+    int net_xmit_interval;
+    int publish_credential_flag;       ///< Value of the Friendship Credential Flag
+    int publish_ttl;                   ///< Default TTL value for the outgoing messages
+    int publish_retransmit_count;      ///< Number of retransmissions for each published message
+    int publish_retransmit_interval;   ///< Interval in milliseconds between retransmissions
+} mesh_device_config_params_t;
+static mesh_device_config_params_t mesh_device_config_params = {
+    MESH_DEVICE_DEFAULT_CONFIG_IS_GATT_PROXY,
+    MESH_DEVICE_DEFAULT_CONFIG_IS_FRIEND,
+    MESH_DEVICE_DEFAULT_CONFIG_IS_RELAY,
+    MESH_DEVICE_DEFAULT_CONFIG_SEND_NET_BEACON,
+    MESH_DEVICE_DEFAULT_CONFIG_RELAY_XMIT_COUNT,
+    MESH_DEVICE_DEFAULT_CONFIG_RELAY_XMIT_INTERNAL,
+    MESH_DEVICE_DEFAULT_CONFIG_DEFAULT_TTL,
+    MESH_DEVICE_DEFAULT_CONFIG_NET_XMIT_COUNT,
+    MESH_DEVICE_DEFAULT_CONFIG_NET_XMIT_INTERNVAL,
+    MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_CREDENTIAL_FLAG,
+    MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_TTL,
+    MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_RETRANSMIT_COUNT,
+    MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_RETRANSMIT_INTERVAL
+};
+#define MESH_DEVICE_CONFIG_PARAMS_FILE_NAME "NetParameters.bin"
+
 // siglone instance of DFW metadata data.
 static uint8_t dfuFwId[WICED_BT_MESH_MAX_FIRMWARE_ID_LEN];
 static uint32_t dfuFwIdLen;
@@ -77,7 +110,7 @@ void meshClientUnprovisionedDeviceFoundCb(uint8_t *uuid, uint16_t oob, uint8_t *
 void meshClientProvisionCompleted(uint8_t status, uint8_t *p_uuid)
 {
     if (p_uuid == NULL) {
-        WICED_BT_TRACE("[MeshNativeHelper meshClientProvisionCompleted] error: invalid parameters, uuid=0x%p\n", p_uuid);
+        WICED_BT_TRACE("[MeshNativeHelper meshClientProvisionCompleted] error: invalid parameters, p_uuid=0x%p\n", p_uuid);
         return;
     }
     WICED_BT_TRACE("[MeshNativeHelper meshClientProvisionCompleted] status: %u\n", status);
@@ -911,8 +944,30 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
     WICED_BT_TRACE("[MeshNativehelper meshClientMoveComponentToGroup] componentName:%s, fromGroupName:%s, toGroupName:%s\n",
           componentName.UTF8String, fromGroupName.UTF8String, toGroupName.UTF8String);
     int ret;
+    NSString *networkName = MeshNativeHelper.meshClientGetNetworkName;
+    if (networkName == nil) {
+        return MESH_CLIENT_ERR_NETWORK_CLOSED;
+    }
+
+    // might need to use default pub parameters.
+    FILE *fp = fopen(MESH_DEVICE_CONFIG_PARAMS_FILE_NAME, "wb");
+    if (fp) {
+        fwrite(&mesh_device_config_params, 1, sizeof(mesh_device_config_params), fp);
+        fclose(fp);
+    }
+    mesh_client_set_publication_config(mesh_device_config_params.publish_credential_flag,
+                                       mesh_device_config_params.publish_retransmit_count,
+                                       mesh_device_config_params.publish_retransmit_interval,
+                                       mesh_device_config_params.publish_ttl);
+
     EnterCriticalSection();
-    ret = mesh_client_move_component_to_group(componentName.UTF8String, fromGroupName.UTF8String, toGroupName.UTF8String);
+    if (((fromGroupName.length == 0) || [networkName isEqualToString:fromGroupName]) && ((toGroupName.length != 0) && ![networkName isEqualToString:toGroupName])) {
+        ret = mesh_client_add_component_to_group(componentName.UTF8String, toGroupName.UTF8String);
+    } else if (((fromGroupName.length != 0) || ![networkName isEqualToString:fromGroupName]) && ((toGroupName.length == 0) || [networkName isEqualToString:toGroupName])) {
+        ret = mesh_client_remove_component_from_group(componentName.UTF8String, fromGroupName.UTF8String);
+    } else {
+        ret = mesh_client_move_component_to_group(componentName.UTF8String, fromGroupName.UTF8String, toGroupName.UTF8String);
+    }
     LeaveCriticalSection();
     return ret;
 }
@@ -1032,6 +1087,13 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
             WICED_BT_TRACE("[MeshNativehelper meshClientInit] error: failed to initiaze timer and shared recurive mutex lock. Stopped\n");
             return;
         }
+
+        FILE *fp = fopen(MESH_DEVICE_CONFIG_PARAMS_FILE_NAME, "rb");
+        if (fp) {
+            fread(&mesh_device_config_params, 1, sizeof(mesh_device_config_params), fp);
+            fclose(fp);
+        }
+
         mesh_client_init(&mesh_client_init_callback);
     }
 }
@@ -1054,6 +1116,22 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
     if (deviceName != NULL && deviceName.length > 0) {
         device_name = (char *)deviceName.UTF8String;
     }
+
+    mesh_device_config_params.is_gatt_proxy = isGattProxy;
+    mesh_device_config_params.is_friend = isFriend;
+    mesh_device_config_params.is_relay = isRelay;
+    mesh_device_config_params.send_net_beacon = beacon;
+    mesh_device_config_params.relay_xmit_count = relayXmitCount;
+    mesh_device_config_params.relay_xmit_interval = relayXmitInterval;
+    mesh_device_config_params.default_ttl = defaultTtl;
+    mesh_device_config_params.net_xmit_count = netXmitCount;
+    mesh_device_config_params.net_xmit_interval = netXmitInterval;
+    FILE *fp = fopen(MESH_DEVICE_CONFIG_PARAMS_FILE_NAME, "wb");
+    if (fp) {
+        fwrite(&mesh_device_config_params, 1, sizeof(mesh_device_config_params), fp);
+        fclose(fp);
+    }
+
     EnterCriticalSection();
     ret = mesh_client_set_device_config(device_name,
                                         isGattProxy,
@@ -1077,6 +1155,17 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
     WICED_BT_TRACE("[MeshNativehelper meshClientSetPublicationConfig] publishCredentialFlag:%d, publishRetransmitCount:%d, publishRetransmitInterval:%d, publishTtl:%d\n",
           publishCredentialFlag, publishRetransmitCount, publishRetransmitInterval, publishTtl);
     int ret;
+
+    mesh_device_config_params.publish_credential_flag = publishCredentialFlag;
+    mesh_device_config_params.publish_ttl = publishTtl;
+    mesh_device_config_params.publish_retransmit_count = publishRetransmitCount;
+    mesh_device_config_params.publish_retransmit_interval = publishRetransmitInterval;
+    FILE *fp = fopen(MESH_DEVICE_CONFIG_PARAMS_FILE_NAME, "wb");
+    if (fp) {
+        fwrite(&mesh_device_config_params, 1, sizeof(mesh_device_config_params), fp);
+        fclose(fp);
+    }
+
     EnterCriticalSection();
     ret = mesh_client_set_publication_config(publishCredentialFlag,
                                              publishRetransmitCount,
@@ -2176,11 +2265,29 @@ void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uin
     }
 }
 
+/* This API is implemented for test purpose only. It is used in the Scan Provision Test function. */
 +(Boolean) isMeshClientProvisionKeyRefreshing
 {
-    extern mesh_core_provision_cb_t provision_cb;
-    WICED_BT_TRACE("[MeshNativeHelper isMeshClientProvisionerBusying] provision_cb.state=%d\n", provision_cb.state);
-    return (provision_cb.state > 12) ? true : false;
+    typedef struct {
+        /*
+         * Note:
+         *  Must make sure the the offset of the `state` variable and the value of the PROVISION_STATE_KEY_REFRESH_1 macro
+         * are exactly same as the offset and value defined in the mesh_provision_cb_t data structure
+         * in wiced_mesh_client.c file.
+         */
+        #define PROVISION_STATE_KEY_REFRESH_1   13
+        uint8_t     state;
+    } mesh_provision_cb_t;
+    extern mesh_provision_cb_t provision_cb;
+    Boolean isProvisionKeyRefreshing = false;
+
+    EnterCriticalSection();
+    if (provision_cb.state >= PROVISION_STATE_KEY_REFRESH_1) {
+        isProvisionKeyRefreshing = true;
+    }
+    WICED_BT_TRACE("[MeshNativeHelper isMeshClientProvisionKeyRefreshing] p_provisioning_cb->state=%d, isProvisionKeyRefreshing=%d\n", provision_cb.state, isProvisionKeyRefreshing);
+    LeaveCriticalSection();
+    return isProvisionKeyRefreshing;
 }
 
 +(void) meshClientLogInit:(Boolean) is_console_enabled
@@ -2195,6 +2302,15 @@ void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uin
     }
 
     Log("%s\n", message.UTF8String);
+}
+
++(NSString *) meshClientGetNetworkName
+{
+    extern wiced_bt_mesh_db_mesh_t *p_mesh_db;
+    if (p_mesh_db && p_mesh_db->name) {
+        return [[NSString alloc] initWithUTF8String:p_mesh_db->name];
+    }
+    return nil;
 }
 
 @end

@@ -19,13 +19,14 @@ open class MeshGattClient: NSObject {
     private var unprovisionedDeviceList: [[String: UUID]] = []
     private var isScanningUnprovisionedDevice: Bool = false
 
+    private var connectingTimer: Timer?
+
     var mGattService:CBService?
     var mGattDataInCharacteristic:CBCharacteristic?
     var mGattDataOutCharacteristic:CBCharacteristic?
 
     var mGattEstablishedConnectionCount: Int = 0 {
         didSet {
-            meshLog("MeshGattClient, mGattEstablishedConnectionCount=\(mGattEstablishedConnectionCount)")
             // Currently, with the support of the mesh library, only one connection can be established at any time
             // between the provisioner and target mesh device.
             if mGattEstablishedConnectionCount < 0 {
@@ -33,6 +34,7 @@ open class MeshGattClient: NSObject {
             } else if mGattEstablishedConnectionCount > 1 {
                 mGattEstablishedConnectionCount = MeshConstants.MESH_CONNECTION_ID_CONNECTED
             }
+            meshLog("MeshGattClient, mGattEstablishedConnectionCount=\(mGattEstablishedConnectionCount)")
         }
     }
 
@@ -62,20 +64,46 @@ open class MeshGattClient: NSObject {
         }
     }
 
+    @objc private func onConnectingTimeout(timer: Timer) {
+        if let peripheral = timer.userInfo as? CBPeripheral {
+            MeshNativeHelper.meshClientLog("[MeshGattClient connect] error: connecting to mesh device timeout, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), , \(peripheral)")
+            self.centralManager(self.centralManager, didFailToConnect: peripheral, error: CBError(CBError.connectionTimeout))
+        }
+    }
     open func connect(peripheral: CBPeripheral) {
         MeshNativeHelper.meshClientLog("[MeshGattClient connect] connecting from mesh device, \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
+        connectingTimer?.invalidate()
+
         if centralManager.state == .poweredOn {
             if centralManager.isScanning {
                 centralManager.stopScan()   // stop scanning before connecting to make connecting stable and fast in provisioning.
             }
             if peripheral.state == .disconnected {
+                // Add a monitor timer for the issue that the iOS won't call any callback routine after executed the connect operation in some situations.
+                // Don't know the root cause and no soluiton for this iOS issue yet.
+                let connectingTimerInterval = TimeInterval(MeshConstants.MESH_CLIENT_PROVISION_IDENTIFY_DURATION + 10)  // total 30 seconds.
+                if #available(iOS 10.0, *) {
+                    connectingTimer = Timer.scheduledTimer(withTimeInterval: connectingTimerInterval, repeats: false, block: { (Timer) in
+                        MeshNativeHelper.meshClientLog("[MeshGattClient connect] error: connecting to mesh device timeout, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral)")
+                        self.centralManager(self.centralManager, didFailToConnect: peripheral, error: CBError(CBError.connectionTimeout))
+                    })
+                } else {
+                    connectingTimer = Timer.scheduledTimer(timeInterval: connectingTimerInterval, target: self,
+                                                           selector: #selector(self.onConnectingTimeout),
+                                                           userInfo: peripheral, repeats: false)
+                }
+
                 centralManager.connect(peripheral, options: nil)
             } else {
                 MeshNativeHelper.meshClientLog("[MeshGattClient connect] error: invalid centralManager.state=\(centralManager.state.rawValue),  bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), connection cancelled, please try again later")
                 centralManager.cancelPeripheralConnection(peripheral)
+                mGattEstablishedConnectionCount -= 1
+                MeshFrameworkManager.shared.meshClientConnectionStateChanged(connId: mGattEstablishedConnectionCount)
             }
         } else {
             MeshNativeHelper.meshClientLog("[MeshGattClient connect] error: invalid centralManager.state=\(centralManager.state.rawValue), \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
+            mGattEstablishedConnectionCount -= 1
+            MeshFrameworkManager.shared.meshClientConnectionStateChanged(connId: mGattEstablishedConnectionCount)
         }
     }
 
@@ -226,6 +254,8 @@ extension MeshGattClient: CBCentralManagerDelegate {
 
     open func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         MeshNativeHelper.meshClientLog("[MeshGattClient didConnect] \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
+        connectingTimer?.invalidate()
+
         mGattEstablishedConnectionCount += 1
         peripheral.delegate = self
         MeshNativeHelper.setCurrentConnectedPeripheral(peripheral)
@@ -244,7 +274,12 @@ extension MeshGattClient: CBCentralManagerDelegate {
 
     open func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         MeshNativeHelper.meshClientLog("[MeshGattClient didFailToConnect] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), error:\(String(describing: error))")
+        connectingTimer?.invalidate()
+        central.cancelPeripheralConnection(peripheral)
+
         MeshNativeHelper.setCurrentConnectedPeripheral(nil)
+        mGattEstablishedConnectionCount -= 1
+        MeshFrameworkManager.shared.meshClientConnectionStateChanged(connId: mGattEstablishedConnectionCount)
 
         if OtaManager.shared.isOtaUpgrading {
             OtaManager.shared.centralManager(central, didFailToConnect: peripheral, error: error)
@@ -256,6 +291,9 @@ extension MeshGattClient: CBCentralManagerDelegate {
 
     open func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         MeshNativeHelper.meshClientLog("[MeshGattClient didDisconnectPeripheral] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), error:\(String(describing: error))")
+        connectingTimer?.invalidate()
+        central.cancelPeripheralConnection(peripheral)
+
         mGattEstablishedConnectionCount -= 1
         MeshNativeHelper.setCurrentConnectedPeripheral(nil)
 
