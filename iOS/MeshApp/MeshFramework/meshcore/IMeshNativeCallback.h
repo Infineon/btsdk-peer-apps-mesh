@@ -77,8 +77,7 @@ NS_ASSUME_NONNULL_BEGIN
            targetTemperature:(uint16_t)targetTemperature
                remainingTime:(uint32_t)remainingTime;
 -(void) meshClientLightnessStateCb:(NSString *)deviceName target:(uint16_t)target present:(uint16_t)present remainingTime:(uint32_t)remainingTime;
--(void) meshClientDfuStatusCb:(uint8_t)status progress:(uint8_t)progress;
--(void) onDfuEventReceived:(uint8_t)event data:(NSData *)data;
+-(void) meshClientDfuStatusCb:(uint8_t)state data:(NSData *)data;
 
 //GATT APIS
 -(Boolean) meshClientAdvScanStartCb;
@@ -94,6 +93,9 @@ NS_ASSUME_NONNULL_BEGIN
 -(void) onLightLcPropertyStatusCb:(NSString *)deviceName propertyId:(int)propertyId value:(int)value;
 
 -(void) updateProvisionerUuid:(NSUUID *)uuid;
+
+-(void) meshClientStartOtaTransferForDfu;
+-(Boolean) meshClientIsOtaSupportedForDfu;
 @end
 
 NS_ASSUME_NONNULL_END

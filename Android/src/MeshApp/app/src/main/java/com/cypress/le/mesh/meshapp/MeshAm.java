@@ -717,19 +717,11 @@ public class MeshAm extends Service {
                     case START_OTA_UPGRADE: {
                         Bundle extras = intent.getExtras();
 
-                        if (!extras.containsKey("componentName")) {
-                            Log.d(TAG, "componentName field is not present");
-                        }
                         if (!extras.containsKey("fileName")) {
                             Log.d(TAG, "fileName field is not present");
                         }
-                        if (!extras.containsKey("dfuMethod")) {
-                            Log.d(TAG, "dfuMethod field is not present");
-                        }
-                        byte dfuMethod =(byte)extras.getInt("dfuMethod");
-                        String componentName = extras.getString("componentName");
                         String fileName = extras.getString("fileName");
-                        int res = mMeshController.startOtaUpgrade(componentName, dfuMethod);
+                        int res = mMeshController.startOta(fileName);
                         setResultCode(res);
                     }
                     break;
@@ -739,7 +731,7 @@ public class MeshAm extends Service {
                             Log.d(TAG, "dfuMethod field is not present");
                         }
                         byte dfuMethod =(byte)extras.getInt("dfuMethod");
-                        int res = mMeshController.stopOtaUpgrade();
+                        int res = mMeshController.stopOta();
                         setResultCode(res);
                     }
                     break;
@@ -1784,8 +1776,8 @@ public class MeshAm extends Service {
         }
 
         @Override
-        public void onOTAUpgradeStatus(byte status, int percentComplete) {
-            Log.d(TAG,"onOTAUpgradeStatus status:"+status);
+        public void onOtaStatus(byte status, int percentComplete) {
+            Log.d(TAG,"onOtaStatus status:"+status);
 
             if(pendingResult != null) {
                 String result = "status:"+status+", percentComplete:"+percentComplete;
@@ -1848,7 +1840,7 @@ public class MeshAm extends Service {
         }
 
         @Override
-        public void onDfuStatus(byte status, byte progress) {
+        public void onDfuStatus(byte status, byte[] data) {
 
         }
 

@@ -38,6 +38,7 @@
 #include <hci_control_api.h>
 #include "trace.h"
 #include <wiced_bt_ble.h>
+#include "wiced_bt_mesh_app.h"
 
 #include <malloc.h>
 #include <wiced_bt_mesh_core.h>
@@ -53,22 +54,22 @@ extern void mesh_sensor_process_event(uint16_t addr, uint16_t event, void *p_dat
 extern void proxy_gatt_send_cb(uint32_t conn_id, uint32_t ref_data, const uint8_t *packet, uint32_t packet_len);
 static uint32_t mesh_nvram_access(wiced_bool_t write, int inx, uint8_t* value, uint16_t len, wiced_result_t *p_result);
 typedef wiced_bool_t (*wiced_model_message_handler_t)(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
-typedef void (wiced_ota_firmware_event_callback_t)(uint16_t event, void *p_data);
 static wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, wiced_bool_t *p_dont_save_rpl);
 static void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_active);
 wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
 extern void meshClientVendorSpecificDataStatus(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *p_data, uint16_t data_len);
 extern void mesh_native_lib_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len);
 
+
+/******************************************************
+ *          Constants
+ ******************************************************/
 // defines Friendship Mode
 #define MESH_FRIENDSHIP_NONE  0
 #define MESH_FRIENDSHIP_FRND  1
 #define MESH_FRIENDSHIP_LPN   2
 
-/******************************************************
- *          Constants
- ******************************************************/
-#define MESH_PID                0x3016
+#define MESH_PID                0x3001          //change this from 0x3016 to 0x 3001
 #define MESH_VID                0x0002
 #define MESH_CACHE_REPLAY_SIZE  200
 #define APPEARANCE_GENERIC_TAG  512
@@ -91,17 +92,11 @@ extern void mesh_native_lib_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_
 
 wiced_result_t mesh_transport_send_data( uint16_t opcode, uint8_t* p_data, uint16_t length );
 void mesh_provisioner_client_message_handler(uint16_t event, void *p_data);
-extern void mesh_provision_process_event(uint16_t event, wiced_bt_mesh_event_t *p_event, void *p_data);
-
-#define update_crc update_crc32
-uint32_t update_crc(uint32_t crc, uint8_t *buf, uint32_t len);
 
 wiced_result_t provision_gatt_send(uint16_t conn_id, const uint8_t *packet, uint32_t packet_len);
-//wiced_bool_t mesh_vendor_server_message_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
-//uint16_t     mesh_vendor_server_scene_store_handler(uint8_t element_idx, uint8_t *p_buffer, uint16_t buffer_len);
-//uint16_t     mesh_vendor_server_scene_recall_handler(uint8_t element_idx, uint8_t *p_buffer, uint16_t buffer_len, uint32_t transition_time, uint32_t delay);
+
 wiced_bt_mesh_core_config_model_t   mesh_element1_models[] =
-        {
+{
     WICED_BT_MESH_DEVICE,
     WICED_BT_MESH_MODEL_CONFIG_CLIENT,
     WICED_BT_MESH_MODEL_HEALTH_CLIENT,
@@ -111,13 +106,14 @@ wiced_bt_mesh_core_config_model_t   mesh_element1_models[] =
     WICED_BT_MESH_MODEL_DEFAULT_TRANSITION_TIME_CLIENT,
     WICED_BT_MESH_MODEL_ONOFF_CLIENT,
     WICED_BT_MESH_MODEL_LEVEL_CLIENT,
+    WICED_BT_MESH_MODEL_POWER_ONOFF_CLIENT,
     WICED_BT_MESH_MODEL_LIGHT_LIGHTNESS_CLIENT,
     WICED_BT_MESH_MODEL_LIGHT_CTL_CLIENT,
     WICED_BT_MESH_MODEL_LIGHT_HSL_CLIENT,
     WICED_BT_MESH_MODEL_SENSOR_CLIENT,
     WICED_BT_MESH_MODEL_LIGHT_LC_CLIENT,
     WICED_BT_MESH_MODEL_FW_DISTRIBUTION_CLIENT,
-    WICED_BT_MESH_MODEL_FW_DISTRIBUTOR,
+    WICED_BT_MESH_MODEL_BLOB_TRANSFER_CLIENT,
 #ifdef MESH_VENDOR_MODEL_ID
     { MESH_VENDOR_COMPANY_ID, MESH_VENDOR_MODEL_ID, vendor_data_handler, NULL, NULL },
 #endif
@@ -127,15 +123,16 @@ wiced_bt_mesh_core_config_model_t   mesh_element1_models[] =
 #define MESH_PROVISIONER_CLIENT_ELEMENT_INDEX   0
 
 wiced_bt_mesh_core_config_property_t mesh_element1_properties[] =
-        {
-                { PROPERTY_ID_AMBIENT_LUX_LEVEL_ON,            0, 0, 3, NULL},
-                { PROPERTY_ID_MOTION_SENSED,                   0, 0, 1, NULL},
-                { PROPERTY_ID_PRESENCE_DETECTED,               0, 0, 1, NULL},
-                { PROPERTY_ID_PRESENT_AMBIENT_LIGHT_LEVEL,     0, 0, 3, NULL},
-                { WICED_BT_MESH_PROPERTY_TOTAL_DEVICE_RUNTIME, 0, 0, 3, NULL},
-                { SETTING_PROPERTY_ID,                         0, 0, 2, NULL},
-                { WICED_BT_MESH_PROPERTY_PRESENT_AMBIENT_TEMPERATURE,  0, 0, 1, NULL},
-        };
+{
+    { PROPERTY_ID_AMBIENT_LUX_LEVEL_ON,            0, 0, 3, NULL},
+    { PROPERTY_ID_MOTION_SENSED,                   0, 0, 1, NULL},
+    { PROPERTY_ID_PRESENCE_DETECTED,               0, 0, 1, NULL},
+    { PROPERTY_ID_PRESENT_AMBIENT_LIGHT_LEVEL,     0, 0, 3, NULL},
+    { WICED_BT_MESH_PROPERTY_TOTAL_DEVICE_RUNTIME, 0, 0, 3, NULL},
+    { SETTING_PROPERTY_ID,                         0, 0, 2, NULL},
+    { WICED_BT_MESH_PROPERTY_PRESENT_AMBIENT_TEMPERATURE,  0, 0, 1, NULL},
+};
+
 wiced_bt_mesh_core_config_element_t mesh_elements[] =
 {
     {
@@ -147,7 +144,7 @@ wiced_bt_mesh_core_config_element_t mesh_elements[] =
         .range_max = 0xffff,                                            // Maximum value of the variable controlled on this element (for example power, lightness, temperature, hue...)
         .move_rollover = 0,                                             // If true when level gets to range_max during move operation, it switches to min, otherwise move stops.
         .properties_num = 7,                                            // Number of properties in the array models
-        .properties = mesh_element1_properties,                                             // Array of properties in the element.
+        .properties = mesh_element1_properties,                         // Array of properties in the element.
         .sensors_num = 0,                                               // Number of sensors in the sensor array
         .sensors = NULL,                                                // Array of sensors of that element
         .models_num = MESH_APP_NUM_MODELS,                              // Number of models in the array models
@@ -199,13 +196,26 @@ static void mesh_config_client_message_handler(uint16_t event, wiced_bt_mesh_eve
 extern wiced_result_t wiced_send_gatt_packet( uint16_t opcode, uint8_t* p_data, uint16_t length );
 wiced_bool_t wiced_bt_mesh_config_client_message_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
 
-char* filePath;
+
 /******************************************************
  *               Function Definitions
  ******************************************************/
 void mesh_application_init(void)
 {
     static int core_initialized = 0;
+
+    extern uint8_t mesh_model_trace_level;
+    mesh_model_trace_level = TRACE_INFO;
+
+    // Set the local device key buffer to a larger number for Android platform
+    extern uint8_t wiced_bt_mesh_provision_dev_key_max_num;
+    wiced_bt_mesh_provision_dev_key_max_num = 64;
+
+    extern void wiced_bt_mesh_core_set_trace_level(uint32_t fids_mask, uint8_t level);
+    wiced_bt_mesh_core_set_trace_level(0xffffffff, 4);      //(ALL, TRACE_DEBUG)
+    // wiced_bt_mesh_core_set_trace_level(0xffffffff, 0);      //(ALL, TRACE_DEBUG)
+    wiced_bt_mesh_core_set_trace_level(0x4, 3);             //(CORE_AES_CCM_C, TRACE_INFO)
+
     WICED_BT_TRACE("mesh_application_init enter");
     if(!core_initialized)
     {
@@ -294,27 +304,6 @@ wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t comp
     return p_message_handler;
 }
 
-#if 0
-void SendWicedCommand(UINT16 opcode, LPBYTE p_data, DWORD len)
-{
-    WICED_BT_TRACE("SendWicedCommand\n");
-    uint8_t* data = (uint8_t*)malloc(len);
-
-    if (data)
-        memcpy(data, p_data, len);
-
-//    mesh_app_proc_rx_cmd(opcode, data, len);
-
-    free(data);
-}
-
-uint8_t wiced_hci_send(uint16_t opcode, uint8_t *p_buffer, uint16_t length)
-{
-    SendWicedCommand(opcode, p_buffer, length);
-    return TRUE;
-}
-#endif
-
 /*
  * Application implements that function to start/stop scanning as requested by the core
  */
@@ -326,8 +315,6 @@ void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_scan_acti
 void mesh_app_init(wiced_bool_t is_provisioned)
 {
     WICED_BT_TRACE("mesh_app_init\n");
-    extern uint8_t mesh_model_trace_level;
-    mesh_model_trace_level = TRACE_INFO;
 
     wiced_bt_mesh_provision_client_init(mesh_provision_message_handler, is_provisioned);
     wiced_bt_mesh_client_init(mesh_provision_message_handler, is_provisioned);
@@ -335,15 +322,12 @@ void mesh_app_init(wiced_bool_t is_provisioned)
     wiced_bt_mesh_config_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_health_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_proxy_client_init(mesh_config_message_handler, is_provisioned);
-    WICED_BT_TRACE("wiced_bt_mesh_model_fw_provider_init\n");
     wiced_bt_mesh_model_fw_provider_init();
-    WICED_BT_TRACE("wiced_bt_mesh_model_fw_distribution_server_init\n");
-    wiced_bt_mesh_model_fw_distribution_server_init();
-    wiced_bt_mesh_model_blob_transfer_server_init(0);
 
     wiced_bt_mesh_model_property_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_onoff_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_level_client_init(0, mesh_control_message_handler, is_provisioned);
+    wiced_bt_mesh_model_power_onoff_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_light_lightness_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_light_ctl_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_light_hsl_client_init(0, mesh_control_message_handler, is_provisioned);
@@ -375,17 +359,6 @@ void mesh_sensor_message_handler(uint8_t element_idx, uint16_t addr, uint16_t ev
     Log("sensor message:%d\n", event);
     mesh_sensor_process_event(addr, event, p_data);
 }
-
-#if 0
-/*
- * Send provisioner provisioning end event over transport
- */
-void mesh_provisioner_hci_event_provision_link_status_send(wiced_bt_mesh_provision_link_status_data_t *p_data)
-{
-    Log("provision connection status conn_id:%d addr:%x connected:%d\n", p_data->status);
-    mesh_provision_process_event(WICED_BT_MESH_PROVISION_LINK_STATUS, NULL, (wiced_bt_mesh_provision_link_status_data_t *)p_data);
-}
-#endif
 
 uint8_t mesh_provisioner_process_proxy_connected(uint8_t* p_data, uint16_t length) {
     int conn_id ;
@@ -438,57 +411,6 @@ static uint32_t mesh_nvram_access(wiced_bool_t write, int inx, uint8_t* value, u
     return len;
 }
 
-void setDfuFilePath(char* filepath)
-{
-    Log("setting filepath");
-    filePath = malloc(strlen(filepath)+1);
-    memcpy(filePath,filepath, strlen(filepath)+1);
-}
-
-uint32_t GetDfuImageSize()
-{
-    uint32_t file_size;
-
-    FILE *fPatch;
-
-    if (filePath == NULL)
-        return 0;
-
-    if (!(fPatch = fopen(filePath, "rb")))
-        return 0;
-
-    // Load OTA FW file into memory
-    fseek(fPatch, 0, SEEK_END);
-    file_size = (int)ftell(fPatch);
-    fclose(fPatch);
-    return file_size;
-}
-
-void GetDfuImageChunk(uint8_t *p_data, uint32_t offset, uint16_t data_len)
-{
-
-    FILE *fPatch;
-    if (!(fPatch = fopen(filePath, "rb")))
-        return;
-
-    offset -= 0x200;
-
-    // Load OTA FW file into memory
-    fseek(fPatch, offset, SEEK_SET);
-    fread(p_data, 1, data_len, fPatch);
-    fclose(fPatch);
-}
-
-uint32_t wiced_bt_get_fw_image_size(uint8_t partition)
-{
-     return GetDfuImageSize();
-}
-
-void wiced_bt_get_fw_image_chunk(uint8_t partition, uint32_t offset, uint8_t *p_data, uint16_t data_len)
-{
-    return GetDfuImageChunk(p_data, offset, data_len);
-}
-
 wiced_bool_t wiced_bt_get_upgrade_fw_info(uint16_t *company_id, uint8_t *fw_id_len, uint8_t *fw_id)
 {
     return WICED_FALSE;
@@ -512,40 +434,6 @@ uint32_t wiced_firmware_upgrade_store_to_nv(uint32_t offset, uint8_t *data, uint
 int32_t ota_fw_upgrade_calculate_checksum(int32_t offset, int32_t length)
 {
     return 0;
-}
-
-void wiced_bt_fw_save_meta_data(uint8_t partition, uint8_t *p_data, uint32_t len)
-{
-}
-
-#define PARTITION_ACTIVE    0
-#define PARTITION_UPGRADE   1
-wiced_bool_t wiced_bt_fw_read_meta_data(uint8_t partition, uint8_t *p_data, uint32_t *p_len)
-{
-    mesh_dfu_fw_id_t p_fw_id;
-    mesh_dfu_validation_data_t p_validation_data;
-    wiced_bool_t got_data = WICED_FALSE;
-
-    if (partition != PARTITION_UPGRADE)
-        return WICED_FALSE;
-
-    mesh_native_lib_read_dfu_meta_data(p_fw_id.fw_id, (uint32_t *)&p_fw_id.fw_id_len, p_validation_data.data, (uint32_t *)&p_validation_data.len);
-
-    if (!p_fw_id.fw_id_len || !p_validation_data.len || (*p_len < (p_fw_id.fw_id_len + p_validation_data.len + 2))) {
-        return WICED_FALSE;
-    }
-
-    *p_len = p_fw_id.fw_id_len + p_validation_data.len + 2;
-    if (p_data) {
-        uint8_t *p = p_data;
-        *p++ = p_fw_id.fw_id_len;
-        memcpy(p, p_fw_id.fw_id, p_fw_id.fw_id_len);
-        p += p_fw_id.fw_id_len;
-        *p++ = p_validation_data.len;
-        memcpy(p, p_validation_data.data, p_validation_data.len);
-        got_data = WICED_TRUE;
-    }
-    return got_data;
 }
 
 wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len)
@@ -615,7 +503,7 @@ uint32_t const crc32_table[256] = {
     0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94, 0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
 };
 
-uint32_t update_crc(uint32_t crc, uint8_t *buf, uint32_t len)
+uint32_t update_crc32(uint32_t crc, uint8_t *buf, uint32_t len)
 {
     uint32_t c = crc;
     uint32_t n;
@@ -634,11 +522,6 @@ void wiced_bt_mesh_add_vendor_model(wiced_bt_mesh_add_vendor_model_data_t* p_dat
 }
 
 wiced_bool_t wiced_firmware_upgrade_erase_nv(uint32_t start, uint32_t size)
-{
-    return WICED_TRUE;
-}
-
-wiced_bool_t wiced_ota_fw_upgrade_set_transfer_mode(wiced_bool_t transfer_only, wiced_ota_firmware_event_callback_t *p_event_callback)
 {
     return WICED_TRUE;
 }

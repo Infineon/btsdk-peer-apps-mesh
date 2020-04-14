@@ -37,7 +37,6 @@ class DeviceOtaUpgradeViewController: UIViewController {
     var otaFwImageNames: [String] = []
     var selectedFwImageName: String?
 
-    var isPreparingForOta: Bool = false
     var otaUpdatedStarted: Bool = false
     var lastTransferredPercentage: Int = -1  // indicates invalid value, will be udpated.
 
@@ -99,18 +98,12 @@ class DeviceOtaUpgradeViewController: UIViewController {
             // read and update firmware image list.
             self.firmwareImagesInit()
             self.otaDropDownView.dropListItems = self.otaFwImageNames
-
-            // [Dudley] test purpose.
-            // Try to read and show the firmware version automatically if supported before starting the OTA upgrade process.
-            // Or set prepareAndReadFwVersionAutomatically to false to let the App always run the OTA process directly after click the Firmware Upgrade button.
-            let prepareAndReadFwVersionAutomatically = true
-            if !prepareAndReadFwVersionAutomatically { return }
-            if let otaDevice = self.otaDevice, otaDevice.getDeviceType() != .mesh, MeshFrameworkManager.shared.isMeshNetworkConnected() {
-                MeshFrameworkManager.shared.disconnectMeshNetwork(completion: { (isConnected: Bool, connId: Int, addr: Int, isOverGatt: Bool, error: Int) in
-                    self.otaUpgradePrepare()
-                })
-            } else {
-                self.otaUpgradePrepare()
+            // automatically select the first found firmware image by default.
+            if self.otaDropDownView.dropListItems.count > 0 {
+                let selectedIndex: Int = 0
+                self.otaDropDownView.selectedIndex = selectedIndex
+                self.otaDropDownView.text = self.otaDropDownView.dropListItems[selectedIndex]
+                self.customDropDownViewDidUpdateValue(self.otaDropDownView, selectedIndex: selectedIndex)
             }
         }
     }
@@ -180,19 +173,14 @@ class DeviceOtaUpgradeViewController: UIViewController {
                         otaUpdatedStarted = false
                         // OTA upgrade process finished, navigate to previous view controller if success.
                         self.stopOtaUpgradingAnimating()
-                        if !self.isPreparingForOta {
-                            self.log("done: OTA upgrade completed success.\n")
-                            UtilityManager.showAlertDialogue(parentVC: self,
-                                                             message: "Congratulation! OTA process has finshed successfully.",
-                                                             title: "Success", completion: nil,
-                                                             action: UIAlertAction(title: "OK", style: .default,
-                                                                                   handler: { (action) in
-                                                                                    //self.onLeftBarButtonItemClick(self.backBarButtonItem)
-                                                             }))
-                        } else {
-                            self.log("done: prepare for OTA upgrade is ready.\nPlease select a firmware image and click the Firmware Upgrade button to start OTA.\n")
-                        }
-                        self.isPreparingForOta = false
+                        self.log("done: OTA upgrade completed success.\n")
+                        UtilityManager.showAlertDialogue(parentVC: self,
+                                                         message: "Congratulation! OTA process has finshed successfully.",
+                                                         title: "Success", completion: nil,
+                                                         action: UIAlertAction(title: "OK", style: .default,
+                                                                               handler: { (action) in
+                                                                                //self.onLeftBarButtonItemClick(self.backBarButtonItem)
+                                                         }))
                     } else {
                         // Log normal OTA upgrade successed step.
                         log("OTA state: \(otaState.description) finished success.")
@@ -206,23 +194,8 @@ class DeviceOtaUpgradeViewController: UIViewController {
                         // OTA upgrade process finished
                         self.log("done: OTA upgrade stopped with error. Error Code: \(otaStatus.errorCode), \(otaStatus.description)\n")
                         self.stopOtaUpgradingAnimating()
-                        if !self.isPreparingForOta {
-                            UtilityManager.showAlertDialogue(parentVC: self,
-                                                             message: "Oops! OTA process stopped with some error, please reset device and retry again later.")
-                        } else {
-                            if otaStatus.errorCode == OtaErrorCode.ERROR_DEVICE_OTA_NOT_SUPPORTED {
-                                UtilityManager.showAlertDialogue(parentVC: self,
-                                                                 message: "Oops! Target device doesn't support Cypress OTA function, please select the device that support Cypress OTA function and try again.",
-                                                                 title: "Error", completion: nil,
-                                                                 action: UIAlertAction(title: "OK", style: .default,
-                                                                                       handler: { (action) in
-                                                                                        //self.onLeftBarButtonItemClick(self.backBarButtonItem)
-                                                                 }))
-                            } else {
-                                self.log("Please select the firmare image, then click the \"Firmware Upgrade\" button to try again.\n\n")
-                            }
-                        }
-                        self.isPreparingForOta = false
+                        UtilityManager.showAlertDialogue(parentVC: self,
+                                                         message: "Oops! OTA process stopped with some error, please reset device and retry again later.")
                     } else {
                         // Log normal OTA upgrade failed step.
                         log("error: OTA state: \(otaState.description) failed. Error Code:\(otaStatus.errorCode), message:\(otaStatus.description)")
@@ -234,39 +207,6 @@ class DeviceOtaUpgradeViewController: UIViewController {
         }
     }
 
-    //
-    // This function will try to connect to the OTA device, then try to discover OTA services,
-    // try and read the AppInfo and update to UI if possible.
-    // Also, to call this function alonely can help to verify the feature of connecting to different OTA devices.
-    //
-    func doOtaUpgradePrepare() {
-        guard let otaDevice = self.otaDevice else {
-            meshLog("error: DeviceOtaUpgradeViewController, otaUpgradePrepare, invalid OTA device instance")
-            log("error: invalid nil OTA device object")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Invalid nil OTA device object.")
-            return
-        }
-
-        isPreparingForOta = true
-        startOtaUpgradingAnimating()
-        let error = otaDevice.prepareOta()
-        guard error == OtaErrorCode.SUCCESS else {
-            stopOtaUpgradingAnimating()
-            if error == OtaErrorCode.BUSYING {
-                return
-            }
-            meshLog("error: DeviceOtaUpgradeViewController, otaUpgradePrepare, failed to prepare for OTA")
-            self.log("error: failed to prepare for OTA, error:\(error)")
-            UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to prepare for OTA. Error Code: \(error).", title: "Error")
-            return
-        }
-    }
-    func otaUpgradePrepare() {
-        DispatchQueue.main.async {
-            self.doOtaUpgradePrepare()  // because self.otaDevice instance is from main thread, so make suer it running in main thread.
-        }
-    }
-
     func firmwareImagesInit() {
         let defaultDocumentsPath = NSHomeDirectory() + "/Documents"
         let meshPath = "mesh"
@@ -275,8 +215,8 @@ class DeviceOtaUpgradeViewController: UIViewController {
         let fwImagesSearchPath = "\(defaultDocumentsPath)/\(fwImagePath)"
 
         otaFwImageNames.removeAll()
-        let foundInFwImages = addFirmwareImageNames(atPath: meshSearchPath, prefix: fwImagePath)
-        let foundInMesh = addFirmwareImageNames(atPath: fwImagesSearchPath, prefix: meshPath)
+        let foundInFwImages = addFirmwareImageNames(atPath: meshSearchPath, prefix: meshPath)
+        let foundInMesh = addFirmwareImageNames(atPath: fwImagesSearchPath, prefix: fwImagePath)
         let foundInDocuments = addFirmwareImageNames(atPath: defaultDocumentsPath)
         if !foundInFwImages, !foundInMesh, !foundInDocuments {
             meshLog("error: DeviceOtaUpgradeViewController, firmwareImagesInit, no valid firmware images found")
@@ -370,33 +310,15 @@ class DeviceOtaUpgradeViewController: UIViewController {
             self.otaDevice?.otaDevice = tmpCBDeviceObject
         }
 
-        if otaDevice.getDeviceType() != .mesh, false {
-            UtilityManager.showAlertDialogue(
-                parentVC: self,
-                message: "Are you sure you want to upgrade the \"\(otaDevice.getDeviceName())\" device from \(otaDevice.getDeviceType()) device to mesh device ?\n\nClick \"OK\" button to continue.\nClick \"Cancel\" button to exit",
-                title: "Warning",
-                cancelHandler: { (action: UIAlertAction) in return },
-                okayHandler: { (action: UIAlertAction) in self.doOtaFirmwareUpgrade(otaDevice: otaDevice, fwImage: fwImageData) }
-            )
-            return
-        }
         doOtaFirmwareUpgrade(otaDevice: otaDevice, fwImage: fwImageData)
     }
 
     func doOtaFirmwareUpgrade(otaDevice: OtaDeviceProtocol, fwImage: Data) {
         DispatchQueue.main.async {  // because self.otaDevice instance is from main thread, so make suer it running in main thread.
             // Try to start OTA process.
-            self.isPreparingForOta = false
-            self.startOtaUpgradingAnimating()
-            let error = otaDevice.startOta(fwImage: fwImage)
-            guard error == OtaErrorCode.SUCCESS else {
-                self.stopOtaUpgradingAnimating()
-                meshLog("error: DeviceOtaUpgradeViewController, doOtaFirmwareUpgrade, failed to start OTA process")
-                self.log("error: failed to start OTA process, error:\(error)")
-                UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to start OTA process. Error Code: \(error).", title: "Error")
-                return
-            }
             meshLog("DeviceOtaUpgradeViewController, doOtaFirmwareUpgrade, OTA process running")
+            self.startOtaUpgradingAnimating()
+            otaDevice.startOta(fwImage: fwImage, metadata: nil, dfuType: MeshDfuType.APP_OTA_TO_DEVICE)
             self.log("OTA upgrade process started")
             self.otaUpdatedStarted = true
         }
@@ -404,6 +326,11 @@ class DeviceOtaUpgradeViewController: UIViewController {
 
     @IBAction func onLeftBarButtonItemClick(_ sender: UIBarButtonItem) {
         meshLog("DeviceOtaUpgradeViewController, onLeftBarButtonItemClick")
+        if OtaUpgrader.shared.isOtaUpgradeRunning {
+            UtilityManager.showAlertDialogue(parentVC: self, message: "Firmware OTA updating is in progress, please wait until the OTA updating has completed.", title: "Warning")
+            return
+        }
+
         OtaManager.shared.resetOtaUpgradeStatus()
         if let otaDevice = self.otaDevice, otaDevice.getDeviceType() == .mesh, let groupName = self.groupName {
             meshLog("DeviceOtaUpgradeViewController, navigate back to ComponentViewController page)")
@@ -428,12 +355,14 @@ class DeviceOtaUpgradeViewController: UIViewController {
         otaFirmwareUpgradeButton.isEnabled = false
         otaUpgradingActivityIndicator.startAnimating()
         otaUpgradingActivityIndicator.isHidden = false
+        otaDropDownView.isEnabled = false
     }
 
     func stopOtaUpgradingAnimating() {
         otaUpgradingActivityIndicator.stopAnimating()
         otaUpgradingActivityIndicator.isHidden = true
         otaFirmwareUpgradeButton.isEnabled = true
+        otaDropDownView.isEnabled = true
     }
 }
 
@@ -446,9 +375,7 @@ extension DeviceOtaUpgradeViewController: CustomDropDownViewDelegate {
         meshLog("customDropDownViewDidUpdateValue, selectedIndex=\(selectedIndex), text=\(String(describing: dropDownView.text))")
         if let selectedText = dropDownView.text, selectedText.count > 0 {
             selectedFwImageName = selectedText
-            if !isPreparingForOta {
-                otaFirmwareUpgradeButton.isEnabled = true
-            }
+            otaFirmwareUpgradeButton.isEnabled = true
             log("selected firmware image: \"\(selectedText)\"")
         } else {
             log("error: no firmware image selected, please copy vaild firmware images and try again later")

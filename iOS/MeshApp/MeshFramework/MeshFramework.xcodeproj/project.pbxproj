@@ -88,6 +88,7 @@
 		186BF71A238F741D0046247C /* p_256_multprecision.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF710238F741D0046247C /* p_256_multprecision.h */; };
 		186BF71B238F741D0046247C /* p_256_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 186BF711238F741D0046247C /* p_256_types.h */; };
 		18A692D821B906BC00E4B3DC /* PlatformManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18A692D721B906BC00E4B3DC /* PlatformManager.swift */; };
+		18BD3EDC241630F40094EF49 /* sha2.h in Headers */ = {isa = PBXBuildFile; fileRef = 18BD3EDB241630F40094EF49 /* sha2.h */; };
 		18C0813A21B6866400A166F8 /* TrackingHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C0813921B6866400A166F8 /* TrackingHelper.swift */; };
 /* End PBXBuildFile section */
 
@@ -175,6 +176,7 @@
 		186BF710238F741D0046247C /* p_256_multprecision.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = p_256_multprecision.h; sourceTree = "<group>"; };
 		186BF711238F741D0046247C /* p_256_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = p_256_types.h; sourceTree = "<group>"; };
 		18A692D721B906BC00E4B3DC /* PlatformManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformManager.swift; sourceTree = "<group>"; };
+		18BD3EDB241630F40094EF49 /* sha2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sha2.h; path = "../../../../../../../../../dev-kit/btsdk-include/sha2.h"; sourceTree = "<group>"; };
 		18C0813921B6866400A166F8 /* TrackingHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackingHelper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -353,6 +355,7 @@
 			isa = PBXGroup;
 			children = (
 				1828D3682384ECCB0006479C /* hci_control_api.h */,
+				18BD3EDB241630F40094EF49 /* sha2.h */,
 				1828D3642384ECCB0006479C /* wiced_bt_mesh_app.h */,
 				1828D36B2384ECCB0006479C /* wiced_bt_mesh_cfg.h */,
 				1828D3632384ECCB0006479C /* wiced_bt_mesh_client.h */,
@@ -453,6 +456,7 @@
 				1828D33B2384EBC20006479C /* wiced_bt_ble.h in Headers */,
 				1828D33A2384EBC20006479C /* wiced.h in Headers */,
 				1828D3512384EC2E0006479C /* typedef.h in Headers */,
+				18BD3EDC241630F40094EF49 /* sha2.h in Headers */,
 				186BF717238F741D0046247C /* p_256_ecc_pp.h in Headers */,
 				1868DBA02194354B00CC27FB /* mesh_main.h in Headers */,
 			);
@@ -486,7 +490,7 @@
 		1868D94F2193E67300CC27FB /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1010;
+				LastUpgradeCheck = 1140;
 				ORGANIZATIONNAME = "Cypress Semiconductor";
 				TargetAttributes = {
 					1868D9572193E67300CC27FB = {
@@ -629,6 +633,7 @@
 					"PB_GATT_SUPPORTED=1",
 					"WICED_BT_TRACE_ENABLE=1",
 					"WICED_BT_MESH_TRACE_ENABLE=1",
+					MESH_DFU_SUPPORTED,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -639,7 +644,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = NO;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-ObjC";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -695,6 +700,7 @@
 					"$(inherited)",
 					"MESH_OVER_GATT_ONLY=1",
 					"PB_GATT_SUPPORTED=1",
+					MESH_DFU_SUPPORTED,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;

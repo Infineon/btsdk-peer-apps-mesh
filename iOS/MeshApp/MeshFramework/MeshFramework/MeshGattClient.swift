@@ -71,7 +71,7 @@ open class MeshGattClient: NSObject {
         }
     }
     open func connect(peripheral: CBPeripheral) {
-        MeshNativeHelper.meshClientLog("[MeshGattClient connect] connecting from mesh device, \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
+        MeshNativeHelper.meshClientLog("[MeshGattClient connect] connecting to mesh device, \(peripheral), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
         connectingTimer?.invalidate()
 
         if centralManager.state == .poweredOn {
@@ -261,6 +261,8 @@ extension MeshGattClient: CBCentralManagerDelegate {
         MeshNativeHelper.setCurrentConnectedPeripheral(peripheral)
         // do not notify connection state change here, do it only after the service, characteristic, and notification is discovered and enabled.
 
+        // After the device get connected/re-connected, the OTA service should be re-discovered.
+        // Otherwise, using the old record service and characterisitcs instances will cause ATT access error.
         if OtaManager.shared.isOtaUpgrading {
             OtaManager.shared.centralManager(central, didConnect: peripheral)
             if OtaManager.shared.shouldBlockingOtherGattProcess {
@@ -269,7 +271,7 @@ extension MeshGattClient: CBCentralManagerDelegate {
         }
 
         // try to discovery mesh provisioning/proxy service and characteristics.
-        peripheral.discoverServices(MeshUUIDConstants.UUID_MESH_SERVICES)
+        peripheral.discoverServices(MeshUUIDConstants.UUID_MESH_SERVICES + OtaConstants.UUID_GATT_OTA_SERVICES)
     }
 
     open func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -281,12 +283,7 @@ extension MeshGattClient: CBCentralManagerDelegate {
         mGattEstablishedConnectionCount -= 1
         MeshFrameworkManager.shared.meshClientConnectionStateChanged(connId: mGattEstablishedConnectionCount)
 
-        if OtaManager.shared.isOtaUpgrading {
-            OtaManager.shared.centralManager(central, didFailToConnect: peripheral, error: error)
-            if OtaManager.shared.shouldBlockingOtherGattProcess {
-                return
-            }
-        }
+        OtaManager.shared.centralManager(central, didFailToConnect: peripheral, error: error)
     }
 
     open func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
@@ -299,12 +296,7 @@ extension MeshGattClient: CBCentralManagerDelegate {
 
         MeshFrameworkManager.shared.meshClientConnectionStateChanged(connId: mGattEstablishedConnectionCount)
 
-        if OtaManager.shared.isOtaUpgrading {
-            OtaManager.shared.centralManager(central, didDisconnectPeripheral: peripheral, error: error)
-            if OtaManager.shared.shouldBlockingOtherGattProcess {
-                return
-            }
-        }
+        OtaManager.shared.centralManager(central, didDisconnectPeripheral: peripheral, error: error)
     }
 }
 
@@ -317,20 +309,27 @@ extension MeshGattClient: CBPeripheralDelegate {
             }
         }
 
-        MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral)")
+        MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), services.count=\(peripheral.services?.count ?? 0), \(peripheral)")
         if let error = error {
             MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] error:\(String(describing: error)), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral)")
             disconnect(peripheral: peripheral)
             return
         }
         guard let services = peripheral.services, services.count > 0 else {
-            MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] error: No GATT Service Found, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
+            MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] error: No GATT Service Found, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), disconnect from it")
             disconnect(peripheral: peripheral)
             return
         }
 
+        // try to discover OTA characterisitics for OTA service if possible.
+        if let otaService = peripheral.services?.filter({OtaConstants.UUID_GATT_OTA_SERVICES.contains($0.uuid)}).first {
+            peripheral.discoverCharacteristics(nil, for: otaService)
+        } else {
+            MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] info: No GATT OTA Service Found, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
+        }
+
         if MeshFrameworkManager.shared.isMeshProvisionConnecting() {
-            // Connecting to Mesh Provisioning Sevice
+            // Finding characteristics for Mesh Provisioning Sevice
             if let service: CBService = services.filter({$0.uuid == MeshUUIDConstants.UUID_SERVICE_MESH_PROVISIONING}).first {
                 mGattService = service
                 MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] found Mesh Provisioning Service, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(service)")
@@ -341,7 +340,7 @@ extension MeshGattClient: CBPeripheralDelegate {
                 disconnect(peripheral: peripheral)
             }
         } else {
-            // Connecting to Mesh Proxy Service
+            // Finding characteristics for Mesh Proxy Service
             if let service: CBService = services.filter({$0.uuid == MeshUUIDConstants.UUID_SERVICE_MESH_PROXY}).first {
                 mGattService = service
                 MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverServices] found Mesh Proxy Service, bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(service)")
@@ -355,21 +354,54 @@ extension MeshGattClient: CBPeripheralDelegate {
     }
 
     open func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-        if OtaManager.shared.isOtaUpgrading, let _ = OtaConstants.UUID_GATT_OTA_SERVICES.filter({service.uuid == $0}).first {
-            OtaManager.shared.peripheral(peripheral, didDiscoverCharacteristicsFor: service, error: error)
-            if OtaManager.shared.shouldBlockingOtherGattProcess {
-                return
+        MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(service), characteristics.count=\(service.characteristics?.count ?? 0)")
+
+        // Checking found OTA service and characteristics UUID.
+        if let otaService = OtaConstants.UUID_GATT_OTA_SERVICES.filter({$0 == service.uuid}).first, let characteristics = service.characteristics {
+            OtaManager.shared.activeOtaDevice?.otaService = otaService
+            MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] found OTA service: \(service.uuid.description)")
+            if let controlPointChar = characteristics.filter({$0.uuid == OtaConstants.BLE.UUID_CHARACTERISTIC_CONTROL_POINT}).first {
+                OtaManager.shared.activeOtaDevice?.otaControlPointCharacteristic = controlPointChar
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] found OTA characteristic: BLE.UUID_CHARACTERISTIC_CONTROL_POINT")
+            }
+            if let dataChar = characteristics.filter({$0.uuid == OtaConstants.BLE.UUID_CHARACTERISTIC_DATA}).first {
+                OtaManager.shared.activeOtaDevice?.otaDataCharacteristic = dataChar
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] found OTA characteristic: BLE.UUID_CHARACTERISTIC_DATA")
+            }
+            if let appInfoChar = characteristics.filter({$0.uuid == OtaConstants.BLE.UUID_CHARACTERISTIC_APP_INFO}).first {
+                OtaManager.shared.activeOtaDevice?.otaAppInfoCharacteristic = appInfoChar
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] found OTA characteristic: BLE.UUID_CHARACTERISTIC_APP_INFO")
+            }
+            if let controlPointChar = characteristics.filter({$0.uuid == OtaConstants.BLE_V2.UUID_CHARACTERISTIC_CONTROL_POINT}).first {
+                OtaManager.shared.activeOtaDevice?.otaControlPointCharacteristic = controlPointChar
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] found OTA characteristic: BLE_V2.UUID_CHARACTERISTIC_CONTROL_POINT")
+            }
+            if let dataChar = characteristics.filter({$0.uuid == OtaConstants.BLE_V2.UUID_CHARACTERISTIC_DATA}).first {
+                OtaManager.shared.activeOtaDevice?.otaDataCharacteristic = dataChar
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] found OTA characteristic: BLE_V2.UUID_CHARACTERISTIC_DATA")
+            }
+            if let appInfoChar = characteristics.filter({$0.uuid == OtaConstants.BLE_V2.UUID_CHARACTERISTIC_APP_INFO}).first {
+                OtaManager.shared.activeOtaDevice?.otaAppInfoCharacteristic = appInfoChar
+                MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] found OTA characteristic: BLE_V2.UUID_CHARACTERISTIC_APP_INFO")
+            }
+
+            if OtaManager.shared.isOtaUpgrading {
+                OtaManager.shared.peripheral(peripheral, didDiscoverCharacteristicsFor: service, error: error)
+                if OtaManager.shared.shouldBlockingOtherGattProcess {
+                    return
+                }
             }
         }
 
-        if service.uuid != MeshUUIDConstants.UUID_SERVICE_MESH_PROVISIONING && service.uuid != MeshUUIDConstants.UUID_SERVICE_MESH_PROXY {
-            return
-        }
-
-        MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes()), \(peripheral), \(service)")
+        // Encounter error in discovering characteristics.
         if let error = error {
             MeshNativeHelper.meshClientLog("[MeshGattClient didDiscoverCharacteristicsFor Service] error: \(error), bdAddr: \(MeshNativeHelper.peripheralIdentify(toBdAddr: peripheral).dumpHexBytes())")
             disconnect(peripheral: peripheral)
+            return
+        }
+
+        // Process found Mesh provisioning or proxy service.
+        guard let _ = MeshUUIDConstants.UUID_MESH_SERVICES.filter({$0 == service.uuid}).first else {
             return
         }
 
@@ -385,7 +417,6 @@ extension MeshGattClient: CBPeripheralDelegate {
                 disconnect(peripheral: peripheral)
                 return
             }
-
 
             let dataOut = MeshFrameworkManager.shared.isMeshProvisionConnecting() ?
                 MeshUUIDConstants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_OUT :

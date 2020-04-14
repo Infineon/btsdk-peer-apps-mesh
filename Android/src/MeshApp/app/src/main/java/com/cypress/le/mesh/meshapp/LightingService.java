@@ -314,6 +314,48 @@ public class LightingService extends Service implements IMeshControllerCallback 
         return mMesh;
     }
 
+    public byte connectToNetwork(int transport) {
+        int currTransport = getTransport();
+        if(currTransport == Constants.TRANSPORT_GATT && transport != currTransport)
+            mMesh.disconnectNetwork();
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        mApp.setPreferredTransport(transport);
+        if (currentNetwork != null) {
+            return mMesh.connectNetwork((byte)100);
+        }
+        return MeshController.MESH_CLIENT_ERR_INVALID_STATE;
+    }
+
+    public byte connectComponent(String componentName, byte scanDuration) {
+        return mMesh.connectComponent(componentName, scanDuration);
+    }
+
+    public int startDfu(String firmwareFile, byte dfuMethod) {
+        return mMesh.startDfu(firmwareFile, dfuMethod);
+    }
+
+    public int stopDfu() {
+        return mMesh.stopDfu();
+    }
+
+    public void getDfuStatus(int statusInterval) {
+        mMesh.getDfuStatus(statusInterval);
+    }
+
+    public int startOta(String firmwareFile) {
+        return mMesh.startOta(firmwareFile);
+    }
+
+    public int stopOta() {
+        return mMesh.stopOta();
+    }
+
     public void OnLevelChange(String deviceName, int level) {
         mMesh.levelSet(deviceName, (short)level, true, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
     }
@@ -500,9 +542,9 @@ public class LightingService extends Service implements IMeshControllerCallback 
     }
 
     @Override
-    public void onOTAUpgradeStatus(byte status, int percentComplete) {
+    public void onOtaStatus(byte status, int percentComplete) {
         Log.d(TAG, "onOTAUpgradeStatus status :"+status+ " percentage:"+percentComplete);
-        mCallback.onOTAUpgradeStatus(status,percentComplete);
+        mCallback.onOtaStatus(status,percentComplete);
         if(percentComplete == 100) {
             otaUpgradeNode = null;
         }
@@ -547,8 +589,8 @@ public class LightingService extends Service implements IMeshControllerCallback 
     }
 
     @Override
-    public void onDfuStatus(byte status, byte progress) {
-        mCallback.onDfuStatus(status, progress);
+    public void onDfuStatus(byte status, byte[] data) {
+        mCallback.onDfuStatus(status, data);
     }
 
     @Override
@@ -610,10 +652,10 @@ public class LightingService extends Service implements IMeshControllerCallback 
         void onNetworkConnectionStatusChanged(byte transport, byte status);
         void onCtlStateChanged(String deviceName, int presentLightness, short presentTemperature, int targetLightness, short targetTemperature, int remainingTime);
         void onNodeConnStateChanged(byte isConnected, String componentName);
-        void onOTAUpgradeStatus(byte status, int percentComplete);
+        void onOtaStatus(byte status, int percentComplete);
         void onNetworkOpenedCallback(byte status);
         void onComponentInfoStatus(byte status, String componentName, String componentInfo);
-        void onDfuStatus(byte status, byte progress);
+        void onDfuStatus(byte state, byte[] data);
         void onSensorStatusCb(String componentName, int propertyId, byte[] data);
         void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte[] data, short dataLen);
         void onLightnessStateChanged(String deviceName, int target, int present, int remainingTime);

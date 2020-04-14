@@ -90,12 +90,44 @@
     <string name="label_clear">Clear</string>
     <string name="label_notifications">Notifications</string>
 
+    <!-- Menu strings -->
+    <string name="label_menu_dfu">Mesh Network DFU</string>
+    <string name="label_menu_ota">Mesh Device OTA</string>
+
+    <!-- DFU strings -->
+    <string name="label_dfu_title">Mesh Network DFU\n(Device Firmware Upgrade)</string>
+    <string name="label_dfu_select_json_file">Select Json File</string>
+    <string name="label_dfu_select_firmware_file">Select Firmware File</string>
+    <string name="label_dfu_select_metadata_file">Select Metadata File</string>
+    <string name="label_dfu_auto_apply_fw">Auto-apply Firmware Update</string>
+    <string name="label_dfu_status_interval">Status Interval</string>
+    <string name="label_dfu_uploading">Firmware Uploading Status:</string>
+    <string name="label_dfu_status">DFU Status:</string>
+    <string name="label_dfu_seconds">seconds</string>
+    <string name="label_dfu_start">Start DFU</string>
+    <string name="label_dfu_stop">Stop DFU</string>
+    <string name="label_dfu_get_status">Get DFU Status</string>
+
+    <!-- OTA strings -->
+    <string name="label_ota_title">Mesh Device OTA\n(Over-The-Air) Firmware Upgrade</string>
+    <string name="label_ota_select_firmware_file">Select Firmware File</string>
+    <string name="label_ota_uploading">Firmware Uploading Status:</string>
+    <string name="label_ota_start_ota">Start OTA</string>
+    <string name="label_ota_stop_ota">Stop OTA</string>
+    <string name="label_ota_connecting_node">Status: Connecting OTA node...</string>
+    <string name="label_ota_node_connected">Status: Node connected, start downloading</string>
+    <string name="label_ota_node_connect_failed">Status: Node connection failed</string>
+
     <!-- Error messages -->
     <string name="error_bluetooth_not_available">Bluetooth is not available or enabled</string>
     <string name="error_connect">Problem connecting to device %1$s (%2$s)</string>
     <string name="error_disconnect">Problem disconnecting from device %1$s (%2$s)</string>
     <string name="error_connection">Problem with connection to device %1$s (%2$s)</string>
     <string name="error_discover">Problem discovering services on device %1$s (%2$s)</string>
+
+    <!-- Shared strings -->
+    <string name="label_connect_to_network">Connect To Network</string>
+    <string name="label_connect_to_network_msg">\nConnect to mesh network?</string>
 
     <!-- Default values -->
     <string name="no_value">(no value)</string>
@@ -112,8 +144,8 @@
     <string name="no_ota_image">&lt;Tap to select OTA image&gt;</string>
     <string-array name="dfu_values">
         <item>Proxy DFU to all</item>
-        <item>App DFU to all</item>
-        <item>App OTA to device</item>
+<!--        <item>App DFU to all</item>-->
+<!--        <item>App OTA to device</item>-->
         <!--<item>Proxy DFU to device</item>-->
     </string-array>
 

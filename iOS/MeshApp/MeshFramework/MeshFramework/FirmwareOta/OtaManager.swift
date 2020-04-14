@@ -36,10 +36,7 @@ public class OtaManager: NSObject {
 
     // indicates that the the otaUpgradeStart() has been executed.
     public var isOtaUpgrading: Bool {
-        // When do OTA prepare fisrt, then do upgrade later, the OtaUpgrader.shared.isOtaUpgradeRunning is false between
-        // prepare and upgarde, but the OtaUpgrader.shared.isOtaUpgradePrepareReady should be true if prepared success,
-        // so, we need to monitor the network and connection changes.
-        return (OtaUpgrader.shared.isOtaUpgradeRunning || OtaUpgrader.shared.isOtaUpgradePrepareReady)
+        return OtaUpgrader.shared.isOtaUpgradeRunning
     }
     // indicates the OTA Service has been discovered when isOtaUpgrading is true.
     public var isOtaDeviceConnected: Bool {
@@ -126,6 +123,15 @@ public class OtaManager: NSObject {
     public func dumpOtaStatus() {
         OtaUpgrader.shared.dumpOtaUpgradeStatus()
         meshLog("dumpOtaStatus, isOtaScanning:\(isOtaScanning), shouldBlockingOtherGattProcess:\(OtaManager.shared.shouldBlockingOtherGattProcess)")
+    }
+
+    public func resetOtaDevice() {
+        OtaManager.shared.activeOtaDevice?.otaDeviceHasConnected = false
+        OtaManager.shared.activeOtaDevice?.otaDevice = nil
+        OtaManager.shared.activeOtaDevice?.otaService = nil
+        OtaManager.shared.activeOtaDevice?.otaControlPointCharacteristic = nil
+        OtaManager.shared.activeOtaDevice?.otaDataCharacteristic = nil
+        OtaManager.shared.activeOtaDevice?.otaAppInfoCharacteristic = nil
     }
 
     static public func getOtaDeviceTypeString(by deviceType: OtaDeviceType) -> String {
@@ -278,6 +284,7 @@ extension OtaManager {
 
     open func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         meshLog("OtaManager, centralManager didConnect peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
+        self.resetOtaDevice()
         self.activeOtaDevice?.otaDevice = peripheral
         // For mesh device, the connect event should be processed in the meshClientConnectComponent() callback function.
         if self.isOtaUpgrading, let otaDevice = self.activeOtaDevice, otaDevice.getDeviceType() != .mesh {
@@ -288,20 +295,20 @@ extension OtaManager {
 
     open func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         meshLog("OtaManager, centralManager didFailToConnect peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
-        self.activeOtaDevice?.otaDevice = nil
         if self.isOtaUpgrading {
             meshLog("OtaManager, centralManager didFailToConnect peripheral, \(peripheral), \(String(describing: error))")
             self.getOtaUpgraderInstance()?.didUpdateConnectionState(isConnected: false, error: error)
         }
+        self.resetOtaDevice()
     }
 
     open func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         meshLog("OtaManager, centralManager didDisconnectPeripheral peripheral, isOtaUpgrading:\(self.isOtaUpgrading), isOtaDeviceConnected:\(self.isOtaDeviceConnected)")
-        self.activeOtaDevice?.otaDevice = nil
         if self.isOtaUpgrading, self.isOtaDeviceConnected {
             meshLog("OtaManager, centralManager didDisconnectPeripheral peripheral, \(peripheral), \(String(describing: error))")
             self.getOtaUpgraderInstance()?.didUpdateConnectionState(isConnected: false, error: error)
         }
+        self.resetOtaDevice();
     }
 
     ///

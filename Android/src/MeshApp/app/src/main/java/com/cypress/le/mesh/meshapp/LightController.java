@@ -344,7 +344,7 @@ public class LightController extends AppCompatActivity implements View.OnClickLi
     }
 
     @Override
-    public void onOTAUpgradeStatus(byte status, int percentComplete) {
+    public void onOtaStatus(byte status, int percentComplete) {
 
     }
 
@@ -359,7 +359,7 @@ public class LightController extends AppCompatActivity implements View.OnClickLi
     }
 
     @Override
-    public void onDfuStatus(byte status, byte progress) {
+    public void onDfuStatus(byte status, byte[] data) {
 
     }
 

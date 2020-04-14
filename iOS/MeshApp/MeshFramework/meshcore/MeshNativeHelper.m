@@ -775,6 +775,37 @@ NSArray<NSString *> * meshCStringToOCStringArray(const char *cstrings, BOOL free
     return meshCStringToOCStringArray(groups, TRUE);
 }
 
++(Boolean) meshClientIsSubGroupName:(NSString *)componentName groupName:(NSString *)groupName
+{
+    Boolean isGroup = false;
+    char *p;
+    EnterCriticalSection();
+    char *groups = mesh_client_get_all_groups((groupName == nil) ? NULL : (char *)groupName.UTF8String);
+    LeaveCriticalSection();
+    for (p = groups; (p != NULL) && (*p != 0); p += (strlen(p) + 1)) {
+        if (strcmp(componentName.UTF8String, p) == 0) {
+            isGroup = true;
+            break;
+        }
+    }
+    if (!isGroup) {
+        for (p = groups; (p != NULL) && (*p != 0); p += (strlen(p) + 1)) {
+            if ([MeshNativeHelper meshClientIsSubGroupName:componentName groupName:[NSString stringWithUTF8String:p]]) {
+                isGroup = true;
+                break;
+            }
+        }
+    }
+    free((void *)groups);
+    return isGroup;
+}
++(Boolean) meshClientIsGroup:(NSString *)componentName
+{
+    Boolean isGroup = [MeshNativeHelper meshClientIsSubGroupName:componentName groupName:nil];
+    WICED_BT_TRACE("[MeshNativeHelper meshClientIsGroup] %s, %s\n", componentName.UTF8String, isGroup ? "true" : "false");
+    return isGroup;
+}
+
 +(NSArray<NSString *> *) meshClientGetAllProvisioners
 {
     WICED_BT_TRACE("[MeshNativeHelper meshClientGetAllProvisioners]\n");
@@ -927,8 +958,6 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
     return publishPeriod;
 }
 
-
-
 +(int) meshClientRename:(NSString *)oldName newName:(NSString *)newName
 {
     WICED_BT_TRACE("[MeshNativeHelper meshClientRename] oldName:%s, newName:%s\n", oldName.UTF8String, newName.UTF8String);
@@ -1027,11 +1056,12 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientOnOffSet:(NSString *)deviceName onoff:(uint8_t)onoff reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    WICED_BT_TRACE("[MeshNativehelper meshClientOnOffSet] deviceName:%s, onoff:%d, reliable:%d, transitionTime:%d, delay:%d\n",
-          deviceName.UTF8String, onoff, reliable, transitionTime, delay);
     int ret;
+    Boolean applied_reliable = [MeshNativeHelper meshClientIsGroup:deviceName] ? false : reliable;  // for group, should always use unreliable mode.
+    WICED_BT_TRACE("[MeshNativehelper meshClientOnOffSet] deviceName:%s, onoff:%d, reliable:%d, applied_reliable:%d, transitionTime:%d, delay:%d\n",
+          deviceName.UTF8String, onoff, reliable, applied_reliable, transitionTime, delay);
     EnterCriticalSection();
-    ret = mesh_client_on_off_set(deviceName.UTF8String, onoff, reliable, transitionTime, delay);
+    ret = mesh_client_on_off_set(deviceName.UTF8String, onoff, applied_reliable, transitionTime, delay);
     LeaveCriticalSection();
     return ret;
 }
@@ -1048,11 +1078,12 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientLevelSet:(NSString *)deviceName level:(int16_t)level reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    WICED_BT_TRACE("[MeshNativehelper meshClientLevelSet] deviceName:%s, level:%d, reliable:%d, transitionTime:%d, delay:%d\n",
-          deviceName.UTF8String, level, reliable, transitionTime, delay);
     int ret;
+    Boolean applied_reliable = [MeshNativeHelper meshClientIsGroup:deviceName] ? false : reliable;  // for group, should always use unreliable mode.
+    WICED_BT_TRACE("[MeshNativehelper meshClientLevelSet] deviceName:%s, level:%d, reliable:%d, applied_reliable:%d, transitionTime:%d, delay:%d\n",
+          deviceName.UTF8String, level, reliable, applied_reliable, transitionTime, delay);
     EnterCriticalSection();
-    ret = mesh_client_level_set(deviceName.UTF8String, (int16_t)level, reliable, transitionTime, delay);
+    ret = mesh_client_level_set(deviceName.UTF8String, (int16_t)level, applied_reliable, transitionTime, delay);
     LeaveCriticalSection();
     return ret;
 }
@@ -1069,11 +1100,12 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientHslSet:(NSString *)deviceName lightness:(uint16_t)lightness hue:(uint16_t)hue saturation:(uint16_t)saturation reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    WICED_BT_TRACE("[MeshNativehelper meshClientHslSet] deviceName:%s, lightness:%d, hue:%d, saturation:%d, reliable:%d, transitionTime:%d, delay:%d\n",
-          deviceName.UTF8String, lightness, hue, saturation, reliable, transitionTime, delay);
     int ret;
+    Boolean applied_reliable = [MeshNativeHelper meshClientIsGroup:deviceName] ? false : reliable;  // for group, should always use unreliable mode.
+    WICED_BT_TRACE("[MeshNativehelper meshClientHslSet] deviceName:%s, lightness:%d, hue:%d, saturation:%d, reliable:%d, applied_reliable:%d, transitionTime:%d, delay:%d\n",
+          deviceName.UTF8String, lightness, hue, saturation, reliable, applied_reliable, transitionTime, delay);
     EnterCriticalSection();
-    ret = mesh_client_hsl_set(deviceName.UTF8String, lightness, hue, saturation, reliable, transitionTime, delay);
+    ret = mesh_client_hsl_set(deviceName.UTF8String, lightness, hue, saturation, applied_reliable, transitionTime, delay);
     LeaveCriticalSection();
     return ret;
 }
@@ -1217,11 +1249,12 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 
 +(int) meshClientLightnessSet:(NSString *)deviceName lightness:(uint16_t)lightness reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    WICED_BT_TRACE("[MeshNativehelper meshClientLightnessSet] deviceName:%s, lightness:%d, reliable:%d, transitionTime:%d, delay:%d\n",
-          deviceName.UTF8String, lightness, reliable, transitionTime, delay);
     int ret;
+    Boolean applied_reliable = [MeshNativeHelper meshClientIsGroup:deviceName] ? false : reliable;  // for group, should always use unreliable mode.
+    WICED_BT_TRACE("[MeshNativehelper meshClientLightnessSet] deviceName:%s, lightness:%d, reliable:%d, applied_reliable:%d, transitionTime:%d, delay:%d\n",
+          deviceName.UTF8String, lightness, reliable, applied_reliable, transitionTime, delay);
     EnterCriticalSection();
-    ret = mesh_client_lightness_set(deviceName.UTF8String, lightness, reliable, transitionTime, delay);
+    ret = mesh_client_lightness_set(deviceName.UTF8String, lightness, applied_reliable, transitionTime, delay);
     LeaveCriticalSection();
     return ret;
 }
@@ -1239,11 +1272,12 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
 +(int) meshClientCtlSet:(NSString *)deviceName lightness:(uint16_t)lightness temperature:(uint16_t)temperature deltaUv:(uint16_t)deltaUv
                reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    WICED_BT_TRACE("[MeshNativeHelper meshClientCtlSet] deviceName: %s, lightness: %d, temperature: %d, deltaUv: %d, reliable: %d, transitionTime: %d, delay: %d\n",
-          deviceName.UTF8String, lightness, temperature, deltaUv, reliable, transitionTime, delay);
     int ret;
+    Boolean applied_reliable = [MeshNativeHelper meshClientIsGroup:deviceName] ? false : reliable;  // for group, should always use unreliable mode.
+    WICED_BT_TRACE("[MeshNativeHelper meshClientCtlSet] deviceName: %s, lightness: %d, temperature: %d, deltaUv: %d, reliable: %d, applied_reliable:%d, transitionTime: %d, delay: %d\n",
+          deviceName.UTF8String, lightness, temperature, deltaUv, reliable, applied_reliable, transitionTime, delay);
     EnterCriticalSection();
-    ret = mesh_client_ctl_set(deviceName.UTF8String, lightness, temperature, deltaUv, reliable, transitionTime, delay);
+    ret = mesh_client_ctl_set(deviceName.UTF8String, lightness, temperature, deltaUv, applied_reliable, transitionTime, delay);
     LeaveCriticalSection();
     return ret;
 }
@@ -1587,9 +1621,13 @@ static NSMutableDictionary *gMeshBdAddrDict = nil;
         }
     }
 
-    /* Add local name of the peripheral if exsiting. */
+    /*
+     * Add local name of the peripheral if exsiting.
+     * When both name existing, use the iOS system processed peripheral.name as the first priority.
+     */
     NSString *localName = advertisementData[CBAdvertisementDataLocalNameKey];
-    if (localName == nil || strlen(localName.UTF8String) == 0) {
+    if (localName == nil || strlen(localName.UTF8String) == 0 ||
+        (peripheral.name != nil && strlen(peripheral.name.UTF8String))) {
         localName = peripheral.name;
     }
     if (localName != nil && strlen(localName.UTF8String) > 0) {
@@ -1758,41 +1796,49 @@ static CBPeripheral *currentConnectedPeripheral = nil;
 }
 
 // DFU APIs
-void mesh_client_dfu_status_cb(uint8_t status, uint8_t progress)
+void mesh_client_dfu_status_cb(uint8_t state, uint8_t *p_data, uint32_t data_length)
 {
-    WICED_BT_TRACE("[MeshNativeHelper mesh_client_dfu_status_cb] status:0x%02x, progress:%u\n", status, progress);
-    [nativeCallbackDelegate meshClientDfuStatusCb:status progress:progress];
+    WICED_BT_TRACE("[MeshNativeHelper mesh_client_dfu_status_cb] state:0x%02x, data_length:%u\n", state, data_length);
+    NSData *data = NULL;
+    if (p_data == NULL || data_length == 0) {
+        data = [NSData data];
+    } else {
+        data = [[NSData alloc] initWithBytes:p_data length:data_length];
+    }
+    [nativeCallbackDelegate meshClientDfuStatusCb:state data:data];
 }
 
-+(int) meshClientDfuGetStatus:(NSString *)componentName
+/*
+ * when the interval is not set to 0, the DFU status will report in the DFU status in every internal time automatically.
+ * if the interval is set to 0, the DFU status automatically report will be cancelled and stoped.
+ */
++(int) meshClientDfuGetStatus:(int)interval
 {
-    WICED_BT_TRACE("[MeshNativeHelper meshClientDfuGetStatus] componentName:%s\n", componentName.UTF8String);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientDfuGetStatus] interval=%d\n", interval);
     int ret;
     EnterCriticalSection();
-    ret = mesh_client_dfu_get_status((char *)componentName.UTF8String, mesh_client_dfu_status_cb);
+    if (interval) {
+        ret = mesh_client_dfu_get_status(mesh_client_dfu_status_cb, interval);
+    } else {
+        ret = mesh_client_dfu_get_status(NULL, 0);
+    }
     LeaveCriticalSection();
     return ret;
 }
 
-void mesh_client_dfu_event_callback(uint8_t event, uint8_t *p_event_data, uint32_t event_data_length)
++(int) meshClientDfuStart:(int)dfuMethod firmwareId:(NSData *)firmwareId validationData:(NSData *)validationData
 {
-    switch (event) {
-        case MESH_DFU_EVENT_START_OTA:
-            WICED_BT_TRACE("[MeshNativeHelper mesh_client_dfu_event_callback] MESH_DFU_EVENT_START_OTA, event_data_length:%d\n", event_data_length);
-            break;
-        default:
-            WICED_BT_TRACE("[MeshNativeHelper mesh_client_dfu_event_callback] unknown event: 0x%02x, event_data_length=%d\n", event_data_length);
-            break;
-    }
-    [nativeCallbackDelegate onDfuEventReceived:event data:[[NSData alloc] initWithBytes:p_event_data length:event_data_length]];
-}
-
-+(int) meshClientDfuStart:(int)dfuMethod  componentName:(NSString *)componentName firmwareId:(NSData *)firmwareId validationData:(NSData *)validationData
-{
-    WICED_BT_TRACE("[MeshNativeHelper meshClientDfuStart] dfuMethod:%d, componentName:%s\n", dfuMethod, componentName.UTF8String);
+    WICED_BT_TRACE("[MeshNativeHelper meshClientDfuStart] dfuMethod:%d\n", dfuMethod);
+    wiced_bool_t self_distributor = (dfuMethod == DFU_METHOD_PROXY_TO_ALL) ? FALSE : TRUE;
     int ret;
+
+    if (dfuMethod == DFU_METHOD_APP_TO_DEVICE) {
+        WICED_BT_TRACE("[MeshNativeHelper meshClientDfuStart] error: DFU_METHOD_APP_TO_DEVIVEC does not using the mesh_client_dfu_start() API, using old OTA method\n");
+        return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
+    }
+
     EnterCriticalSection();
-    ret = mesh_client_dfu_start((uint8_t)dfuMethod, (char *)componentName.UTF8String, (uint8_t *)firmwareId.bytes, (uint8_t)firmwareId.length, (uint8_t *)validationData.bytes, (uint8_t)validationData.length, WICED_TRUE, mesh_client_dfu_event_callback);
+    ret = mesh_client_dfu_start((uint8_t *)firmwareId.bytes, (uint8_t)firmwareId.length, (uint8_t *)validationData.bytes, (uint8_t)validationData.length, TRUE, self_distributor);
     LeaveCriticalSection();
     return ret;
 }
@@ -1807,6 +1853,7 @@ void mesh_client_dfu_event_callback(uint8_t event, uint8_t *p_event_data, uint32
     return ret;
 }
 
+// status 0 indicates finished on success; otherwise, non-zero indicates finished with some error.
 +(void) meshClientDfuOtaFinish:(int)status
 {
     WICED_BT_TRACE("[MeshNativeHelper meshClientDfuOtaFinish] status:%d\n", status);
@@ -2056,10 +2103,11 @@ void meshClientLightLcPropertyStatusCb(const char *device_name, int property_id,
 
 +(int) meshClientSetLightLcOnOffSet:(NSString *)componentName onoff:(uint8_t)onoff reliable:(BOOL)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay
 {
-    WICED_BT_TRACE("[MeshNativeHelper meshClientSetLightLcOnOffSet] componentName:%s, onoff:%d, reliable:%d\n", componentName.UTF8String, onoff, reliable);
     int ret;
+    Boolean applied_reliable = [MeshNativeHelper meshClientIsGroup:componentName] ? false : reliable;  // for group, should always use unreliable mode.
+    WICED_BT_TRACE("[MeshNativeHelper meshClientSetLightLcOnOffSet] componentName:%s, onoff:%d, reliable:%d, applied_reliable:%d\n", componentName.UTF8String, onoff, reliable, applied_reliable);
     EnterCriticalSection();
-    ret = mesh_client_light_lc_on_off_set(componentName.UTF8String, onoff, reliable, transitionTime, delay);
+    ret = mesh_client_light_lc_on_off_set(componentName.UTF8String, onoff, applied_reliable, transitionTime, delay);
     LeaveCriticalSection();
     return ret;
 }
@@ -2099,6 +2147,25 @@ void meshClientLightLcPropertyStatusCb(const char *device_name, int property_id,
 
     wiced_bt_mesh_db_deinit(pMeshDb);
     return elements;
+}
+
++(int) meshClientIsNodeBlocked:(NSString *)networkName elementName:(NSString *)elementName
+{
+    BOOL isBlocked = FALSE;
+    wiced_bt_mesh_db_mesh_t *pMeshDb = wiced_bt_mesh_db_init(networkName.UTF8String);
+    if (pMeshDb == NULL) {
+        return -ENFILE;
+    }
+
+    wiced_bt_mesh_db_node_t *pMeshNode = wiced_bt_mesh_db_node_get_by_element_name(pMeshDb, elementName.UTF8String);
+    if (pMeshNode == NULL) {
+        wiced_bt_mesh_db_deinit(pMeshDb);
+        return -ENOENT;
+    }
+    isBlocked = pMeshNode->blocked ? TRUE : FALSE;
+
+    wiced_bt_mesh_db_deinit(pMeshDb);
+    return isBlocked;
 }
 
 static const uint32_t crc32Table[256] = {
@@ -2193,15 +2260,15 @@ uint32_t update_crc32(uint32_t crc, uint8_t *buf, uint32_t len)
     return [NSString stringWithUTF8String:(const char *)filePath];
 }
 
-void mesh_native_helper_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len)
+void mesh_native_helper_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_meta_data, uint32_t *p_meta_data_len)
 {
     *p_fw_id_len = dfuFwIdLen;
-    *p_validation_data_len = dfuValidationDataLen;
-    if (dfuFwIdLen) {
+    *p_meta_data_len = dfuValidationDataLen;
+    if (p_fw_id && dfuFwIdLen) {
         memcpy(p_fw_id, dfuFwId, dfuFwIdLen);
     }
-    if (dfuValidationDataLen) {
-        memcpy(p_validation_data, dfuValidationData, dfuValidationDataLen);
+    if (p_meta_data && dfuValidationDataLen) {
+        memcpy(p_meta_data, dfuValidationData, dfuValidationDataLen);
     }
 }
 
@@ -2237,10 +2304,6 @@ void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uin
         WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_read_file_chunk] error: input file path is NULL\n");
         return;
     }
-    if (offset < 0x200) {
-        WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_read_file_chunk] error: invalid offset: 0x%04x < 0x200\n", offset);
-        return;
-    }
 
     filePath = [NSString stringWithUTF8String:(const char *)p_path];
     if (![fileManager fileExistsAtPath:filePath] || ![fileManager isReadableFileAtPath:filePath]) {
@@ -2255,7 +2318,7 @@ void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uin
     }
 
     @try {
-        [handle seekToFileOffset:(unsigned long long)(offset - 0x200)];
+        [handle seekToFileOffset:(unsigned long long)offset];
         data = [handle readDataOfLength:data_len];
         [data getBytes:p_data length:data.length];
     } @catch (NSException *exception) {
@@ -2311,6 +2374,19 @@ void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uin
         return [[NSString alloc] initWithUTF8String:p_mesh_db->name];
     }
     return nil;
+}
+
+void mesh_native_helper_start_ota_transfer_for_dfu(void)
+{
+    WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_start_ota_transfer_for_dfu]\n");
+    [nativeCallbackDelegate meshClientStartOtaTransferForDfu];
+}
+
+wiced_bool_t mesh_native_helper_is_ota_supported_for_dfu(void)
+{
+    wiced_bool_t is_ota_supported = [nativeCallbackDelegate meshClientIsOtaSupportedForDfu] ? WICED_FALSE : WICED_TRUE;
+    WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_is_ota_supported_for_dfu] is_ota_supported=%d\n", is_ota_supported);
+    return is_ota_supported;
 }
 
 @end

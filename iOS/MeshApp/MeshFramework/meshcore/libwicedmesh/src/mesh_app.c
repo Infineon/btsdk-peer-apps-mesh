@@ -52,6 +52,9 @@
 #include "wiced_bt_mesh_provision.h"
 #include "wiced_bt_ota_firmware_upgrade.h"
 #include "wiced_bt_mesh_app.h"
+#include "p_256_ecc_pp.h"
+
+struct _point ecdsa256_public_key;  // just a placehold to avoid compile error.
 
 static void mesh_app_init(wiced_bool_t is_provisioned);
 static void mesh_provision_message_handler(uint16_t event, wiced_bt_mesh_event_t *p_event, void *p_data);
@@ -72,12 +75,14 @@ extern wiced_result_t wiced_send_gatt_packet( uint16_t opcode, uint8_t* p_data, 
 extern void proxy_gatt_send_cb(uint32_t conn_id, uint32_t ref_data, const uint8_t *packet, uint32_t packet_len);
 static uint32_t mesh_nvram_access(wiced_bool_t write, int inx, uint8_t* value, uint16_t len, wiced_result_t *p_result);
 typedef wiced_bool_t (*wiced_model_message_handler_t)(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
-static wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, wiced_bool_t *p_dont_save_rpl);
+static wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, uint8_t* p_rpl_delay);
 static void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_active);
 wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
 extern void mesh_native_helper_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len);
 extern void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uint32_t offset, uint16_t data_len);
 extern uint32_t mesh_native_helper_read_file_size(const char *p_path);
+extern void mesh_native_helper_start_ota_transfer_for_dfu(void);
+extern wiced_bool_t mesh_native_helper_is_ota_supported_for_dfu(void);
 
 
 // defines Friendship Mode
@@ -88,9 +93,8 @@ extern uint32_t mesh_native_helper_read_file_size(const char *p_path);
 /******************************************************
  *          Constants
  ******************************************************/
-#define MESH_PID                0x3016
+#define MESH_PID                0x3006
 #define MESH_VID                0x0002
-#define MESH_FWID               0x3016000101010000
 #define MESH_CACHE_REPLAY_SIZE  200
 #define APPEARANCE_GENERIC_TAG  512
 /*
@@ -112,6 +116,8 @@ extern uint32_t mesh_native_helper_read_file_size(const char *p_path);
 #define PROPERTY_ID_PRESENT_AMBIENT_TEMPERATURE     (0x4F)
 #define SETTING_PROPERTY_ID                         (0x2001)
 
+#define PARTITION_ACTIVE    0
+#define PARTITION_UPGRADE   1
 
 wiced_result_t mesh_transport_send_data( uint16_t opcode, uint8_t* p_data, uint16_t length );
 void mesh_provisioner_client_message_handler(uint16_t event, void *p_data);
@@ -208,11 +214,11 @@ static int core_initialized = 0;
 void mesh_application_init(void)
 {
     WICED_BT_TRACE("mesh_application_init enter");
-    extern uint8_t mesh_model_trace_level;
-    mesh_model_trace_level = TRACE_DEBUG;
-    extern void wiced_bt_mesh_core_set_trace_level(uint32_t fids_mask, uint8_t level);
-    wiced_bt_mesh_core_set_trace_level(0xFFFFFFFF, TRACE_DEBUG);      // (ALL, TRACE_DEBUG)
-    wiced_bt_mesh_core_set_trace_level(0x08, TRACE_INFO);             // (CORE_AES_CCM_C, TRACE_INFO)
+    // Set Debug trace level for mesh_models_lib and mesh_provisioner_lib
+    wiced_bt_mesh_models_set_trace_level(WICED_BT_MESH_CORE_TRACE_INFO);
+    // Set Debug trace level for all modules but Info level for CORE_AES_CCM module
+    wiced_bt_mesh_core_set_trace_level(WICED_BT_MESH_CORE_TRACE_FID_ALL, WICED_BT_MESH_CORE_TRACE_DEBUG);
+    wiced_bt_mesh_core_set_trace_level(WICED_BT_MESH_CORE_TRACE_FID_CORE_AES_CCM, WICED_BT_MESH_CORE_TRACE_INFO);
 
     if(!core_initialized)
     {
@@ -249,7 +255,7 @@ void mesh_application_deinit(void)
 /*
 * Application implements that function to handle received messages. Call each library that this device needs to support.
 */
-wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, wiced_bool_t *p_dont_save_rpl)
+wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, uint8_t* p_rpl_delay)
 {
     wiced_bt_mesh_core_received_msg_handler_t p_message_handler = NULL;
     uint8_t                                   idx_elem, idx_model;
@@ -266,7 +272,7 @@ wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t comp
         temp_event.company_id = company_id;
         temp_event.opcode = opcode;
         temp_event.model_id = 0xffff;   //it is sign of special mode for model to just return model_id without message handling
-                                        // model changes it to any other value if it wants do disable RPL saving for its messages
+        temp_event.status.rpl_delay = 0; // model can change that to indicate different rule
 
         for (idx_elem = 0; idx_elem < mesh_config.elements_num; idx_elem++)
         {
@@ -282,9 +288,8 @@ wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t comp
                 model_id = mesh_config.elements[idx_elem].models[idx_model].model_id;
                 if (p_model_id)
                     *p_model_id = model_id;
-                // Check if model wants to disable RPL saving for its messages
-                if (temp_event.model_id != 0xffff && p_dont_save_rpl != NULL)
-                    *p_dont_save_rpl = WICED_TRUE;
+                if (p_rpl_delay)
+                    *p_rpl_delay = temp_event.status.rpl_delay;
                 break;
             }
             if (idx_model < mesh_config.elements[idx_elem].models_num)
@@ -309,6 +314,8 @@ void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_scan_acti
 void mesh_app_init(wiced_bool_t is_provisioned)
 {
     WICED_BT_TRACE("mesh_app_init\n");
+    // Set Debug trace level for mesh_models_lib and mesh_provisioner_lib
+    wiced_bt_mesh_models_set_trace_level(WICED_BT_MESH_CORE_TRACE_INFO);
 
     wiced_bt_mesh_provision_client_init(mesh_provision_message_handler, is_provisioned);
     wiced_bt_mesh_client_init(mesh_provision_message_handler, is_provisioned);
@@ -318,7 +325,6 @@ void mesh_app_init(wiced_bool_t is_provisioned)
     wiced_bt_mesh_proxy_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_model_fw_provider_init();
     wiced_bt_mesh_model_fw_distribution_server_init();
-    wiced_bt_mesh_model_blob_transfer_server_init(0);
 
     wiced_bt_mesh_model_property_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_onoff_client_init(0, mesh_control_message_handler, is_provisioned);
@@ -430,9 +436,73 @@ void wiced_bt_get_fw_image_chunk(uint8_t partition, uint32_t offset, uint8_t *p_
     return GetDfuImageChunk(p_data, offset, data_len);
 }
 
-wiced_bool_t wiced_bt_get_upgrade_fw_info(uint16_t *company_id, uint8_t *fw_id_len, uint8_t *fw_id)
+wiced_bool_t wiced_bt_get_upgrade_fw_info(uint32_t *p_fw_size, uint8_t *p_fw_id, uint8_t *p_fw_id_len, uint8_t *p_meta_data, uint8_t *p_meta_data_len)
 {
-    return WICED_FALSE;
+    mesh_dfu_fw_id_t fw_id;
+    mesh_dfu_meta_data_t meta_data;
+    uint32_t fw_id_len = 0;
+    uint32_t meta_data_len = 0;
+
+    mesh_native_helper_read_dfu_meta_data(fw_id.fw_id, (uint32_t *)&fw_id_len, meta_data.data, (uint32_t *)&meta_data_len);
+    if (!fw_id_len || !meta_data_len) {
+        return WICED_FALSE;
+    }
+    fw_id.fw_id_len = (uint8_t)fw_id_len;
+    meta_data.len = (uint8_t)meta_data_len;
+
+    if (p_fw_size) {
+        *p_fw_size = wiced_bt_get_fw_image_size(PARTITION_UPGRADE);
+    }
+
+    if (p_fw_id && p_fw_id_len) {
+        if (*p_fw_id_len < fw_id.fw_id_len) {
+            return WICED_FALSE;
+        }
+        *p_fw_id_len = fw_id.fw_id_len;
+        memcpy(p_fw_id, fw_id.fw_id, fw_id.fw_id_len);
+    }
+
+    if (p_meta_data && p_meta_data_len) {
+        if (*p_meta_data_len < meta_data.len) {
+            return WICED_FALSE;
+        }
+        *p_meta_data_len = meta_data.len;
+        memcpy(p_meta_data, meta_data.data, meta_data.len);
+    }
+    return WICED_TRUE;
+}
+
+wiced_bool_t wiced_bt_fw_is_ota_supported(void)
+{
+    // Check if the target device support wiced firmware OTA.
+    return mesh_native_helper_is_ota_supported_for_dfu();
+}
+
+void wiced_bt_fw_start_ota(void)
+{
+    // Do wiced firmware OTA to upload the firmware image to DFU distributor.
+    mesh_native_helper_start_ota_transfer_for_dfu();
+}
+
+wiced_bool_t fw_update_fw_id_acceptible(void *p_fw_id)
+{
+    return WICED_TRUE;
+}
+
+uint32_t wiced_firmware_upgrade_erase_nv(uint32_t start, uint32_t size)
+{
+    // Dudley: Just a replacehold to avoid compiling issue, should not be called in this MeshApp client.
+    return 0;
+}
+
+uint32_t wiced_firmware_upgrade_retrieve_from_nv(uint32_t offset, uint8_t *data, uint32_t len)
+{
+    // Dudley: Just a replacehold to avoid compiling issue, should not be called in this MeshApp client.
+    return 0;
+}
+
+void wiced_firmware_upgrade_finish(void)
+{
 }
 
 wiced_bool_t wiced_ota_fw_upgrade_get_new_fw_info(uint16_t *company_id, uint8_t *fw_id_len, uint8_t *fw_id)
@@ -455,54 +525,8 @@ int32_t ota_fw_upgrade_calculate_checksum(int32_t offset, int32_t length)
     return 0;
 }
 
-void wiced_bt_fw_save_meta_data(uint8_t partition, uint8_t* p_data, uint32_t len)
-{
-}
-
-wiced_bool_t wiced_firmware_upgrade_erase_nv(uint32_t start, uint32_t size)
-{
-    return WICED_TRUE;
-}
-
 wiced_bool_t wiced_ota_fw_upgrade_set_transfer_mode(wiced_bool_t transfer_only, wiced_ota_firmware_event_callback_t *p_event_callback)
 {
-    return WICED_TRUE;
-}
-
-#define PARTITION_ACTIVE    0
-#define PARTITION_UPGRADE   1
-wiced_bool_t wiced_bt_fw_read_meta_data(uint8_t partition, uint8_t * p_data, uint32_t * p_len)
-{
-    uint32_t fw_id_len;
-    mesh_dfu_fw_id_t fw_id;
-    uint32_t validation_data_len;
-    mesh_dfu_validation_data_t validation_data;
-    uint32_t image_size;
-
-    if (partition != PARTITION_UPGRADE || p_len == NULL) {
-        return WICED_FALSE;
-    }
-
-    mesh_native_helper_read_dfu_meta_data(fw_id.fw_id, (uint32_t *)&fw_id_len, validation_data.data, (uint32_t *)&validation_data_len);
-    fw_id.fw_id_len = (uint8_t)fw_id_len;
-    validation_data.len = (uint8_t)validation_data_len;
-
-    if (!fw_id.fw_id_len || !validation_data.len || (*p_len < (fw_id.fw_id_len + validation_data.len + 2))) {
-        return WICED_FALSE;
-    }
-
-    *p_len = fw_id.fw_id_len + validation_data.len + 2;
-    if (p_data) {
-        uint8_t *p = p_data;
-        *p++ = fw_id.fw_id_len;
-        memcpy(p, fw_id.fw_id, fw_id.fw_id_len);
-        p += fw_id.fw_id_len;
-        image_size = wiced_bt_get_fw_image_size(PARTITION_UPGRADE);
-        memcpy(p, &image_size, sizeof(uint32_t));
-        p += sizeof(uint32_t);
-        *p++ = validation_data.len;
-        memcpy(p, validation_data.data, validation_data.len);
-    }
     return WICED_TRUE;
 }
 
@@ -545,5 +569,19 @@ wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data
 }
 
 void wiced_bt_mesh_add_vendor_model(wiced_bt_mesh_add_vendor_model_data_t *p_data)
+{
+}
+
+uint16_t wiced_hal_write_nvram(uint16_t vs_id, uint16_t data_length, uint8_t *p_data, wiced_result_t *p_status)
+{
+    return 0;
+}
+
+uint16_t wiced_hal_read_nvram(uint16_t vs_id, uint16_t data_length, uint8_t *p_data, wiced_result_t *p_status)
+{
+    return 0;
+}
+
+void wiced_hal_delete_nvram(uint16_t vs_id, wiced_result_t *p_status)
 {
 }

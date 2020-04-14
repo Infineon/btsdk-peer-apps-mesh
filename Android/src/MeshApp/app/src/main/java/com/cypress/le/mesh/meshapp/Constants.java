@@ -22,6 +22,10 @@
  * to indemnify Cypress against all liability.
  */
 package com.cypress.le.mesh.meshapp;
+import android.app.Activity;
+import android.content.Context;
+import android.location.LocationManager;
+import android.widget.Toast;
 
 public class Constants {
     public static final int NETWORK_DEVICES_PHONES = 0x01;
@@ -191,6 +195,27 @@ public class Constants {
     static final int MESH_PROPERTY_TOTAL_LIGHT_EXPOSURE_TIME                                = 0x006F;
     static final int MESH_PROPERTY_TOTAL_LUMINOUS_ENERGY                                    = 0x0070;
 
+    public static final byte WICED_BT_MESH_DFU_STATE_INIT                       = 0;
+    public static final byte WICED_BT_MESH_DFU_STATE_VALIDATE_NODES             = 1;
+    public static final byte WICED_BT_MESH_DFU_STATE_GET_DISTRIBUTOR            = 2;
+    public static final byte WICED_BT_MESH_DFU_STATE_UPLOAD                     = 3;
+    public static final byte WICED_BT_MESH_DFU_STATE_DISTRIBUTE                 = 4;
+    public static final byte WICED_BT_MESH_DFU_STATE_APPLY                      = 5;
+    public static final byte WICED_BT_MESH_DFU_STATE_COMPLETE                   = 6;
+    public static final byte WICED_BT_MESH_DFU_STATE_FAILED                     = 7;
+
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_IDLE                 = 0x00;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_TRANSFER_ERROR       = 0x01;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_TRANSFER_ACTIVE      = 0x02;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_VERIFICATION_ACTIVE  = 0x03;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_VERIFICATION_SUCCESS = 0x04;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_VERIFICATION_FAILED  = 0x05;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_APPLY_ACTIVE         = 0x06;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_TRANSFER_CANCELLED   = 0x07;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_UNKNOWN              = 0x08;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_APPLY_SUCCESS        = 0x09;
+    public static final byte WICED_BT_MESH_FW_UPDATE_PHASE_APPLY_FAILED         = 0x0A;
+
 
     public static String toHexString(byte[] bytes) {
         return toHexString(bytes, ' ');
@@ -230,5 +255,45 @@ public class Constants {
             }
         }
         return new String(buffer);
+    }
+
+
+    public static boolean IsLocationServiceEnabled(Context context) {
+        LocationManager locationManager = null;
+        boolean gps_enabled = false;
+        boolean network_enabled = false;
+        if (locationManager == null) {
+            locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        }
+        try {
+            gps_enabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        }
+        catch(Exception ex){
+            //do nothing...
+        }
+        try {
+            network_enabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        }
+        catch(Exception ex){
+            //do nothing...
+        }
+        return gps_enabled || network_enabled;
+    }
+
+
+    private static Toast mToast = null;
+
+    public static void Show(final Activity activity, final String text, final int duration) {
+        activity.runOnUiThread(new Runnable() {
+            public void run() {
+                if (mToast == null || !mToast.getView().isShown()) {
+                    if (mToast != null) {
+                        mToast.cancel();
+                    }
+                }
+                mToast = Toast.makeText(activity, text, duration);
+                mToast.show();
+            }
+        });
     }
 }

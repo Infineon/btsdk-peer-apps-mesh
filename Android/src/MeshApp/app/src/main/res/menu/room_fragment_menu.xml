@@ -41,8 +41,8 @@
         <!--android:title="Connect BIG to Proxy"-->
         <!--android:orderInCategory="100"-->
         <!--app:showAsAction="always"/>-->
-        <item android:id="@+id/ota"
-        android:title="OTA Upgrade"
+    <item android:id="@+id/menu_network_dfu"
+        android:title="@string/label_menu_dfu"
         android:orderInCategory="100"
         app:showAsAction="always"/>
     <!--<item android:id="@+id/closeNtw"-->

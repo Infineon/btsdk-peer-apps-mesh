@@ -71,14 +71,6 @@ public struct OtaConstants {
                                                                  OtaConstants.BLE_V2.UUID_CHARACTERISTIC_APP_INFO]
     public static let UUID_GATT_OTA_DESCRIPTORS: [CBUUID] = [OtaConstants.BLE.UUID_DESCRIPTOR_CCCD,
                                                              OtaConstants.BLE_V2.UUID_DESCRIPTOR_CCCD]
-
-    // Mesh FW Distribution Status Code
-    public static let MESH_DFU_FW_DISTR_PHASE_IDLE                  = 0x00  /* Distribution is not active. */
-    public static let MESH_DFU_FW_DISTR_PHASE_TRANSFER_ACTIVE       = 0x01  /* Firmware transfer in progress. */
-    public static let MESH_DFU_FW_DISTR_PHASE_TRANSFER_SUCCESS      = 0x02  /* Firmware transfer is complete and updating nodes verified the firmware success. */
-    public static let MESH_DFU_FW_DISTR_PHASE_APPLY_ACTIVE          = 0x03  /* Firmware applying in progress. */
-    public static let MESH_DFU_FW_DISTR_PHASE_COMPLETED             = 0x04  /* At least one updating node was updated success. */
-    public static let MESH_DFU_FW_DISTR_PHASE_FAILED                = 0x05  /* No updating nodes were updated success. */
 }
 
 public struct OtaErrorCode {
@@ -126,6 +118,9 @@ public struct OtaErrorCode {
     public static let ERROR_OTA_ABORTED: Int = 52
     public static let ERROR_OTA_VERIFICATION_FAILED: Int = 54
     public static let ERROR_OTA_V2_APPLY: Int = 55
+
+    public static let ERROR_DFU_MESH_NETWORK_NOT_CONNECTED: Int = 60
+    public static let ERROR_DFU_COMMAND_FAILED: Int = 61
 }
 
 
@@ -260,4 +255,29 @@ public struct MeshDfuType {
 
 public struct MeshDfuEvent {
     static public let DFU_EVENT_START_OTA = 1
+}
+
+public struct MeshDfuState {
+    static public let MESH_DFU_STATE_INIT               = 0    /**< Initial state */
+    static public let MESH_DFU_STATE_VALIDATE_NODES     = 1    /**< Checking if nodes can accept the firmware */
+    static public let MESH_DFU_STATE_GET_DISTRIBUTOR    = 2    /**< Finding a proper node as Distributor */
+    static public let MESH_DFU_STATE_UPLOAD             = 3    /**< Uploading firmware from Initiator to Distributor */
+    static public let MESH_DFU_STATE_DISTRIBUTE         = 4    /**< Distributing firmware from Distributor to Updating Nodes */
+    static public let MESH_DFU_STATE_APPLY              = 5    /**< Applying firmware on Updating Nodes */
+    static public let MESH_DFU_STATE_COMPLETE           = 6    /**< Firmware distribution completed successfully */
+    static public let MESH_DFU_STATE_FAILED             = 7    /**< Firmware distribution failed */
+}
+
+public struct MeshFirmwareUpdatePhase {
+    static public let MESH_DFU_FW_UPDATE_PHASE_IDLE                     = 0x00 /**< No firmware transfer is in progress */
+    static public let MESH_DFU_FW_UPDATE_PHASE_TRANSFER_ERROR           = 0x01 /**< Firmware transfer was not completed */
+    static public let MESH_DFU_FW_UPDATE_PHASE_TRANSFER_ACTIVE          = 0x02 /**< Firmware transfer is in progress */
+    static public let MESH_DFU_FW_UPDATE_PHASE_VERIFICATION_ACTIVE      = 0x03 /**< Verification of the firmware image is in progress */
+    static public let MESH_DFU_FW_UPDATE_PHASE_VERIFICATION_SUCCESS     = 0x04 /**< Firmware image verification succeeded */
+    static public let MESH_DFU_FW_UPDATE_PHASE_VERIFICATION_FAILED      = 0x05 /**< Firmware image verification failed */
+    static public let MESH_DFU_FW_UPDATE_PHASE_APPLY_ACTIVE             = 0x06 /**< Firmware applying is in progress */
+    static public let MESH_DFU_FW_UPDATE_PHASE_TRANSFER_CANCELLED       = 0x07 /**< Firmware transfer has been cancelled */
+    static public let MESH_DFU_FW_UPDATE_PHASE_UNKNOWN                  = 0x08 /**< Phase of a node was not retrieved yet */
+    static public let MESH_DFU_FW_UPDATE_PHASE_APPLY_SUCCESS            = 0x09 /**< Firmware image apply succeeded */
+    static public let MESH_DFU_FW_UPDATE_PHASE_APPLY_FAILED             = 0x0A /**< Firmware image apply failed */
 }

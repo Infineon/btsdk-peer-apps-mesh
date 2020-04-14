@@ -120,26 +120,20 @@ void network_opened(uint8_t status);
 /*extern "C" */ void sensor_status(const char *device_name, int property_id, uint8_t value_len, uint8_t *value);
 /*extern "C" */ void vendor_specific_data(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *p_data, uint16_t data_len);
 
-/*extern "C" */ void fw_distribution_status(uint8_t status, uint8_t progress);
+/*extern "C" */ void fw_distribution_status(uint8_t state, uint8_t* p_data, uint32_t data_length);
 
 WCHAR *dfuMethods[] = {
     L"Proxy DFU to all",
+    L"App DFU to all",
     L"App OTA to device",
 };
 
-#define IDT_DISTRIBUTION_STATUS         2
-
-#define DISTRIBUTION_STATUS_TIMEOUT     10000
+#define DISTRIBUTION_STATUS_TIMEOUT     10
 
 #define DISTRIBUTION_ACTION_START       1
 #define DISTRIBUTION_ACTION_STOP        2
 #define DISTRIBUTION_ACTION_APPLY       3
 #define DISTRIBUTION_ACTION_GET_STATUS  4
-
-#define DFU_STATE_IDLE                  0
-#define DFU_STATE_UPLOADING             1       // Initiator -> Distributor
-#define DFU_STATE_UPDATING              2       // Distributor -> Updating Node
-#define DFU_STATE_COMPLETED             3
 
 extern wiced_bool_t mesh_adv_scanner_open();
 extern void mesh_adv_scanner_close(void);
@@ -353,7 +347,7 @@ CMeshClientDlg::CMeshClientDlg(CWnd* pParent /*=NULL*/)
     m_dwPatchSize = 0;
     m_bConnecting = FALSE;
     m_bScanning = FALSE;
-    m_dfuState = DFU_STATE_IDLE;
+    m_dfuState = WICED_BT_MESH_DFU_STATE_INIT;
 }
 
 CMeshClientDlg::~CMeshClientDlg()
@@ -423,7 +417,6 @@ BEGIN_MESSAGE_MAP(CMeshClientDlg, CDialogEx)
     ON_BN_CLICKED(IDC_IDENTIFY, &CMeshClientDlg::OnBnClickedIdentify)
     ON_BN_CLICKED(IDC_RECONFIGURE, &CMeshClientDlg::OnBnClickedReconfigure)
     ON_BN_CLICKED(IDC_BROWSE, &CMeshClientDlg::OnBnClickedBrowse)
-    ON_BN_CLICKED(IDC_INFOBROWSE, &CMeshClientDlg::OnBnClickedInfoBrowse)
     ON_CBN_SELCHANGE(IDC_CONFIGURE_CONTROL_DEVICE, &CMeshClientDlg::OnCbnSelchangeConfigureControlDevice)
     ON_CBN_SELCHANGE(IDC_CONFIGURE_MOVE_DEVICE, &CMeshClientDlg::OnCbnSelchangeConfigureMoveDevice)
     ON_BN_CLICKED(IDC_NETWORK_IMPORT, &CMeshClientDlg::OnBnClickedNetworkImport)
@@ -431,7 +424,6 @@ BEGIN_MESSAGE_MAP(CMeshClientDlg, CDialogEx)
     ON_BN_CLICKED(IDC_GET_COMPONENT_INFO, &CMeshClientDlg::OnBnClickedGetComponentInfo)
     ON_BN_CLICKED(IDC_OTA_UPGRADE_STATUS, &CMeshClientDlg::OnBnClickedOtaUpgradeStatus)
     ON_BN_CLICKED(IDC_OTA_UPGRADE_STOP, &CMeshClientDlg::OnBnClickedOtaUpgradeStop)
-    ON_BN_CLICKED(IDC_OTA_UPGRADE_APPLY, &CMeshClientDlg::OnBnClickedOtaUpgradeApply)
     ON_BN_CLICKED(IDC_SENSOR_GET, &CMeshClientDlg::OnBnClickedSensorGet)
     ON_CBN_SELCHANGE(IDC_CONTROL_DEVICE, &CMeshClientDlg::OnCbnSelchangeControlDevice)
     ON_BN_CLICKED(IDC_SENSOR_CONFIGURE, &CMeshClientDlg::OnBnClickedSensorConfigure)
@@ -519,7 +511,7 @@ extern "C" void onProxyGattPktReceivedCallback(const uint8_t* data, uint32_t dat
         res = pDlg->m_btInterface->WriteCharacteristic(&guidSvcMeshProxy, &guidCharProxyDataIn, TRUE, &gatt_value);
     LeaveCriticalSection(&cs);
     if (!res)
-        ods("proxy_gatt_send_cb: WriteCharacteristic failed.");
+        ods("onProxyGattPktReceivedCallback: WriteCharacteristic failed.");
 }
 
 // Callback function to send a packet over GATT connection using GATT Write Command for gatt_char_handle parameter.
@@ -535,7 +527,7 @@ extern "C" void onProvGattPktReceivedCallback(const uint8_t* data, uint32_t data
         res = pDlg->m_btInterface->WriteCharacteristic(&guidSvcMeshProvisioning, &guidCharProxyDataIn, TRUE, &gatt_value);
     LeaveCriticalSection(&cs);
     if (!res)
-        ods("proxy_gatt_send_cb: WriteCharacteristic failed.");
+        ods("onProvGattPktReceivedCallback: WriteCharacteristic failed.");
 }
 
 void CMeshClientDlg::SetDlgItemHex(DWORD id, DWORD val)
@@ -616,6 +608,7 @@ BOOL CMeshClientDlg::OnInitDialog()
     m_trace = (CListBox *)GetDlgItem(IDC_TRACE);
 
     m_btInterface = NULL;
+    m_bDfuStatus = FALSE;
 
     SetDlgItemHex(IDC_IDENTITY_DURATION, 1);
 
@@ -905,21 +898,6 @@ void CMeshClientDlg::OnTimer(UINT_PTR nIDEvent)
 {
     //wiced_timer_handle(nIDEvent);
     CDialogEx::OnTimer(nIDEvent);
-
-#if 1
-    switch (nIDEvent)
-    {
-    case IDT_DISTRIBUTION_STATUS:
-        EnterCriticalSection(&cs);
-        if (mesh_client_dfu_get_status(NULL, &fw_distribution_status) != MESH_CLIENT_SUCCESS)
-        {
-            KillTimer(IDT_DISTRIBUTION_STATUS);
-            m_dfuState = DFU_STATE_IDLE;
-        }
-        LeaveCriticalSection(&cs);
-        break;
-    }
-#endif
 }
 
 void CMeshClientDlg::Disconnect()
@@ -1984,6 +1962,18 @@ void CMeshClientDlg::OnBnClickedConfigurePub()
     LeaveCriticalSection(&cs);
 }
 
+bool isGroup(char* p_name)
+{
+    char* p;
+    char* p_groups = mesh_client_get_all_groups(NULL);
+    for (p = p_groups; p != NULL && *p != 0; p += (strlen(p) + 1))
+    {
+        if (strcmp(p_name, p) == NULL)
+            return true;
+    }
+    return false;
+}
+
 void CMeshClientDlg::OnBnClickedOnOffGet()
 {
     OnOffGet();
@@ -2006,7 +1996,7 @@ void CMeshClientDlg::OnBnClickedOnOffSet()
     if (on_off >= 0)
     {
         EnterCriticalSection(&cs);
-        mesh_client_on_off_set(name, on_off, WICED_TRUE, DEFAULT_TRANSITION_TIME, 0);
+        mesh_client_on_off_set(name, on_off, !isGroup(name), DEFAULT_TRANSITION_TIME, 0);
         LeaveCriticalSection(&cs);
     }
 }
@@ -2026,7 +2016,7 @@ void CMeshClientDlg::OnBnClickedLevelSet()
     GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
     short target_level = (short)GetDlgItemInt(IDC_LEVEL_TARGET);
     EnterCriticalSection(&cs);
-    mesh_client_level_set(name, target_level, WICED_TRUE, DEFAULT_TRANSITION_TIME, 0);
+    mesh_client_level_set(name, target_level, !isGroup(name), DEFAULT_TRANSITION_TIME, 0);
     LeaveCriticalSection(&cs);
 }
 
@@ -2045,7 +2035,7 @@ void CMeshClientDlg::OnBnClickedLightnessSet()
     char name[80];
     GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
     EnterCriticalSection(&cs);
-    mesh_client_lightness_set(name, target_lightness, WICED_TRUE, DEFAULT_TRANSITION_TIME, 0);
+    mesh_client_lightness_set(name, target_lightness, !isGroup(name), DEFAULT_TRANSITION_TIME, 0);
     LeaveCriticalSection(&cs);
 }
 
@@ -2066,7 +2056,7 @@ void CMeshClientDlg::OnBnClickedLightHslSet()
     char name[80];
     GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
     EnterCriticalSection(&cs);
-    mesh_client_hsl_set(name, target_lightness, target_hue, target_saturation, WICED_TRUE, DEFAULT_TRANSITION_TIME, 0);
+    mesh_client_hsl_set(name, target_lightness, target_hue, target_saturation, !isGroup(name), DEFAULT_TRANSITION_TIME, 0);
     LeaveCriticalSection(&cs);
 }
 
@@ -2087,7 +2077,7 @@ void CMeshClientDlg::OnBnClickedLightCtlSet()
     char name[80];
     GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
     EnterCriticalSection(&cs);
-    mesh_client_ctl_set(name, target_lightness, target_temperature, target_delta_uv, WICED_TRUE, DEFAULT_TRANSITION_TIME, 0);
+    mesh_client_ctl_set(name, target_lightness, target_temperature, target_delta_uv, !isGroup(name), DEFAULT_TRANSITION_TIME, 0);
     LeaveCriticalSection(&cs);
 }
 
@@ -2175,132 +2165,9 @@ void CMeshClientDlg::OnBnClickedGetComponentInfo()
     LeaveCriticalSection(&cs);
 }
 
-void CMeshClientDlg::ConnectDfuDistributor()
-{
-    char name[80];
-    GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
-
-    EnterCriticalSection(&cs);
-    mesh_client_connect_component(name, 1, 10);
-    LeaveCriticalSection(&cs);
-}
-
-void CMeshClientDlg::OnBnClickedOtaUpgradeStart()
-{
-    if (m_dfuState != DFU_STATE_IDLE && m_dfuState != DFU_STATE_COMPLETED)
-    {
-        Log(L"DFU already started");
-        return;
-    }
-
-    m_dfuAction = DISTRIBUTION_ACTION_START;
-    ConnectDfuDistributor();
-}
-
-void CMeshClientDlg::OnBnClickedOtaUpgradeStop()
-{
-    // If OTA download is in progress, stop it
-    if (m_pDownloader && m_pDownloader->m_state == WSDownloader::WS_UPGRADE_STATE_DATA_TRANSFER)
-    {
-        m_pDownloader->ProcessEvent(WSDownloader::WS_UPGRADE_ABORT);
-        return;
-    }
-
-    EnterCriticalSection(&cs);
-    mesh_client_dfu_stop();
-    LeaveCriticalSection(&cs);
-
-    m_dfuState = DFU_STATE_IDLE;
-    KillTimer(IDT_DISTRIBUTION_STATUS);
-    Log(L"DFU stopped");
-}
-
-void CMeshClientDlg::OnBnClickedOtaUpgradeApply()
-{
-    if (m_dfuState != DFU_STATE_COMPLETED)
-    {
-        m_trace->SetCurSel(m_trace->AddString(L"Firmware distribution not done"));
-        return;
-    }
-
-    m_dfuAction = DISTRIBUTION_ACTION_APPLY;
-    ConnectDfuDistributor();
-}
-
-void fw_distribution_status(uint8_t status, uint8_t progress)
-{
-    CMeshClientDlg *pDlg = (CMeshClientDlg *)theApp.m_pMainWnd;
-    if (!pDlg)
-        return;
-
-    pDlg->OnDfuStatusCallback(status, progress);
-}
-
 static bool ota_transfer_for_dfu = FALSE;
 
-void fw_distribution_event(uint8_t event, uint8_t* p_event_data, uint32_t event_data_length)
-{
-    CMeshClientDlg *pDlg = (CMeshClientDlg *)theApp.m_pMainWnd;
-    if (!pDlg)
-        return;
-
-    switch (event)
-    {
-    case DFU_EVENT_START_OTA:
-        ota_transfer_for_dfu = TRUE;
-        pDlg->StartOta();
-        break;
-    }
-}
-
-void CMeshClientDlg::OnBnClickedOtaUpgradeStatus()
-{
-    m_dfuAction = DISTRIBUTION_ACTION_GET_STATUS;
-    ConnectDfuDistributor();
-}
-
-void CMeshClientDlg::OnDfuStatusCallback(uint8_t status, uint8_t progress)
-{
-    static BOOL has_upload = FALSE;
-
-    if (status == WICED_BT_MESH_FW_DISTR_PHASE_IDLE && progress > 0)
-    {
-        if (m_dfuState != DFU_STATE_UPLOADING)
-        {
-            Log(L"DFU upload start");
-            m_dfuState = DFU_STATE_UPLOADING;
-            has_upload = TRUE;
-        }
-        m_Progress.SetPos(progress/2);
-    }
-    else if (status == WICED_BT_MESH_FW_DISTR_PHASE_TRANSFER_ACTIVE)
-    {
-        if (m_dfuState != DFU_STATE_UPDATING)
-        {
-            Log(L"DFU distribution start");
-            m_dfuState = DFU_STATE_UPDATING;
-        }
-        if (has_upload)
-            m_Progress.SetPos(progress/2 + 50);
-        else
-            m_Progress.SetPos(progress);
-    }
-    else if (status == WICED_BT_MESH_FW_DISTR_PHASE_FAILED)
-    {
-        KillTimer(IDT_DISTRIBUTION_STATUS);
-        Log(L"DFU distribution failed");
-        m_dfuState = DFU_STATE_IDLE;
-    }
-    else if (status == WICED_BT_MESH_FW_DISTR_PHASE_COMPLETED)
-    {
-        m_Progress.SetPos(100);
-        KillTimer(IDT_DISTRIBUTION_STATUS);
-        Log(L"DFU distribution finish");
-        m_dfuState = DFU_STATE_COMPLETED;
-    }
-}
-
-BOOL read_dfu_image_info(CString sFilePath, mesh_dfu_fw_id_t *fwID, mesh_dfu_validation_data_t *vaData)
+BOOL read_dfu_image_info(CString sFilePath, mesh_dfu_fw_id_t* fwID, mesh_dfu_meta_data_t* vaData)
 {
     CMeshClientDlg* pDlg = (CMeshClientDlg*)theApp.m_pMainWnd;
     FILE* pFile;
@@ -2344,41 +2211,129 @@ BOOL read_dfu_image_info(CString sFilePath, mesh_dfu_fw_id_t *fwID, mesh_dfu_val
     return TRUE;
 }
 
-void CMeshClientDlg::OnNodeConnected()
+#define MAX_TAG_NAME                                32
+#define MAX_FILE_NAME                               256
+
+extern "C"
 {
-    if (m_dfuAction == DISTRIBUTION_ACTION_START)
-    {
-        OnOtaUpgradeContinue();
-    }
-    else if (m_dfuAction == DISTRIBUTION_ACTION_STOP)
-    {
-        EnterCriticalSection(&cs);
-        mesh_client_dfu_stop();
-        LeaveCriticalSection(&cs);
-    }
-    else if (m_dfuAction == DISTRIBUTION_ACTION_APPLY)
-    {
-        OnOtaUpgradeApply();
-    }
-    else if (m_dfuAction == DISTRIBUTION_ACTION_GET_STATUS)
-    {
-        char name[80];
-        int result;
-        GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
-        EnterCriticalSection(&cs);
-        result = mesh_client_dfu_get_status(name, &fw_distribution_status);
-        LeaveCriticalSection(&cs);
-        if (result == MESH_CLIENT_SUCCESS)
-            SetTimer(IDT_DISTRIBUTION_STATUS, DISTRIBUTION_STATUS_TIMEOUT, NULL);
-    }
+    char skip_space(FILE* fp);
+    int mesh_json_read_tag_name(FILE* fp, char* tagname, int len);
+    int mesh_json_read_string(FILE* fp, char* buffer, int len);
 }
 
-void CMeshClientDlg::OnOtaUpgradeContinue()
+int mesh_json_read_next_level_tag(FILE* fp, char* tagname, int len)
+{
+    int tag_len = 0;
+
+    if (skip_space(fp) != '{')
+        return 0;
+    if (skip_space(fp) != '\"')
+        return 0;
+    tag_len = mesh_json_read_tag_name(fp, tagname, len);
+    if (skip_space(fp) != ':')
+        return 0;
+    return tag_len;
+}
+
+BOOL CMeshClientDlg::ReadDfuManifestFile(CString sFilePath)
+{
+    char tagname[MAX_TAG_NAME];
+    char filename[MAX_FILE_NAME];
+    char c1;
+    FILE* fp;
+    CString sPath;
+
+    if (_wfopen_s(&fp, sFilePath, L"r"))
+        return FALSE;
+
+    sPath = sFilePath.Left(sFilePath.ReverseFind('\\') + 1);
+
+    if (mesh_json_read_next_level_tag(fp, tagname, sizeof(tagname)) == 0)
+        goto return_false;
+    if (strcmp(tagname, "manifest") != 0)
+        goto return_false;
+    if (mesh_json_read_next_level_tag(fp, tagname, sizeof(tagname)) == 0)
+        goto return_false;
+    if (strcmp(tagname, "firmware") != 0)
+        goto return_false;
+    if (skip_space(fp) != '{')
+        goto return_false;
+    if (skip_space(fp) != '\"')
+        goto return_false;
+    while (1)
+    {
+        if (mesh_json_read_tag_name(fp, tagname, MAX_TAG_NAME) == 0)
+            break;
+        if (skip_space(fp) != ':')
+            goto return_false;
+        c1 = skip_space(fp);
+        if (strcmp(tagname, "firmware_file") == 0)
+        {
+            if (!mesh_json_read_string(fp, filename, MAX_FILE_NAME))
+                goto return_false;
+
+            m_sDfuImageFilePath = sPath;
+            m_sDfuImageFilePath.AppendFormat(L"%S", filename);
+        }
+        else if (strcmp(tagname, "metadata_file") == 0)
+        {
+            if (!mesh_json_read_string(fp, filename, MAX_FILE_NAME))
+                goto return_false;
+
+            CString sMetaFilePath = sPath;
+            sMetaFilePath.AppendFormat(L"%S", filename);
+
+            FILE* fpMeta;
+            if (_wfopen_s(&fpMeta, sMetaFilePath, L"rb"))
+                goto return_false;
+
+            int c = 0, i = 0;
+            while (fread(&c, 1, 1, fpMeta) > 0)
+            {
+                m_DfuMetaData.data[i++] = (uint8_t)c;
+            }
+            m_DfuMetaData.len = (uint8_t)i;
+            fclose(fpMeta);
+        }
+        else if (strcmp(tagname, "firmware_id") == 0)
+        {
+            if (!mesh_json_read_string(fp, filename, MAX_FILE_NAME))
+                goto return_false;
+            char* p = filename;
+            int i = 0;
+            while ((size_t)(p - filename) < strlen(filename))
+            {
+                unsigned int value;
+                sscanf(p, "%02x", &value);
+                m_DfuFwId.fw_id[i++] = (uint8_t)value;
+                p += 2;
+            }
+            m_DfuFwId.fw_id_len = i;
+        }
+        if (skip_space(fp) != ',')
+            break;
+        if (skip_space(fp) != '\"')
+            break;
+    }
+
+    fclose(fp);
+    return TRUE;
+
+return_false:
+    fclose(fp);
+    return FALSE;
+}
+
+void CMeshClientDlg::OnBnClickedOtaUpgradeStart()
 {
     CString sFilePath;
-    CString sInfoFilePath;
     GetDlgItemText(IDC_FILENAME, sFilePath);
-    GetDlgItemText(IDC_INFOFILENAME, sInfoFilePath);
+
+    if (m_dfuState != WICED_BT_MESH_DFU_STATE_INIT && m_dfuState != WICED_BT_MESH_DFU_STATE_COMPLETE && m_dfuState != WICED_BT_MESH_DFU_STATE_FAILED)
+    {
+        Log(L"DFU already started");
+        return;
+    }
 
     if (sFilePath.IsEmpty())
     {
@@ -2388,55 +2343,89 @@ void CMeshClientDlg::OnOtaUpgradeContinue()
             return;
     }
 
-    mesh_dfu_fw_id_t fw_id = { 0 };
-    mesh_dfu_validation_data_t va_data;
-    BOOL got_fw_id = read_dfu_image_info(sInfoFilePath, &fw_id, &va_data);
+    int dfu_method = ((CComboBox*)GetDlgItem(IDC_DFU_METHOD))->GetCurSel();
 
-    int dfu_method = ((CComboBox *)GetDlgItem(IDC_DFU_METHOD))->GetCurSel();
-    if (dfu_method != DFU_METHOD_APP_TO_DEVICE && !got_fw_id)
+    if (dfu_method == DFU_METHOD_APP_TO_DEVICE)
     {
-        Log(L"Failed to find FW ID from DFU Info %s\n", sInfoFilePath);
-        return;
-    }
+        // OTA
+        CString sFileExt = sFilePath.Right(8);
+        if (sFileExt.CompareNoCase(CString(L".ota.bin")) != 0)
+        {
+            MessageBox(L"Please choose correct OTA firmware file (.ota.bin)", L"Error", MB_OK);
+            return;
+        }
 
+        if (m_btInterface == NULL)
+        {
+            MessageBox(L"Device not connected", L"Error", MB_OK);
+            return;
+        }
+
+        m_sDfuImageFilePath = sFilePath;
+
+        // We are doing proprietary OTA Upgrade (app to device)
+        char name[80];
+        GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
+
+        EnterCriticalSection(&cs);
+        mesh_client_connect_component(name, 1, 10);
+        LeaveCriticalSection(&cs);
+    }
+    else
+    {
+        // DFU
+        CString sFileExt = sFilePath.Right(5);
+        if (sFileExt.CompareNoCase(CString(L".json")) != 0)
+        {
+            MessageBox(L"Please choose correct DFU manifest file (.json)", L"Error", MB_OK);
+            return;
+        }
+
+        if (!ReadDfuManifestFile(sFilePath))
+        {
+            MessageBox(L"Failed to read from manifest file", L"Error", MB_OK);
+            return;
+        }
+
+        m_Progress.SetRange32(0, 100);
+        m_Progress.SetPos(0);
+
+        int result;
+        BOOL self_distributor = dfu_method == DFU_METHOD_PROXY_TO_ALL ? FALSE : TRUE;
+        EnterCriticalSection(&cs);
+        result = mesh_client_dfu_start(m_DfuFwId.fw_id, m_DfuFwId.fw_id_len, m_DfuMetaData.data, m_DfuMetaData.len, TRUE, self_distributor);
+        LeaveCriticalSection(&cs);
+        if (result == MESH_CLIENT_SUCCESS)
+        {
+            m_bDfuStatus = FALSE;
+            OnBnClickedOtaUpgradeStatus();
+        }
+    }
+}
+
+BOOL CMeshClientDlg::IsOtaSupported()
+{
     CBtWin10Interface* pWin10BtInterface = dynamic_cast<CBtWin10Interface*>(m_btInterface);
+
+    if (!pWin10BtInterface)
+        return FALSE;
 
     EnterCriticalSection(&cs);
     BOOL ota_supported = pWin10BtInterface->CheckForOTAServices(&GUID_OTA_FW_UPGRADE_SERVICE, &GUID_OTA_SEC_FW_UPGRADE_SERVICE);
     if (ota_supported)
     {
-        Log(L"Found OTA service\n");
+        Log(L"Found OTA service");
         guidSvcWSUpgrade = m_btInterface->m_bSecure ? GUID_OTA_SEC_FW_UPGRADE_SERVICE : GUID_OTA_FW_UPGRADE_SERVICE;
         guidCharWSUpgradeControlPoint = GUID_OTA_FW_UPGRADE_CHARACTERISTIC_CONTROL_POINT;
         guidCharWSUpgradeData = GUID_OTA_FW_UPGRADE_CHARACTERISTIC_DATA;
     }
     LeaveCriticalSection(&cs);
 
-    if (dfu_method != DFU_METHOD_APP_TO_DEVICE)
-    {
-        m_Progress.SetRange32(0, 100);
-        m_Progress.SetPos(0);
+    return ota_supported;
+}
 
-        char name[80];
-        int result;
-        GetDlgItemTextA(m_hWnd, IDC_CONTROL_DEVICE, name, sizeof(name));
-        EnterCriticalSection(&cs);
-        result = mesh_client_dfu_start(dfu_method, name, fw_id.fw_id, fw_id.fw_id_len, va_data.data, va_data.len, ota_supported, fw_distribution_event);
-        LeaveCriticalSection(&cs);
-        if (result == MESH_CLIENT_SUCCESS)
-        {
-            SetTimer(IDT_DISTRIBUTION_STATUS, DISTRIBUTION_STATUS_TIMEOUT, NULL);
-        }
-        return;
-    }
-
-    if (m_btInterface == NULL)
-    {
-        MessageBox(L"Device not connected", L"Error", MB_OK);
-        return;
-    }
-
-    // We are doing proprietary OTA Upgrad (app to device)
+void CMeshClientDlg::StartOta()
+{
     // If Downloader object is created already
     if (m_pDownloader != NULL)
     {
@@ -2444,24 +2433,14 @@ void CMeshClientDlg::OnOtaUpgradeContinue()
         m_pDownloader = NULL;
     }
 
-    if (!ota_supported)
-    {
-        MessageBox(L"This device may not support OTA FW Upgrade. Select another device.", L"Error", MB_OK);
-        return;
-    }
+    CBtWin10Interface* pWin10BtInterface = dynamic_cast<CBtWin10Interface*>(m_btInterface);
 
     // Start OTA
     Log(L"Firmware OTA start");
-    StartOta();
-}
 
-void CMeshClientDlg::StartOta()
-{
     // Load OTA FW file into memory
-    CString sFilePath;
     FILE* fPatch;
-    GetDlgItemText(IDC_FILENAME, sFilePath);
-    if (_wfopen_s(&fPatch, sFilePath, L"rb"))
+    if (_wfopen_s(&fPatch, m_sDfuImageFilePath, L"rb"))
     {
         MessageBox(L"Failed to open the FW image file", L"Error", MB_OK);
         return;
@@ -2479,7 +2458,6 @@ void CMeshClientDlg::StartOta()
     // Create new downloader object
     m_pDownloader = new WSDownloader(m_btInterface, m_pPatch, m_dwPatchSize, m_hWnd);
 
-    CBtWin10Interface* pWin10BtInterface = dynamic_cast<CBtWin10Interface*>(m_btInterface);
     pWin10BtInterface->m_bConnected = TRUE;
 
     BTW_GATT_VALUE gatt_value;
@@ -2495,8 +2473,160 @@ void CMeshClientDlg::StartOta()
     m_pDownloader->ProcessEvent(WSDownloader::WS_UPGRADE_CONNECTED);
 }
 
-void CMeshClientDlg::OnOtaUpgradeApply()
+void CMeshClientDlg::OnBnClickedOtaUpgradeStop()
 {
+    // If OTA download is in progress, stop it
+    if (m_pDownloader && m_pDownloader->m_state == WSDownloader::WS_UPGRADE_STATE_DATA_TRANSFER)
+    {
+        m_pDownloader->ProcessEvent(WSDownloader::WS_UPGRADE_ABORT);
+        return;
+    }
+
+    EnterCriticalSection(&cs);
+    mesh_client_dfu_stop();
+    LeaveCriticalSection(&cs);
+
+    if (m_bDfuStatus)
+        OnBnClickedOtaUpgradeStatus();
+
+    m_dfuState = WICED_BT_MESH_DFU_STATE_INIT;
+    Log(L"DFU stopped");
+}
+
+void fw_distribution_status(uint8_t state, uint8_t* p_data, uint32_t data_length)
+{
+    CMeshClientDlg *pDlg = (CMeshClientDlg *)theApp.m_pMainWnd;
+    if (!pDlg)
+        return;
+
+    pDlg->OnDfuStatusCallback(state, p_data, data_length);
+}
+
+void CMeshClientDlg::OnBnClickedOtaUpgradeStatus()
+{
+    m_bDfuStatus = !m_bDfuStatus;
+
+    EnterCriticalSection(&cs);
+    if (m_bDfuStatus)
+    {
+        mesh_client_dfu_get_status(fw_distribution_status, DISTRIBUTION_STATUS_TIMEOUT);
+        SetDlgItemText(IDC_OTA_UPGRADE_STATUS, L"Stop DFU Status");
+    }
+    else
+    {
+        mesh_client_dfu_get_status(NULL, 0);
+        SetDlgItemText(IDC_OTA_UPGRADE_STATUS, L"Get DFU Status");
+    }
+    LeaveCriticalSection(&cs);
+}
+
+void CMeshClientDlg::OnDfuStatusCallback(uint8_t state, uint8_t* p_data, uint32_t data_length)
+{
+    int progress;
+    uint16_t number_nodes, i;
+    uint8_t *p;
+
+    m_dfuState = state;
+
+    switch (state)
+    {
+    case WICED_BT_MESH_DFU_STATE_VALIDATE_NODES:
+        Log(L"DFU finding nodes");
+        break;
+    case WICED_BT_MESH_DFU_STATE_GET_DISTRIBUTOR:
+        Log(L"DFU choosing Distributor");
+        break;
+    case WICED_BT_MESH_DFU_STATE_UPLOAD:
+        if (p_data && data_length)
+        {
+            progress = (int)p_data[0];
+            Log(L"DFU upload progress %d%%", progress);
+            m_Progress.SetPos(progress / 2);
+        }
+        else
+        {
+            Log(L"DFU uploading firmware to the Distributor");
+        }
+        break;
+    case WICED_BT_MESH_DFU_STATE_DISTRIBUTE:
+        if (p_data && data_length)
+        {
+            number_nodes = (uint16_t)p_data[0] + ((uint16_t)p_data[1] << 8);
+            if (number_nodes * 4 != data_length - 2)
+            {
+                Log(L"DFU bad distribution data length");
+                break;
+            }
+            p = p_data + 2;
+            progress = -1;
+            for (i = 0; i < number_nodes; i++)
+            {
+                //Log(L"DFU distribution src:%02x%02x phase:%d progress:%d", p[1], p[0], p[2], p[3]);
+
+                // Node data: 2 bytes address, 1 byte phase, 1 byte progress
+                if (p[2] == WICED_BT_MESH_FW_UPDATE_PHASE_TRANSFER_ACTIVE)
+                {
+                    // Get first progress
+                    if (progress == -1)
+                        progress = (int)p[3];
+                    // Get the lowest progress from all active nodes
+                    else if (progress > (int)p[3])
+                        progress = (int)p[3];
+                }
+                p += 4;
+            }
+            if (progress == -1)
+                progress = 0;
+            Log(L"DFU distribution progress %d%%", progress);
+
+            m_Progress.SetPos(progress / 2 + 50);
+        }
+        else
+        {
+            Log(L"DFU Distributor distributing firmware to nodes");
+        }
+        break;
+    case WICED_BT_MESH_DFU_STATE_APPLY:
+        Log(L"DFU applying firmware");
+        break;
+    case WICED_BT_MESH_DFU_STATE_COMPLETE:
+        Log(L"DFU completed");
+        m_Progress.SetPos(100);
+        if (p_data && data_length)
+        {
+            number_nodes = (uint16_t)p_data[0] + ((uint16_t)p_data[1] << 8);
+            if (number_nodes * 4 != data_length - 2)
+            {
+                Log(L"DFU bad complete data length");
+                break;
+            }
+            p = p_data + 2;
+            for (i = 0; i < number_nodes; i++)
+            {
+                Log(L"Node %02x%02x DFU %s", p[1], p[0], p[2] == WICED_BT_MESH_FW_UPDATE_PHASE_APPLY_SUCCESS ? L"succeeded" : L"failed");
+                p += 4;
+            }
+        }
+        if (m_bDfuStatus)
+            OnBnClickedOtaUpgradeStatus();
+        break;
+    case WICED_BT_MESH_DFU_STATE_FAILED:
+        Log(L"DFU failed");
+        if (m_bDfuStatus)
+            OnBnClickedOtaUpgradeStatus();
+        break;
+    }
+}
+
+void CMeshClientDlg::OnNodeConnected()
+{
+    if (!IsOtaSupported())
+    {
+        MessageBox(L"This device may not support OTA FW Upgrade. Select another device.", L"Error", MB_OK);
+        return;
+    }
+
+    StartOta();
 }
 
 LRESULT CMeshClientDlg::OnWsUpgradeCtrlPoint(WPARAM Instance, LPARAM lparam)
@@ -2545,15 +2675,9 @@ LRESULT CMeshClientDlg::OnProgress(WPARAM state, LPARAM param)
     else if (state == WSDownloader::WS_UPGRADE_STATE_VERIFIED)
     {
         Log(L"Firmware OTA finish");
-
-        int dfu_method = ((CComboBox *)GetDlgItem(IDC_DFU_METHOD))->GetCurSel();
-        if (dfu_method == DFU_METHOD_APP_TO_DEVICE)
-        {
-            m_dfuState = DFU_STATE_IDLE;
-        }
         if (ota_transfer_for_dfu)
         {
-            mesh_client_dfu_ota_finish(MESH_CLIENT_SUCCESS);
+            mesh_client_dfu_ota_finish(0);
             ota_transfer_for_dfu = FALSE;
         }
     }
@@ -2564,11 +2688,9 @@ LRESULT CMeshClientDlg::OnProgress(WPARAM state, LPARAM param)
         {
             mesh_client_dfu_ota_finish(1);
             ota_transfer_for_dfu = FALSE;
-            KillTimer(IDT_DISTRIBUTION_STATUS);
         }
         else
             m_Progress.SetPos(total);
-        m_dfuState = DFU_STATE_IDLE;
     }
     return S_OK;
 }
@@ -2782,21 +2904,12 @@ LRESULT CMeshClientDlg::OnMeshDeviceAdvReport(WPARAM Instance, LPARAM lparam)
 
 void CMeshClientDlg::OnBnClickedBrowse()
 {
-    static TCHAR BASED_CODE szFilter[] = _T("OTA Files (*.ota.bin)|*.OTA.BIN|");
+    static TCHAR BASED_CODE szFilter[] = _T("DFU Files (*.json)|*.JSON|OTA Files (*.ota.bin)|*.OTA.BIN|");
 
     CFileDialog dlgFile(TRUE, NULL, NULL, OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szFilter);
     if (dlgFile.DoModal() == IDOK)
     {
         SetDlgItemText(IDC_FILENAME, dlgFile.GetPathName());
-    }
-}
-
-void CMeshClientDlg::OnBnClickedInfoBrowse()
-{
-    CFileDialog dlgFile(TRUE, NULL, NULL, OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR);
-    if (dlgFile.DoModal() == IDOK)
-    {
-        SetDlgItemText(IDC_INFOFILENAME, dlgFile.GetPathName());
     }
 }
 
@@ -2932,12 +3045,9 @@ void CMeshClientDlg::OnBnClickedLcConfigure()
 uint32_t CMeshClientDlg::GetDfuImageSize()
 {
     uint32_t file_size;
-    CString sFilePath;
-
-    GetDlgItemText(IDC_FILENAME, sFilePath);
 
     FILE *fPatch;
-    if (_wfopen_s(&fPatch, sFilePath, L"rb"))
+    if (_wfopen_s(&fPatch, m_sDfuImageFilePath, L"rb"))
         return 0;
 
     // Load OTA FW file into memory
@@ -2949,15 +3059,9 @@ uint32_t CMeshClientDlg::GetDfuImageSize()
 
 void CMeshClientDlg::GetDfuImageChunk(uint8_t *p_data, uint32_t offset, uint16_t data_len)
 {
-    CString sFilePath;
-
-    GetDlgItemText(IDC_FILENAME, sFilePath);
-
     FILE *fPatch;
-    if (_wfopen_s(&fPatch, sFilePath, L"rb"))
+    if (_wfopen_s(&fPatch, m_sDfuImageFilePath, L"rb"))
         return;
-
-    offset -= 0x200;
 
     // Load OTA FW file into memory
     fseek(fPatch, offset, SEEK_SET);
@@ -2967,13 +3071,9 @@ void CMeshClientDlg::GetDfuImageChunk(uint8_t *p_data, uint32_t offset, uint16_t
 
 BOOL CMeshClientDlg::GetDfuImageInfo(void *p_fw_id, void *p_va_data)
 {
-    CString sInfoFilePath;
-    GetDlgItemText(IDC_INFOFILENAME, sInfoFilePath);
-
-    if (sInfoFilePath.IsEmpty())
-        return FALSE;
-
-    return read_dfu_image_info(sInfoFilePath, (mesh_dfu_fw_id_t *)p_fw_id, (mesh_dfu_validation_data_t *)p_va_data);
+    *(mesh_dfu_fw_id_t*)p_fw_id = m_DfuFwId;
+    *(mesh_dfu_meta_data_t*)p_va_data = m_DfuMetaData;
+    return TRUE;
 }
 
 extern "C" uint32_t wiced_bt_get_fw_image_size(uint8_t partition)
@@ -2987,11 +3087,6 @@ extern "C" void wiced_bt_get_fw_image_chunk(uint8_t partition, uint32_t offset, 
     CMeshClientDlg *pDlg = (CMeshClientDlg *)theApp.m_pMainWnd;
     if (pDlg != NULL)
         pDlg->GetDfuImageChunk(p_data, offset, data_len);
-}
-
-extern "C" wiced_bool_t wiced_ota_fw_upgrade_get_new_fw_info(uint16_t *company_id, uint8_t *fw_id_len, uint8_t *fw_id)
-{
-    return false;
 }
 
 extern "C" uint32_t wiced_firmware_upgrade_init_nv_locations(void)
@@ -3009,55 +3104,77 @@ extern "C" int32_t ota_fw_upgrade_calculate_checksum(int32_t offset, int32_t len
     return 0;
 }
 
-extern "C" void wiced_bt_fw_save_meta_data(uint8_t partition, uint8_t *p_data, uint32_t len)
-{
-}
-
-extern "C" wiced_bool_t wiced_firmware_upgrade_erase_nv(uint32_t start, uint32_t size)
-{
-    return WICED_TRUE;
-}
-
 extern "C" wiced_bool_t wiced_ota_fw_upgrade_set_transfer_mode(wiced_bool_t transfer_only, wiced_ota_firmware_event_callback_t* p_event_callback)
 {
     return WICED_TRUE;
 }
 
-#define PARTITION_ACTIVE    0
-#define PARTITION_UPGRADE   1
-extern "C" wiced_bool_t wiced_bt_fw_read_meta_data(uint8_t partition, uint8_t *p_data, uint32_t *p_len)
+extern "C" wiced_bool_t wiced_bt_get_upgrade_fw_info(uint32_t *p_fw_size, uint8_t *p_fw_id, uint8_t *p_fw_id_len, uint8_t *p_meta_data, uint8_t *p_meta_data_len)
 {
     CMeshClientDlg *pDlg = (CMeshClientDlg *)theApp.m_pMainWnd;
     mesh_dfu_fw_id_t fwID;
-    mesh_dfu_validation_data_t vaData;
-    uint32_t image_size;
+    mesh_dfu_meta_data_t vaData;
     wiced_bool_t got_data = WICED_FALSE;
-
-    if (partition != PARTITION_UPGRADE)
-        return WICED_FALSE;
 
     if (pDlg && pDlg->GetDfuImageInfo(&fwID, &vaData))
     {
-        if (p_len == NULL || *p_len < (uint32_t)(fwID.fw_id_len + vaData.len + 2 + 4))
-            return WICED_FALSE;
-        *p_len = fwID.fw_id_len + vaData.len + 2 + 4;
-
-        if (p_data)
+        if (p_fw_size)
+            *p_fw_size = pDlg->GetDfuImageSize();
+        if (p_fw_id && p_fw_id_len)
         {
-            uint8_t *p = p_data;
-            *p++ = fwID.fw_id_len;
-            memcpy(p, fwID.fw_id, fwID.fw_id_len);
-            p += fwID.fw_id_len;
-            image_size = wiced_bt_get_fw_image_size(PARTITION_UPGRADE);
-            memcpy(p, &image_size, sizeof(uint32_t));
-            p += sizeof(uint32_t);
-            *p++ = vaData.len;
-            memcpy(p, vaData.data, vaData.len);
+            if (*p_fw_id_len < fwID.fw_id_len)
+                return WICED_FALSE;
+            memcpy(p_fw_id, fwID.fw_id, fwID.fw_id_len);
+            *p_fw_id_len = fwID.fw_id_len;
+        }
+        if (p_meta_data && p_meta_data_len)
+        {
+            if (*p_meta_data_len < vaData.len)
+                return WICED_FALSE;
+            memcpy(p_meta_data, vaData.data, vaData.len);
+            *p_meta_data_len = vaData.len;
         }
         got_data = WICED_TRUE;
     }
 
     return got_data;
+}
+
+extern "C" wiced_bool_t wiced_bt_fw_is_ota_supported()
+{
+    wiced_bool_t result = WICED_FALSE;
+    CMeshClientDlg* pDlg = (CMeshClientDlg*)theApp.m_pMainWnd;
+    if (pDlg != NULL)
+        result = pDlg->IsOtaSupported();
+    return result;
+}
+
+extern "C" void wiced_bt_fw_start_ota()
+{
+    CMeshClientDlg* pDlg = (CMeshClientDlg*)theApp.m_pMainWnd;
+    if (pDlg != NULL)
+    {
+        ota_transfer_for_dfu = TRUE;
+        pDlg->StartOta();
+    }
+}
+
+extern "C" void wiced_firmware_upgrade_finish(void)
+{
+}
+
+extern "C" uint16_t wiced_hal_write_nvram(uint16_t vs_id, uint16_t data_length, uint8_t *p_data, wiced_result_t *p_status)
+{
+    return 0;
+}
+
+extern "C" uint16_t wiced_hal_read_nvram(uint16_t vs_id, uint16_t data_length, uint8_t *p_data, wiced_result_t *p_status)
+{
+    return 0;
+}
+
+extern "C" void wiced_hal_delete_nvram(uint16_t vs_id, wiced_result_t *p_status)
+{
 }
 
 #if defined( MESH_AUTOMATION_ENABLED ) && (MESH_AUTOMATION_ENABLED == TRUE)

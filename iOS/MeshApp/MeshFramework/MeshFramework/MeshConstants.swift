@@ -501,28 +501,25 @@ public struct MeshNotificationConstants {
     }
 
     public static let MESH_CLIENT_DFU_STATUS                    = "meshClientDfuStatusNotification"
-    public static let USER_INFO_KEY_DFU_STATUS                  = "dfuStatus"               // value type: Int, raw data type: uint8_t
-    public static let USER_INFO_KEY_DFU_PROGRESS                = "dfuProgress"             // value type: Int, raw data type: uint8_t
-    public static func getDfuStatus(userInfo: [AnyHashable: Any]) -> (componentName: String, status: Int, progress: Int)? {
+    public static let USER_INFO_KEY_DFU_STATE                  = "dfuState"               // value type: Int, raw data type: uint8_t
+    public static let USER_INFO_KEY_DFU_STATE_DATA                = "dfuStateData"             // value type: Data, raw data type: NSData
+    public static func getDfuStatus(userInfo: [AnyHashable: Any]) -> (state: Int, data: Data)? {
         guard let userInfo = userInfo as? [String: Any] else {
             return nil
         }
-        var dfuStatus: Int?
-        var dfuProgress: Int?
-        var componentName: String?
+        var dfuState: Int?
+        var dfuStateData: Data?
         for (key, value) in userInfo {
-            if key == MeshNotificationConstants.USER_INFO_KEY_DFU_STATUS, value is Int, let value = value as? Int {
-                dfuStatus = value
-            } else if key == MeshNotificationConstants.USER_INFO_KEY_DFU_PROGRESS, value is Int, let value = value as? Int {
-                dfuProgress = value
-            } else if key == MeshNotificationConstants.USER_INFO_KEY_DEVICE_NAME, value is String, let value = value as? String {
-                componentName = value
+            if key == MeshNotificationConstants.USER_INFO_KEY_DFU_STATE, value is Int, let value = value as? Int {
+                dfuState = value
+            } else if key == MeshNotificationConstants.USER_INFO_KEY_DFU_STATE_DATA, value is Data, let value = value as? Data {
+                dfuStateData = value
             }
         }
-        guard let _ = componentName, let _ = dfuStatus, let _ = dfuProgress else {
+        guard let _ = dfuState, let _ = dfuStateData else {
             return nil
         }
-        return (componentName!, dfuStatus!, dfuProgress!)
+        return (dfuState!, dfuStateData!)
     }
 
     public static let MESH_CLIENT_VENDOR_SPECIFIC_DATA_CHANGED  = "meshClientVendorSpecificDataChangedNotification"

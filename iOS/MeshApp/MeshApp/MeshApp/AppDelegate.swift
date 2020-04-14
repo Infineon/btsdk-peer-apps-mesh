@@ -24,6 +24,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         MeshNativeHelper.meshClientLogInit(false)
         #endif
 
+        // Update the the correct version and build information in the application settings.
+        if let mainBundleInfoPlist = Bundle.main.infoDictionary {
+            if let shortVersionString = mainBundleInfoPlist["CFBundleShortVersionString"] {
+                meshLog("Version: \(shortVersionString)")
+                UserDefaults.standard.set("V\(shortVersionString)", forKey: "version_preference")
+            }
+            if let bundleVersion = mainBundleInfoPlist["CFBundleVersion"] {
+                meshLog("Build: \(bundleVersion)")
+                UserDefaults.standard.set("Build \(bundleVersion)", forKey: "build_number_preference")
+            }
+        }
+
         /// 1. Login automatically if App exist without logout, else show the login scene.
         /// 2. If automatically login success, jusp to start scene for Mesh Library initializing, else show the login scene.
         if UserSettings.shared.isAccoutActive, let _ = UserSettings.shared.activeEmail, let _ = UserSettings.shared.activePssword {

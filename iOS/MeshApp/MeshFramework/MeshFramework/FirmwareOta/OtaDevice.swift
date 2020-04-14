@@ -27,15 +27,9 @@ public protocol OtaDeviceProtocol {
     var otaAppInfoCharacteristic: AnyObject? { get set }
 
     /*
-     * OtaUpgrader will call this API to parepare for OTA, including connect to remote device, discover OTA service,
-     * and read App Info if possible.
-     */
-    func prepareOta() -> Int
-
-    /*
      * OtaUpgrader will call this API to start OTA upgrade process.
      */
-    func startOta(fwImage: Data) -> Int
+    func startOta(fwImage: Data, metadata: OtaDfuMetadata?, dfuType: Int)
 
     /*
      * OtaUpgrader will call this API to connect to the remote device.
@@ -142,12 +136,8 @@ public class OtaBleDevice: NSObject, OtaDeviceProtocol {
         return false
     }
 
-    public func prepareOta() -> Int {
-        return OtaUpgrader.shared.otaUpgradePrepare(for: self)
-    }
-
-    public func startOta(fwImage: Data) -> Int {
-        return OtaUpgrader.shared.otaUpgradeStart(for: self, fwImage: fwImage)
+    public func startOta(fwImage: Data, metadata: OtaDfuMetadata? = nil, dfuType: Int = MeshDfuType.APP_OTA_TO_DEVICE) {
+        OtaUpgrader.shared.otaUpgradeDfuStart(for: self, dfuType: dfuType, fwImage: fwImage, metadata: metadata)
     }
 
     public func connect() {
@@ -202,7 +192,7 @@ public class OtaBleDevice: NSObject, OtaDeviceProtocol {
             return
         }
 
-        peripheral.discoverServices([OtaConstants.BLE.UUID_SERVICE_UPGRADE, OtaConstants.BLE_V2.UUID_SERVICE_UPGRADE])
+        peripheral.discoverServices(OtaConstants.UUID_GATT_OTA_SERVICES)
     }
 
     public func enableOtaNotification(enabled: Bool) {
@@ -211,11 +201,6 @@ public class OtaBleDevice: NSObject, OtaDeviceProtocol {
                                                           error: OtaError(code: OtaErrorCode.INVALID_OBJECT_INSTANCES,
                                                                           desc: "peripheral object or control point characteristic is nil"))
             return
-        }
-
-        if controlPointCharacteristic.isNotifying {
-            OtaUpgrader.shared.didUpdateNotificationState(isEnabled: true, error: nil)
-            return // return early
         }
 
         peripheral.setNotifyValue(enabled, for: controlPointCharacteristic)
@@ -285,9 +270,12 @@ public class OtaBleDevice: NSObject, OtaDeviceProtocol {
 public class OtaMeshDevice: OtaBleDevice {
     private var meshName: String
 
-    public init(meshName: String) {
+    public init(meshName: String = "", peripheral: CBPeripheral? = nil) {
         self.meshName = meshName
         super.init()
+        if let peri = peripheral {
+            self.otaDevice = peri
+        }
     }
 
     override public func getDeviceName() -> String {
@@ -303,6 +291,10 @@ public class OtaMeshDevice: OtaBleDevice {
             return true
         }
         return false
+    }
+
+    public override func startOta(fwImage: Data, metadata: OtaDfuMetadata?, dfuType: Int) {
+        OtaUpgrader.shared.otaUpgradeDfuStart(for: self, dfuType: dfuType, fwImage: fwImage, metadata: metadata)
     }
 
     override public func connect() {
@@ -335,7 +327,6 @@ public class OtaMeshDevice: OtaBleDevice {
 
                 self.otaDevice = MeshNativeHelper.getCurrentConnectedPeripheral()
                 meshLog("OtaMeshDevice, connect, meshClientConnectComponent, otaDevice:\(String(describing: self.otaDevice))")
-
                 OtaUpgrader.shared.didUpdateConnectionState(isConnected: true, error: nil)
             }
         }
@@ -420,12 +411,8 @@ public class OtaHomeKitDevice: NSObject, OtaDeviceProtocol {
         return false
     }
 
-    public func prepareOta() -> Int {
-        return OtaUpgrader.shared.otaUpgradePrepare(for: self)
-    }
-
-    public func startOta(fwImage: Data) -> Int {
-        return OtaUpgrader.shared.otaUpgradeStart(for: self, fwImage: fwImage)
+    public func startOta(fwImage: Data, metadata: OtaDfuMetadata? = nil, dfuType: Int = MeshDfuType.APP_OTA_TO_DEVICE) {
+        OtaUpgrader.shared.otaUpgradeDfuStart(for: self, dfuType: dfuType, fwImage: fwImage, metadata: metadata)
     }
 
     public func connect() {

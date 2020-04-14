@@ -40,7 +40,8 @@ static jmethodID meshClientLightnessStateCb;
 static jmethodID meshClientCtlStateCb;
 static jmethodID meshClientNodeConnectStateCb;
 static jmethodID meshClientDbStateCb;
-static jmethodID meshDfuStartCb;
+static jmethodID meshClientDfuIsOtaSupportedCb;
+static jmethodID meshClientDfuStartOtaCb;
 static jmethodID meshClientDfuStatusCb;
 static jmethodID meshClientLinkStatusCb;
 static jmethodID meshClientNetworkOpenedCb;
@@ -56,24 +57,17 @@ static jmethodID lightLcPropertyStatusCb;
 char pathname[100];
 char provisioner_uuid[50];
 static uint8_t WICED_MESH_TRANSPORT_GATEWAY = 2;
-char fw_file_name[100];
-char fw_metadata_file_name[100];
 
-extern void mesh_application_init();
 extern uint8_t mesh_client_is_connecting_provisioning();
 extern void mesh_client_advert_report(uint8_t *bd_addr, uint8_t addr_type, int8_t rssi, uint8_t *adv_data);
 extern void MeshTimerFunc(long timer_id);
-extern void setDfuFilePath(char* filepath);
 
-static uint32_t timer_id = 1;
 extern pthread_mutex_t cs;
-void create_prov_uuid();
-wiced_bool_t get_firmware_info_from_file(char* sFilePath, mesh_dfu_fw_id_t *fwID, mesh_dfu_validation_data_t *vaDATA);
-void mesh_native_lib_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len);
-static mesh_dfu_fw_id_t fw_id = {0};
-static mesh_dfu_validation_data_t va_data = {0};
 
-void unprovisioned_device(uint8_t *p_uuid, uint16_t oob, uint8_t *name, uint8_t name_len);
+static void create_prov_uuid(void);
+static wiced_bool_t read_json_file(const char* sFilePath,mesh_dfu_fw_id_t *fw_id, mesh_dfu_meta_data_t *meta_data);
+static void unprovisioned_device(uint8_t *p_uuid, uint16_t oob, uint8_t *name, uint8_t name_len);
+
 typedef struct
 {
     int is_gatt_proxy;
@@ -94,8 +88,9 @@ typedef struct
 
 device_config_params_t DeviceConfig = { 1, 1, 1, 1, 3, 100, 63, 3, 100, 0, 63, 0, 0, 500 };
 
-#define MESH_COMMAND_GATT_PROXY_PKT      = 0;
-#define MESH_COMMAND_GATT_PROVISION_PKT  = 1;
+static uint32_t timer_id = 1;
+static char* dfu_firmware_file;
+
 
 JNIEXPORT void JNICALL
 Java_com_cypress_le_mesh_meshservice_JNIWrapper_cleanupNative(JNIEnv *env, jclass type) {
@@ -233,8 +228,6 @@ wiced_bool_t mesh_set_scan_type(uint8_t is_active)
     return WICED_TRUE;
 }
 
-
-
 void mesh_adv_scan_stop(void)
 {
     Log("mesh_adv_scan_stop\n");
@@ -263,6 +256,70 @@ wiced_bool_t mesh_bt_gatt_le_disconnect(uint32_t conn_id)
     (*env)->CallStaticVoidMethod(env, cls2, meshGattDisconnectCb, conn_id);
     return WICED_TRUE;
 }
+
+uint32_t wiced_bt_get_fw_image_size(uint8_t partition)
+{
+    uint32_t file_size;
+    FILE *file;
+
+    if (dfu_firmware_file == NULL)
+    {
+        Log("dfu_firmware_file is NULL\n");
+        return 0;
+    }
+
+    file = fopen(dfu_firmware_file, "rb");
+    if (file == NULL)
+    {
+        Log("Failed to open dfu_firmware_file %s\n", dfu_firmware_file);
+        return 0;
+    }
+
+    // Load OTA FW file into memory
+    fseek(file, 0, SEEK_END);
+    file_size = (int)ftell(file);
+    fclose(file);
+    Log("fw_image_size = %d\n", file_size);
+    return file_size;
+}
+
+void wiced_bt_get_fw_image_chunk(uint8_t partition, uint32_t offset, uint8_t *p_data, uint16_t data_len)
+{
+    Log("wiced_bt_get_fw_image_chunk: partition:%d, offset:%d, data_len:%d\n", partition, offset, data_len);
+
+    FILE *file = fopen(dfu_firmware_file, "rb");
+    if (file == NULL) {
+        Log("get_fw_image_chunk: File error %s\n", dfu_firmware_file);
+        return;
+    }
+
+    offset -= 0x200;
+
+    // Load OTA FW file into memory
+    fseek(file, offset, SEEK_SET);
+    fread(p_data, 1, data_len, file);
+    fclose(file);
+}
+
+wiced_bool_t wiced_bt_fw_is_ota_supported()
+{
+    jboolean ota_supported;
+    JNIEnv *env = AttachJava();
+    jclass cls2 = (*env)->FindClass(env, "com/cypress/le/mesh/meshcore/MeshNativeHelper");
+    ota_supported = (*env)->CallStaticBooleanMethod(env, cls2, meshClientDfuIsOtaSupportedCb);
+    Log("wiced_bt_fw_is_ota_supported: %d\n", ota_supported);
+    return ota_supported;
+}
+
+void wiced_bt_fw_start_ota()
+{
+    JNIEnv *env = AttachJava();
+    jstring dfu_firmware_file_name;
+    jclass cls2 = (*env)->FindClass(env, "com/cypress/le/mesh/meshcore/MeshNativeHelper");
+    dfu_firmware_file_name = (*env)->NewStringUTF(env, dfu_firmware_file);
+    (*env)->CallStaticVoidMethod(env, cls2, meshClientDfuStartOtaCb, dfu_firmware_file_name);
+}
+
 
 JNIEXPORT void JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_SendGattPktToCore(JNIEnv *env, jclass type, jshort opcode_,
@@ -305,7 +362,7 @@ wiced_result_t wiced_send_gatt_packet( uint16_t opcode, const uint8_t* p_data, u
     return WICED_TRUE;
 }
 
-void unprovisioned_device(uint8_t *p_uuid, uint16_t oob, uint8_t *name, uint8_t name_len)
+static void unprovisioned_device(uint8_t *p_uuid, uint16_t oob, uint8_t *name, uint8_t name_len)
 {
     Log("unprovisioned_device\n");
     jstring deviceName;
@@ -332,27 +389,15 @@ void meshClientProvisionCompleted(uint8_t is_success, uint8_t *p_uuid) {
     (*env)->CallStaticVoidMethod(env, cls2, meshClientProvisionCompletedCb, isSuccess, data);
 }
 
-void mesh_client_dfu_callback(uint8_t event, uint8_t *p_event_data, uint32_t event_data_length)
+void mesh_client_dfu_status(uint8_t state, uint8_t *p_data, uint32_t data_len)
 {
+    Log("mesh_client_dfu_status: state:%x\n", state);
     JNIEnv *env = AttachJava();
     jclass cls2 = (*env)->FindClass(env,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
-
-    Log("%s: event = %d, len = %d\n", __func__, event, event_data_length);
-    switch (event) {
-        case DFU_EVENT_START_OTA:
-            (*env)->CallStaticVoidMethod(env, cls2, meshDfuStartCb);
-            break;
-    }
-}
-
-void mesh_client_dfu_status(uint8_t status, uint8_t progress)
-{
-    Log("mesh_client_dfu_status status:%x progress:%d", status, progress);
-    JNIEnv *env = AttachJava();
-    jclass cls2 = (*env)->FindClass(env,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
-    jbyte statusval = status;
-    jbyte progressval = progress;
-    (*env)->CallStaticVoidMethod(env, cls2, meshClientDfuStatusCb, statusval, progressval);
+    jbyte state_val = state;
+    jbyteArray data_val = (*env)->NewByteArray(env, data_len);
+    (*env)->SetByteArrayRegion(env, data_val, 0, data_len, p_data);
+    (*env)->CallStaticVoidMethod(env, cls2, meshClientDfuStatusCb, state_val, data_val);
 }
 
 /*
@@ -1294,6 +1339,9 @@ uint32_t start_timer(uint32_t timeout, uint16_t type) {
     Log("start_timer timer_id:%x\n",curr_timerid);
     (*env)->CallStaticVoidMethod(env, cls2, startTimercb, curr_timerid, time, type);
     timer_id++;
+    if (timer_id == 0) {
+        timer_id = 1;
+    }
     return curr_timerid;
 }
 
@@ -1573,7 +1621,7 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientNetworkExport(JNIEn
     return jsonStr;
 }
 
-void create_prov_uuid()
+static void create_prov_uuid(void)
 {
     FILE *fp = fopen("prov_uuid.bin", "rb");
     if (fp == NULL)
@@ -1720,135 +1768,20 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientOTADataDecrypt(JNIE
 }
 
 mesh_client_init_t mesh_client_init_callbacks =
-        {
-                unprovisioned_device,
-                meshClientProvisionCompleted,
-                linkStatus,
-                meshClientNodeConnectionState,
-                meshClientDbChangedState,
-                meshClientOnOffState,
-                meshClientLevelState,
-                meshClientLightnessState,
-                meshClientHslState,
-                meshClientCtlState,
-                meshClientSensorState,
-                meshClientVendorSpecificDataStatus
-        };
-
-
-
-jint
-JNI_OnLoad(JavaVM *vm, void *reserved)
 {
-    Log("OnLoad");
-    JNIEnv  *env;
-    svm = vm;
-    if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK)
-        return -1;
-
-    sCallbackEnv = env;
-    jniWrapperClass = (*sCallbackEnv)->FindClass(sCallbackEnv,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
-    if (jniWrapperClass == 0) {
-        Log("NO CLASS");
-    }
-
-    processDataCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "ProcessData", "(S[BI)V");
-    if(processDataCb == NULL) Log("processDataCb is null");
-
-    processGattPktCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "ProcessGattPacket", "(S[BI)V");
-    if(processGattPktCb == NULL) Log("processGattPktCb is null");
-
-    meshClientUnProvisionedDeviceCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientUnProvisionedDeviceCb", "([BILjava/lang/String;)V");
-    if(meshClientUnProvisionedDeviceCb == NULL) Log("meshClientUnProvisionedDeviceCb is null");
-
-    meshGattAdvScanStartCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientAdvScanStartCb", "()V");
-    if(meshGattAdvScanStartCb == NULL) Log("meshGattAdvScanStartCb is null");
-
-    meshGattSetScanTypeCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientSetAdvScanTypeCb", "(B)V");
-    if(meshGattAdvScanStartCb == NULL) Log("meshGattSetScanTypeCb is null");
-
-    meshGattAdvScanStopCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientAdvScanStopCb", "()V");
-    if(meshGattAdvScanStopCb == NULL) Log("meshGattAdvScanStopCb is null");
-    meshGattProvisSendCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientProvSendCb", "([BI)V");
-    if(meshGattProvisSendCb == NULL) Log("meshGattProvisSendCb is null");
-
-    meshGattProxySendCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientProxySendCb", "([BI)V");
-    if(meshGattProxySendCb == NULL) Log("meshGattProxySendCb is null");
-
-    meshGattConnectCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientConnectCb", "([B)V");
-    if(meshGattConnectCb == NULL) Log("meshGattConnectCb is null");
-
-    meshGattDisconnectCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDisconnectCb", "(I)V");
-    if(meshGattDisconnectCb == NULL) Log("meshGattDisconnectCb is null");
-
-    meshClientProvisionCompletedCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientProvisionCompletedCb", "(B[B)V");
-    if(meshClientProvisionCompletedCb == NULL) Log("provisionCompletedCb is null");
-
-    onOffStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientOnOffStateCb", "(Ljava/lang/String;B)V");
-    if(onOffStateCb == NULL) Log("onOffStateCb is null");
-
-    levelStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLevelStateCb", "(Ljava/lang/String;S)V");
-    if(levelStateCb == NULL) Log("levelStateCb is null");
-
-    meshClientHslStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientHslStateCb", "(Ljava/lang/String;III)V");
-    if(meshClientHslStateCb == NULL) Log("meshClientHslStateCb is null");
-
-    meshClientLightnessStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightnessStateCb", "(Ljava/lang/String;III)V");
-    if(meshClientLightnessStateCb == NULL) Log("meshClientLightnessStateCb is null");
-
-    meshClientCtlStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientCtlStateCb", "(Ljava/lang/String;ISISI)V");
-    if(meshClientCtlStateCb == NULL) Log("meshClientCtlStateCb is null");
-
-    meshClientNodeConnectStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientNodeConnectStateCb", "(BLjava/lang/String;)V");
-    if(meshClientNodeConnectStateCb == NULL) Log("meshClientNodeConnectStateCb is null");
-
-    meshClientDbStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDbStateCb", "(Ljava/lang/String;)V");
-    if(meshClientDbStateCb == NULL) Log("meshClientDbStateCb is null");
-
-    meshClientLinkStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLinkStatusCb", "(BISB)V");
-    if(meshClientLinkStatusCb == NULL) Log("meshClientLinkStatusCb is null");
-
-    meshDfuStartCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDfuStartCb", "()V");
-    if(meshDfuStartCb == NULL) Log("meshDfuStartCb is null");
-
-    meshClientDfuStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDfuStatusCb", "(BB)V");
-    if(meshClientDfuStatusCb == NULL) Log("meshClientDfuStatusCb is null");
-
-    meshClientNetworkOpenedCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientNetworkOpenedCb", "(B)V");
-    if(meshClientNetworkOpenedCb == NULL) Log("meshClientNetworkOpenedCb is null");
-
-    meshClientComponentInfoCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientComponentInfoCallback", "(BLjava/lang/String;Ljava/lang/String;)V");
-    if(meshClientComponentInfoCb == NULL) Log("meshClientComponentInfoCallback is null");
-
-    startTimercb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "startTimercb", "(II)V");
-    if(startTimercb == NULL) Log("startTimercb is null");
-
-    stopTimercb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "stopTimercb", "(I)V");
-    if(stopTimercb == NULL) Log("stopTimercb is null");
-
-    sensorStatuscb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientSensorStatusCb", "(Ljava/lang/String;I[B)V");
-    if(sensorStatuscb == NULL) Log("sensorStatuscb is null");
-
-    vendorStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientVendorStatusCb", "(SSSB[BS)V");
-    if(vendorStatusCb == NULL) Log("vendorStatusCb is null");
-
-    lightLcModeStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightLcModeStatusCb", "(Ljava/lang/String;I)V");
-    if(lightLcModeStatusCb == NULL) Log("meshClientLightLcModeStatusCb is null");
-
-    lightLcOccupancyModeStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightLcOccupancyModeStatusCb", "(Ljava/lang/String;I)V");
-    if(lightLcOccupancyModeStatusCb == NULL) Log("lightLcOccupancyModeStatusCb is null");
-
-    lightLcPropertyStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightLcPropertyStatusCb", "(Ljava/lang/String;II)V");
-    if(lightLcPropertyStatusCb == NULL) Log("lightLcPropertyStatusCb is null");
-
-    //cdToExtStorage();
-    //setting seed for random number generation
-    srand ( time(NULL) );
-
-
-
-    return JNI_VERSION_1_6;
-}
+    unprovisioned_device,
+    meshClientProvisionCompleted,
+    linkStatus,
+    meshClientNodeConnectionState,
+    meshClientDbChangedState,
+    meshClientOnOffState,
+    meshClientLevelState,
+    meshClientLightnessState,
+    meshClientHslState,
+    meshClientCtlState,
+    meshClientSensorState,
+    meshClientVendorSpecificDataStatus
+};
 
 JNIEXPORT void JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientInit(JNIEnv *env, jclass type) {
@@ -1934,41 +1867,33 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientAddComponentToGroup
 }
 
 JNIEXPORT jint JNICALL
-Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuGetStatus(JNIEnv *env,
-                                                                          jclass type,
-                                                                          jstring componentName_) {
-//    mesh_dfu_fw_id_t fw_id;
-//    mesh_dfu_validation_data_t va_data;
-    int res;
-    const char *componentName = (*env)->GetStringUTFChars(env, componentName_, 0);
-    Log("meshClientDfuGetStatus");
-    pthread_mutex_lock(&cs);
-//    if (!get_firmware_info_from_file(fw_metadata_file_name, &fw_id, &va_data))
-//        return MESH_CLIENT_ERR_NOT_FOUND;
-
-    res = mesh_client_dfu_get_status(componentName, &mesh_client_dfu_status);
-    pthread_mutex_unlock(&cs);
-    (*env)->ReleaseStringUTFChars(env, componentName_, componentName);
-    return  res;
-}
-
-JNIEXPORT jint JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuStart(JNIEnv *env, jclass type,
-                                                                      jbyte dfuMethod,
-                                                                      jboolean ota_supported,
-                                                                      jstring componentName_) {
+                                                                      jstring firmware_file_,
+                                                                      jbyte dfuMethod) {
     int res;
-//    mesh_dfu_fw_id_t fw_id;
-//    mesh_dfu_validation_data_t va_data;
-    const char *componentName = (*env)->GetStringUTFChars(env, componentName_, 0);
-    Log("meshClientDfuStart %s",fw_metadata_file_name);
+    mesh_dfu_fw_id_t fw_id = {0};
+    mesh_dfu_meta_data_t meta_data = {0};
+    const char *json_file = (*env)->GetStringUTFChars(env, firmware_file_, 0);
+//    const char *metadata_file = (*env)->GetStringUTFChars(env, metadata_file_, 0);
+
+    Log("meshClientDfuStart: json_file = %s\n",  json_file);
+//    Log("meshClientDfuStart: metadata_file = %s\n",  metadata_file);
+
     pthread_mutex_lock(&cs);
 
-    if (!get_firmware_info_from_file(fw_metadata_file_name, &fw_id, &va_data))
+    if (!read_json_file(json_file, &fw_id, &meta_data)) {
         return MESH_CLIENT_ERR_NOT_FOUND;
-    res = mesh_client_dfu_start(dfuMethod, componentName, fw_id.fw_id, fw_id.fw_id_len, va_data.data, va_data.len, ota_supported, mesh_client_dfu_callback);
+    }
+
+//    dfu_firmware_file = malloc(strlen(firmware_file) + 1);
+//    strcpy(dfu_firmware_file, firmware_file);
+
+    res = mesh_client_dfu_start(fw_id.fw_id, fw_id.fw_id_len, meta_data.data, meta_data.len, 1, dfuMethod);
+
     pthread_mutex_unlock(&cs);
-    (*env)->ReleaseStringUTFChars(env, componentName_, componentName);
+
+    (*env)->ReleaseStringUTFChars(env, firmware_file_, json_file);
+//    (*env)->ReleaseStringUTFChars(env, metadata_file_, metadata_file);
     return res;
 }
 
@@ -1990,79 +1915,108 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuOtaFinished(JNIE
 }
 
 JNIEXPORT void JNICALL
-Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientSetDfuFiles(JNIEnv *env, jclass type,
-                                                                         jstring fw_fileName_,
-                                                                         jstring metadata_file_)
-{
-    const char *fw_fileName = (*env)->GetStringUTFChars(env, fw_fileName_, 0);
-    strcpy(fw_file_name, fw_fileName);
-
+Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuGetStatus(JNIEnv *env, jclass type,
+                                                                          jint status_interval) {
     pthread_mutex_lock(&cs);
-    setDfuFilePath(fw_file_name);
+    mesh_client_dfu_get_status(mesh_client_dfu_status, status_interval);
     pthread_mutex_unlock(&cs);
-
-    Log("fw file :%s",fw_fileName);
-    (*env)->ReleaseStringUTFChars(env, fw_fileName_, fw_fileName);
-
-    if(metadata_file_ != NULL)
-    {
-        const char *metadata_file = (*env)->GetStringUTFChars(env, metadata_file_, 0);
-        strcpy(fw_metadata_file_name, metadata_file);
-        Log("metadata file :%s",metadata_file);
-        (*env)->ReleaseStringUTFChars(env, metadata_file_, metadata_file);
-    }
 }
 
-wiced_bool_t get_firmware_info_from_file(char* sFilePath, mesh_dfu_fw_id_t *fwID, mesh_dfu_validation_data_t *vaDATA)
+static wiced_bool_t read_json_file(const char* sFilePath, mesh_dfu_fw_id_t *fw_id, mesh_dfu_meta_data_t *meta_data)
 {
-    FILE *pFile;
-    char line[600];
+    char rootPath[150]={0};
+    char fwPath[150]={0};
+    char metadataPath[150]={0};
+    int rootPathLen, fwPathLen, metadataPathLen;
     int i, j;
     int value;
+    FILE *p_file;
+    char line[150];
 
-    if (!(pFile = fopen(sFilePath, L"r")))
+
+    rootPathLen = strstr(sFilePath, "manifest.json") - sFilePath;
+    memcpy(rootPath, sFilePath, rootPathLen);
+    memcpy(fwPath, rootPath, rootPathLen);
+    memcpy(metadataPath, rootPath, rootPathLen);
+    Log("rootPath: %s", rootPath);
+
+
+    Log("Read json file: %s", sFilePath);
+    if (!(p_file = fopen(sFilePath, L"r"))) {
         return FALSE;
+    }
 
-    fwID->fw_id_len = 0;
-    vaDATA->len = 0;
-    while (fgets(line, 600, pFile))
-    {
-        if (strstr(line, "Firmware ID") == line)
-        {
-            for (i = strstr(line, "0x") + 2 - line, j = 0; i < 600; i += 2, j++)
-            {
-                if (sscanf(&line[i], "%02x", &value) != 1)
-                    break;
-                fwID->fw_id[j] = (uint8_t)value;
-            }
-            fwID->fw_id_len = j;
+
+    while (fgets(line, 150, p_file)) {
+        if (strstr(line, "firmware_file") != NULL) {
+            fwPathLen = strstr(line, ",") - 1 - (strstr(line, ":") + 3);
+            memcpy(fwPath + rootPathLen, strstr(line, ":")+3, fwPathLen);
+            Log("fwPath: %s", fwPath);
+            dfu_firmware_file = malloc(strlen(fwPath) + 1);
+            strcpy(dfu_firmware_file, fwPath);
         }
-        else if (strstr(line, "Validation Data") == line)
-        {
-            for (i = strstr(line, "0x") + 2 - line, j = 0; i < 600; i += 2, j++)
+
+        if (strstr(line, "metadata_file") != NULL) {
+            metadataPathLen = strstr(line, ",") - 1 - (strstr(line, ":")+3);
+            memcpy(metadataPath + rootPathLen, strstr(line, ":")+3, metadataPathLen);
+            Log("metadataPath: %s", metadataPath);
+        }
+
+        if (strstr(line, "firmware_id") != NULL) {
+            for (i = strstr(line, ":") + 3 - line, j = 0; i < 100; i += 2, j++)
             {
                 if (sscanf(&line[i], "%02x", &value) != 1)
                     break;
-                vaDATA->data[j] = (uint8_t)value;
+                fw_id->fw_id[j] = (uint8_t)value;
             }
-            vaDATA->len = j;
+            fw_id->fw_id_len = j;
         }
     }
 
-    fclose(pFile);
+    fclose(p_file);
+
+    Log("Read metadata: %s", metadataPath);
+    if (!(p_file = fopen(metadataPath, L"rb"))) {
+        return FALSE;
+    }
+
+    fseek (p_file , 0 , SEEK_END);
+    meta_data->len = ftell(p_file);
+    rewind(p_file);
+    fread(meta_data->data, 1, meta_data->len, p_file);
+
+    fclose(p_file);
+
+
     return TRUE;
-}
 
-void mesh_native_lib_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len)
-{
-    *p_fw_id_len = fw_id.fw_id_len;
-    *p_validation_data_len = va_data.len;
-    if (fw_id.fw_id_len) {
-        memcpy(p_fw_id, fw_id.fw_id, fw_id.fw_id_len);
-    }
-    if (va_data.len) {
-        memcpy(p_validation_data, va_data.data, va_data.len);
-    }
+//    fw_id->fw_id_len = 0;
+//    meta_data->len = 0;
+//    while (fgets(line, 200, p_file)) {
+//        if (strstr(line, "Firmware ID") == line) {
+//            Log("read_json_file: %s\n", line);
+//            for (i = strstr(line, "0x") + 2 - line, j = 0; i < 100; i += 2, j++)
+//            {
+//                if (sscanf(&line[i], "%02x", &value) != 1)
+//                    break;
+//                fw_id->fw_id[j] = (uint8_t)value;
+//            }
+//            fw_id->fw_id_len = j;
+//        }
+//        else if (strstr(line, "Validation Data") == line)
+//        {
+//            for (i = strstr(line, "0x") + 2 - line, j = 0; i < 600; i += 2, j++)
+//            {
+//                if (sscanf(&line[i], "%02x", &value) != 1)
+//                    break;
+//                meta_data->data[j] = (uint8_t)value;
+//            }
+//            meta_data->len = j;
+//        }
+//    }
+//
+//    fclose(p_file);
+//    return TRUE;
 }
 
 JNIEXPORT jint JNICALL
@@ -2394,4 +2348,119 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientSetLightLcOnoffSet(
 
     (*env)->ReleaseStringUTFChars(env, componentName_, componentName);
     return res;
+}
+
+
+jint
+JNI_OnLoad(JavaVM *vm, void *reserved)
+{
+    Log("OnLoad");
+    JNIEnv  *env;
+    svm = vm;
+    if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK)
+        return -1;
+
+    sCallbackEnv = env;
+    jniWrapperClass = (*sCallbackEnv)->FindClass(sCallbackEnv,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
+    if (jniWrapperClass == 0) {
+        Log("NO CLASS");
+    }
+
+    processDataCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "ProcessData", "(S[BI)V");
+    if(processDataCb == NULL) Log("processDataCb is null");
+
+    processGattPktCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "ProcessGattPacket", "(S[BI)V");
+    if(processGattPktCb == NULL) Log("processGattPktCb is null");
+
+    meshClientUnProvisionedDeviceCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientUnProvisionedDeviceCb", "([BILjava/lang/String;)V");
+    if(meshClientUnProvisionedDeviceCb == NULL) Log("meshClientUnProvisionedDeviceCb is null");
+
+    meshGattAdvScanStartCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientAdvScanStartCb", "()V");
+    if(meshGattAdvScanStartCb == NULL) Log("meshGattAdvScanStartCb is null");
+
+    meshGattSetScanTypeCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientSetAdvScanTypeCb", "(B)V");
+    if(meshGattAdvScanStartCb == NULL) Log("meshGattSetScanTypeCb is null");
+
+    meshGattAdvScanStopCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientAdvScanStopCb", "()V");
+    if(meshGattAdvScanStopCb == NULL) Log("meshGattAdvScanStopCb is null");
+    meshGattProvisSendCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientProvSendCb", "([BI)V");
+    if(meshGattProvisSendCb == NULL) Log("meshGattProvisSendCb is null");
+
+    meshGattProxySendCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientProxySendCb", "([BI)V");
+    if(meshGattProxySendCb == NULL) Log("meshGattProxySendCb is null");
+
+    meshGattConnectCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientConnectCb", "([B)V");
+    if(meshGattConnectCb == NULL) Log("meshGattConnectCb is null");
+
+    meshGattDisconnectCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDisconnectCb", "(I)V");
+    if(meshGattDisconnectCb == NULL) Log("meshGattDisconnectCb is null");
+
+    meshClientDfuIsOtaSupportedCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDfuIsOtaSupportedCb", "()Z");
+    if(meshClientDfuIsOtaSupportedCb == NULL) Log("meshClientDfuIsOtaSupportedCb is null");
+
+    meshClientDfuStartOtaCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDfuStartOtaCb", "(Ljava/lang/String;)V");
+    if(meshClientDfuStartOtaCb == NULL) Log("meshClientDfuStartOtaCb is null");
+
+    meshClientDfuStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDfuStatusCb", "(B[B)V");
+    if(meshClientDfuStatusCb == NULL) Log("meshClientDfuStatusCb is null");
+
+    meshClientProvisionCompletedCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientProvisionCompletedCb", "(B[B)V");
+    if(meshClientProvisionCompletedCb == NULL) Log("provisionCompletedCb is null");
+
+    onOffStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientOnOffStateCb", "(Ljava/lang/String;B)V");
+    if(onOffStateCb == NULL) Log("onOffStateCb is null");
+
+    levelStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLevelStateCb", "(Ljava/lang/String;S)V");
+    if(levelStateCb == NULL) Log("levelStateCb is null");
+
+    meshClientHslStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientHslStateCb", "(Ljava/lang/String;III)V");
+    if(meshClientHslStateCb == NULL) Log("meshClientHslStateCb is null");
+
+    meshClientLightnessStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightnessStateCb", "(Ljava/lang/String;III)V");
+    if(meshClientLightnessStateCb == NULL) Log("meshClientLightnessStateCb is null");
+
+    meshClientCtlStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientCtlStateCb", "(Ljava/lang/String;ISISI)V");
+    if(meshClientCtlStateCb == NULL) Log("meshClientCtlStateCb is null");
+
+    meshClientNodeConnectStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientNodeConnectStateCb", "(BLjava/lang/String;)V");
+    if(meshClientNodeConnectStateCb == NULL) Log("meshClientNodeConnectStateCb is null");
+
+    meshClientDbStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDbStateCb", "(Ljava/lang/String;)V");
+    if(meshClientDbStateCb == NULL) Log("meshClientDbStateCb is null");
+
+    meshClientLinkStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLinkStatusCb", "(BISB)V");
+    if(meshClientLinkStatusCb == NULL) Log("meshClientLinkStatusCb is null");
+
+    meshClientNetworkOpenedCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientNetworkOpenedCb", "(B)V");
+    if(meshClientNetworkOpenedCb == NULL) Log("meshClientNetworkOpenedCb is null");
+
+    meshClientComponentInfoCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientComponentInfoCallback", "(BLjava/lang/String;Ljava/lang/String;)V");
+    if(meshClientComponentInfoCb == NULL) Log("meshClientComponentInfoCallback is null");
+
+    startTimercb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "startTimercb", "(II)V");
+    if(startTimercb == NULL) Log("startTimercb is null");
+
+    stopTimercb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "stopTimercb", "(I)V");
+    if(stopTimercb == NULL) Log("stopTimercb is null");
+
+    sensorStatuscb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientSensorStatusCb", "(Ljava/lang/String;I[B)V");
+    if(sensorStatuscb == NULL) Log("sensorStatuscb is null");
+
+    vendorStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientVendorStatusCb", "(SSSB[BS)V");
+    if(vendorStatusCb == NULL) Log("vendorStatusCb is null");
+
+    lightLcModeStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightLcModeStatusCb", "(Ljava/lang/String;I)V");
+    if(lightLcModeStatusCb == NULL) Log("meshClientLightLcModeStatusCb is null");
+
+    lightLcOccupancyModeStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightLcOccupancyModeStatusCb", "(Ljava/lang/String;I)V");
+    if(lightLcOccupancyModeStatusCb == NULL) Log("lightLcOccupancyModeStatusCb is null");
+
+    lightLcPropertyStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightLcPropertyStatusCb", "(Ljava/lang/String;II)V");
+    if(lightLcPropertyStatusCb == NULL) Log("lightLcPropertyStatusCb is null");
+
+    //cdToExtStorage();
+    //setting seed for random number generation
+    srand ( time(NULL) );
+
+    return JNI_VERSION_1_6;
 }

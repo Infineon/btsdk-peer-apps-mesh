@@ -422,3 +422,8 @@ void wiced_bt_mesh_add_vendor_model(wiced_bt_mesh_add_vendor_model_data_t* p_dat
 {
 
 }
+
+void wiced_bt_mesh_adv_tx_power_set(uint8_t adv_tx_power)
+{
+
+}

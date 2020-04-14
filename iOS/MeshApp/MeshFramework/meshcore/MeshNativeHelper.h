@@ -54,6 +54,8 @@ typedef NS_ENUM(NSInteger, MeshDfuEvent) {
 
 #define CRC32_INIT_VALUE 0xFFFFFFFF
 
+#define DFU_DISTRIBUTION_STATUS_TIMEOUT     10
+
 #define MESH_DEVICE_DEFAULT_CONFIG_IS_GATT_PROXY                1
 #define MESH_DEVICE_DEFAULT_CONFIG_IS_FRIEND                    1
 #define MESH_DEVICE_DEFAULT_CONFIG_IS_RELAY                     1
@@ -104,6 +106,8 @@ NS_ASSUME_NONNULL_BEGIN
 +(NSArray<NSString *> * __nullable) meshClientGetGroupComponents:(NSString *)groupName;
 +(NSArray<NSString *> * __nullable) meshClientGetTargetMethods:(NSString *)componentName;
 +(NSArray<NSString *> * __nullable) meshClientGetControlMethods:(NSString *)componentName;
++(Boolean) meshClientIsSubGroupName:(NSString *)componentName groupName:(NSString * __nullable)groupName;
++(Boolean) meshClientIsGroup:(NSString *)componentName;
 +(uint8_t) meshClientGetComponentType:(NSString *)componentName;
 +(int) meshClientRename:(NSString *)oldName newName:(NSString *)newName;
 +(int) meshClientMoveComponentToGroup:(NSString *)componentName from:(NSString *)fromGroupName to:(NSString *)toGroupName;
@@ -196,8 +200,8 @@ NS_ASSUME_NONNULL_BEGIN
 +(NSData * __nullable) meshClientOTADataDecrypt:(NSString *)componentName data:(NSData *)data;
 
 // DFU APIs
-+(int) meshClientDfuGetStatus:(NSString *)componentName;
-+(int) meshClientDfuStart:(int)dfuMethod  componentName:(NSString *)componentName firmwareId:(NSData *)firmwareId validationData:(NSData *)validationData;
++(int) meshClientDfuGetStatus:(int)interval;
++(int) meshClientDfuStart:(int)dfuMethod firmwareId:(NSData *)firmwareId validationData:(NSData *)validationData;
 +(int) meshClientDfuStop;
 +(void) meshClientDfuOtaFinish:(int)status;
 
@@ -259,6 +263,7 @@ NS_ASSUME_NONNULL_BEGIN
 +(NSData *) MD5:(NSData *)data;
 +(BOOL) meshClientIsSameNodeElements:(NSString *)networkName elementName:(NSString *)elementName anotherElementName:(NSString *)anotherElementName;
 +(int) meshClientGetNodeElements:(NSString *)networkName elementName:(NSString *)elementName;
++(int) meshClientIsNodeBlocked:(NSString *)networkName elementName:(NSString *)elementName;
 
 +(uint32_t) updateCrc32:(uint32_t)crc data:(NSData *)data;
 

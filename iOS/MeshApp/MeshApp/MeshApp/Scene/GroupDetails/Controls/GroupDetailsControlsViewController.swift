@@ -95,7 +95,6 @@ class GroupDetailsControlsViewController: UIViewController {
     @IBOutlet weak var onOffButtonsView: UIView!
     @IBOutlet weak var turnOnButton: UIButton!
     @IBOutlet weak var trunOffButton: UIButton!
-    @IBOutlet weak var contentScrollView: UIScrollView!
     @IBOutlet weak var deviceImageIcon: UIImageView!
     @IBOutlet weak var lightLCSettingsView: UIView!
     @IBOutlet weak var lightLCSettingsButton: UIButton!
@@ -146,8 +145,6 @@ class GroupDetailsControlsViewController: UIViewController {
     let pickerTypeSuffixString: String = "  >"
 
     var trackingHelper: TrackingHelper = TrackingHelper()
-
-    var isScrollEnabled: Bool = true
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -219,14 +216,6 @@ class GroupDetailsControlsViewController: UIViewController {
 
     // disable view scroll if all subview within the whole screen.
     func scrollViewInit() {
-        let rootBounds = self.view.bounds
-        let bottomViewBounds = trunOffButton.convert(trunOffButton.bounds, to: self.view)
-        if (bottomViewBounds.origin.y + bottomViewBounds.size.height) > (rootBounds.origin.y + rootBounds.size.height) {
-            isScrollEnabled = true
-        } else {
-            isScrollEnabled = false
-        }
-        self.contentScrollView.isScrollEnabled = isScrollEnabled
     }
 
     func defaultSettingInit() {
@@ -420,6 +409,7 @@ class GroupDetailsControlsViewController: UIViewController {
             lightLCSettingsButton.isHidden = true
             lightLCSettingsButton.isEnabled = false
         }
+
         let typeButtonTitle = type.rawValue + pickerTypeSuffixString
         TrackingHelper.shared.stopTracking()
         self.pickerType = type
@@ -712,11 +702,6 @@ extension GroupDetailsControlsViewController {
         }
 
         if let touch = touches.first {
-            // when touch in color picker area, stop scroll to make it easier picker color.
-            if touchInColorPickerArea(touch: touch, event: event) {
-                self.contentScrollView.isScrollEnabled = false
-            }
-
             // User touched UI to change the data, start tracking data changes.
             TrackingHelper.shared.startTracking(componentType: MeshControlPickerType.convertPickerTypeToMeshComponentType(pickerType: self.pickerType))
 
@@ -729,10 +714,6 @@ extension GroupDetailsControlsViewController {
         guard (pickerType == .LIGHT_CTL || pickerType == .LIGHT_HSL) else { return }
 
         if let touch = touches.first {
-            if touchInColorPickerArea(touch: touch, event: event) && self.contentScrollView.isScrollEnabled {
-                self.contentScrollView.isScrollEnabled = false
-            }
-
             isPickerOverlayViewMoving = true
             touchProcess(at: touch.location(in: self.pickerView))
 
@@ -747,10 +728,6 @@ extension GroupDetailsControlsViewController {
         if let touch = touches.first {
             isPickerOverlayViewMoving = false
             touchProcess(at: touch.location(in: self.pickerView))
-        }
-        // Reenable scroll after touch ended.
-        if isScrollEnabled {
-            self.contentScrollView.isScrollEnabled = true
         }
 
         // Stop tracking data changes.

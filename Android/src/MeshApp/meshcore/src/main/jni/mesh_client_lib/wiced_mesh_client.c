@@ -314,7 +314,8 @@ typedef struct
     uint16_t    provisioner_addr;   // address of the device who performs provisioning
     char *      provisioning_device_name; // name of the device being provisioned
     uint16_t    proxy_addr;         // Address of GATT Proxy
-    uint16_t    distributor_addr;   // Address of the distributor performing upgrade
+    uint16_t    dfu_group_addr;     // Address of the group performing upgrade
+    uint8_t     *p_dfu_status_data; // DFU status data
     uint16_t    device_key_addr;    // address of the device key configured in the local device
     uint8_t     db_changed;         // set to true if database changes during any operation
     uint8_t     identify_duration;
@@ -337,7 +338,6 @@ typedef struct
     mesh_client_network_opened_t p_opened_callback;
     mesh_client_component_info_status_t p_component_info_status_callback;
     mesh_client_dfu_status_t p_dfu_status_callback;
-    mesh_client_dfu_event_t p_dfu_event_callback;
     mesh_client_unprovisioned_device_t p_unprovisioned_device;
     mesh_client_provision_status_t p_provision_status;
     mesh_client_connect_status_t p_connect_status;
@@ -356,6 +356,7 @@ typedef struct
     mesh_client_vendor_specific_data_t p_vendor_specific_data;
     pending_operation_t *p_first;
     wiced_timer_t op_timer;
+    wiced_timer_t dfu_status_timer;
 } mesh_provision_cb_t;
 
 mesh_provision_cb_t provision_cb = { 0 };
@@ -373,6 +374,8 @@ static uint8_t configure_local_device(uint16_t unicast_addr, uint8_t phase, uint
 static void configure_queue_local_device_operations(mesh_provision_cb_t *p_cb);
 static void configure_queue_remote_device_operations(mesh_provision_cb_t *p_cb);
 static void configure_pending_operation_queue(mesh_provision_cb_t *p_cb, pending_operation_t *p_op);
+static void app_key_add(mesh_provision_cb_t* p_cb, uint16_t addr, wiced_bt_mesh_db_net_key_t* net_key, wiced_bt_mesh_db_app_key_t* app_key);
+static void model_app_bind(mesh_provision_cb_t* p_cb, wiced_bool_t is_local, uint16_t addr, uint16_t company_id, uint16_t model_id, uint16_t app_key_idx);
 static pending_operation_t *configure_pending_operation_dequeue(mesh_provision_cb_t *p_cb);
 static wiced_bool_t configure_event_in_pending_op(mesh_provision_cb_t *p_cb, wiced_bt_mesh_event_t *p_event);
 static void configure_execute_pending_operation(mesh_provision_cb_t *p_cb);
@@ -450,7 +453,6 @@ static void mesh_process_scan_status(mesh_provision_cb_t *p_cb, wiced_bt_mesh_ev
 static void mesh_process_scan_report(mesh_provision_cb_t *p_cb, wiced_bt_mesh_event_t *p_event, wiced_bt_mesh_provision_scan_report_data_t *p_data);
 static void mesh_process_scan_extended_report(mesh_provision_cb_t *p_cb, wiced_bt_mesh_event_t *p_event, wiced_bt_mesh_provision_scan_extended_report_data_t *p_data);
 static void mesh_process_fw_distribution_status(wiced_bt_mesh_event_t *p_event, void *p);
-static void mesh_process_fw_distribution_start_ota(wiced_bt_mesh_event_t *p_event, void *p);
 static void mesh_process_light_lc_mode_status(wiced_bt_mesh_event_t* p_event, void* p_data);
 static void mesh_process_light_lc_occupancy_mode_status(wiced_bt_mesh_event_t* p_event, void* p);
 static void mesh_process_light_lc_property_status(wiced_bt_mesh_event_t* p_event, void* p_data);
@@ -481,9 +483,10 @@ static void download_rpl_list(void);
 static void rand128(uint8_t *p_array);
 static uint16_t rand16();
 static wiced_bool_t model_needs_sub(uint16_t model_id, wiced_bt_mesh_db_model_id_t *p_models_array);
-static wiced_bt_mesh_event_t *mesh_create_control_event(wiced_bt_mesh_db_mesh_t *p_mesh_db, uint16_t company_id, uint16_t model_id, uint16_t dst, uint16_t app_key_idx, uint16_t num_in_group, uint16_t *group_list);
+static wiced_bt_mesh_event_t *mesh_create_control_event(wiced_bt_mesh_db_mesh_t *p_mesh_db, uint16_t company_id, uint16_t model_id, uint16_t dst, uint16_t app_key_idx);
 static void scan_timer_cb(TIMER_PARAM_TYPE arg);
 static void provision_timer_cb(TIMER_PARAM_TYPE arg);
+static void dfu_status_timer_cb(TIMER_PARAM_TYPE arg);
 static wiced_bool_t add_filter(mesh_provision_cb_t *p_cb, uint16_t addr);
 wiced_bool_t get_control_method(const char *method_name, uint16_t *company_id, uint16_t *model_id);
 wiced_bool_t get_target_method(const char *method_name, uint16_t *company_id, uint16_t *model_id);
@@ -1586,7 +1589,7 @@ uint8_t mesh_client_get_component_info(char *component_name, mesh_client_compone
         Log("not connected\n");
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_USER_PROPERTY_SRV, dst, app_key->index, 0, NULL);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_USER_PROPERTY_SRV, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("property get no mem\n");
@@ -1607,16 +1610,17 @@ uint8_t mesh_client_get_component_info(char *component_name, mesh_client_compone
 /*
  * Current version of the DFU, will use Proxy device as a Distributor node, and all other nodes with the same CID/PID/VID as Updating nodes.
  */
-int mesh_client_dfu_start(uint8_t dfu_method, char *component_name, uint8_t *fw_id, uint8_t fw_id_len, uint8_t *va_data, uint8_t va_data_len, wiced_bool_t ota_supported, mesh_client_dfu_event_t p_dfu_event_callback)
+int mesh_client_dfu_start(uint8_t* fw_id, uint8_t fw_id_len, uint8_t* meta_data, uint8_t meta_data_len, wiced_bool_t auto_apply, wiced_bool_t self_distributor)
 {
     wiced_bt_mesh_fw_distribution_start_data_t start_data;
-    wiced_bt_mesh_db_node_t *p_distributor_node = NULL;
     mesh_provision_cb_t *p_cb = &provision_cb;
     wiced_bt_mesh_event_t *p_event;
     uint16_t num_nodes = 0;
     char     group_name[10];
-    uint16_t device_addr = 0;
+    uint16_t distributor_addr;
     uint16_t fw_cid;
+    uint16_t fw_pid;
+    uint16_t fw_vid;
     int i;
 
     if (p_mesh_db == NULL)
@@ -1629,49 +1633,27 @@ int mesh_client_dfu_start(uint8_t dfu_method, char *component_name, uint8_t *fw_
         Log("not connected\n");
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    // find the distributor node.
-    if (dfu_method == DFU_METHOD_APP_TO_ALL)
-    {
-        // find node with the local addr
-        for (i = 0; i < p_mesh_db->num_nodes; i++)
-        {
-            if (p_mesh_db->node[i].unicast_address == p_cb->unicast_addr)
-            {
-                p_distributor_node = &p_mesh_db->node[i];
-                break;
-            }
-        }
-    }
+
+    if (self_distributor)
+        distributor_addr = p_cb->unicast_addr;
     else
-    {
-        // find distributor node
-        device_addr = get_device_addr(component_name);
-        for (i = 0; i < p_mesh_db->num_nodes; i++)
-        {
-            if (p_mesh_db->node[i].unicast_address == device_addr)
-            {
-                p_distributor_node = &p_mesh_db->node[i];
-                break;
-            }
-        }
-    }
-    // something terribly wrong
-    if (p_distributor_node == NULL)
-    {
-        Log("distributor device not found\n");
-        return MESH_CLIENT_ERR_NETWORK_CLOSED;
-    }
+        distributor_addr = 0;
 
     // Add nodes with the same CID to the list
     start_data.group_size = 0;
-    fw_cid = (((uint16_t)fw_id[0]) << 8) + fw_id[1];
+    fw_cid = (((uint16_t)fw_id[1]) << 8) + fw_id[0];
     for (i = 0; i < p_mesh_db->num_nodes; i++)
     {
-        if ((&p_mesh_db->node[i] == p_distributor_node) || (p_mesh_db->node[i].unicast_address == p_cb->unicast_addr))
-            continue;
-
         if (p_mesh_db->node[i].cid == fw_cid)
         {
+            if (fw_cid == MESH_COMPANY_ID_CYPRESS)
+            {
+                fw_pid = (((uint16_t)fw_id[3]) << 8) + fw_id[2];
+                fw_vid = (((uint16_t)fw_id[5]) << 8) + fw_id[4];
+
+                if (p_mesh_db->node[i].pid != fw_pid || p_mesh_db->node[i].vid != fw_vid)
+                    continue;
+            }
             // for each device that we are adding to the group, core needs to know the device key to configure subscription
             mesh_configure_set_local_device_key(p_mesh_db->node[i].unicast_address);
             start_data.update_nodes_list[start_data.group_size++] = p_mesh_db->node[i].unicast_address;
@@ -1683,25 +1665,25 @@ int mesh_client_dfu_start(uint8_t dfu_method, char *component_name, uint8_t *fw_
         Log("Nothing to upgrade\n");
         return MESH_CLIENT_ERR_NOT_FOUND;
     }
-    p_cb->distributor_addr = p_distributor_node->unicast_address;
-    p_cb->p_dfu_event_callback = p_dfu_event_callback;
 
-    sprintf(group_name, "dfu_%04x", p_distributor_node->unicast_address);
+    sprintf(group_name, "dfu_0001");
     mesh_client_group_create(group_name, NULL);
     start_data.group_addr = wiced_bt_mesh_db_group_get_addr(p_mesh_db, group_name);
+    start_data.proxy_addr = p_cb->proxy_addr;
+    p_cb->dfu_group_addr = start_data.group_addr;
 
     start_data.firmware_id.fw_id_len = fw_id_len;
     memcpy(start_data.firmware_id.fw_id, fw_id, start_data.firmware_id.fw_id_len);
-    start_data.validation_data.len = va_data_len;
-    memcpy(start_data.validation_data.data, va_data, start_data.validation_data.len);
-    start_data.ota_supported = ota_supported;
+    start_data.meta_data.len = meta_data_len;
+    memcpy(start_data.meta_data.data, meta_data, start_data.meta_data.len);
 
-    p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_DISTRIBUTION_CLNT, p_distributor_node->unicast_address, p_mesh_db->app_key[0].index, 0, NULL);
+    p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_DISTRIBUTION_CLNT, p_cb->proxy_addr, p_mesh_db->app_key[0].index);
     if (p_event == NULL)
     {
         Log("no memory\n");
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
+    p_event->dst = distributor_addr;
 
     if (!wiced_bt_mesh_fw_provider_start(p_event, &start_data, mesh_provision_process_event))
     {
@@ -1718,13 +1700,16 @@ void mesh_client_dfu_clean_up(void)
     mesh_provision_cb_t* p_cb = &provision_cb;
     char group_name[10];
 
-    if (p_cb->distributor_addr != 0)
+    if (p_cb->dfu_group_addr != 0)
     {
-        sprintf(group_name, "dfu_%04x", p_cb->distributor_addr);
+        sprintf(group_name, "dfu_0001");
         mesh_client_group_delete(group_name);
 
-        p_cb->distributor_addr = 0;
+        p_cb->dfu_group_addr = 0;
     }
+
+    wiced_stop_timer(&p_cb->dfu_status_timer);
+    wiced_deinit_timer(&p_cb->dfu_status_timer);
 }
 
 /*
@@ -1740,71 +1725,89 @@ int mesh_client_dfu_stop(void)
         Log("Network closed\n");
         return MESH_CLIENT_ERR_NETWORK_CLOSED;
     }
-    if (!mesh_client_is_proxy_connected() && (p_cb->distributor_addr != p_cb->unicast_addr))
+    if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    if (p_cb->distributor_addr != 0)
+    if (p_cb->dfu_group_addr == 0)
     {
-        p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_DISTRIBUTION_CLNT, p_cb->distributor_addr, p_mesh_db->app_key[0].index, 0, NULL);
-        if (p_event == NULL)
-            return MESH_CLIENT_ERR_NO_MEMORY;
-
-        wiced_bt_mesh_fw_provider_stop(p_event);
-        mesh_client_dfu_clean_up();
+        Log("Please get DFU status first\n");
+        return MESH_CLIENT_ERR_INVALID_STATE;
     }
+
+    p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_DISTRIBUTION_CLNT, p_cb->dfu_group_addr, p_mesh_db->app_key[0].index);
+    if (p_event == NULL)
+        return MESH_CLIENT_ERR_NO_MEMORY;
+
+    wiced_bt_mesh_fw_provider_stop(p_event);
+    mesh_client_dfu_clean_up();
+
     return MESH_CLIENT_SUCCESS;
 }
 
 /*
  * Get Status of the current distribution process
  */
-int mesh_client_dfu_get_status(char *distributor_name, mesh_client_dfu_status_t p_dfu_status_callback)
+int mesh_client_dfu_get_status(mesh_client_dfu_status_t p_dfu_status_callback, uint32_t interval)
 {
     wiced_bt_mesh_db_node_t *p_distributor_node = NULL;
     mesh_provision_cb_t *p_cb = &provision_cb;
     wiced_bt_mesh_event_t *p_event;
-    int i;
+
+    // If callback is null, stop getting status
+    if (p_dfu_status_callback == NULL)
+    {
+        p_cb->p_dfu_status_callback = NULL;
+        wiced_stop_timer(&p_cb->dfu_status_timer);
+        return MESH_CLIENT_SUCCESS;
+    }
 
     if (p_mesh_db == NULL)
     {
         Log("Network closed\n");
         return MESH_CLIENT_ERR_NETWORK_CLOSED;
     }
-    if (!mesh_client_is_proxy_connected() && (p_cb->distributor_addr != p_cb->unicast_addr))
+    if (!mesh_client_is_proxy_connected())
     {
-        Log("not connected\n");
+        mesh_client_connect_network(1, 7);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    // find distributor.  if address is 0, that means that the app was restarted.
-    if (p_cb->distributor_addr == 0)
+    // find DFU group address.  if address is 0, that means that the app was restarted.
+    if (p_cb->dfu_group_addr == 0)
     {
-        p_cb->distributor_addr = get_device_addr(distributor_name);
-    }
-    for (i = 0; i < p_mesh_db->num_nodes; i++)
-    {
-        if (p_mesh_db->node[i].unicast_address == p_cb->distributor_addr)
+        char group_name[10];
+
+        sprintf(group_name, "dfu_0001");
+        if ((p_cb->dfu_group_addr = wiced_bt_mesh_db_group_get_addr(p_mesh_db, group_name)) == 0)
         {
-            p_distributor_node = &p_mesh_db->node[i];
-            break;
+            Log("DFU is not started\n");
+            return MESH_CLIENT_ERR_INVALID_STATE;
         }
     }
-    // something terribly wrong
-    if (p_distributor_node == NULL)
-    {
-        Log("no proxy device\n");
-        return MESH_CLIENT_ERR_NETWORK_CLOSED;
-    }
 
-    p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_DISTRIBUTION_CLNT, p_cb->distributor_addr, p_mesh_db->app_key[0].index, 0, NULL);
+    p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_FW_DISTRIBUTION_CLNT, p_cb->dfu_group_addr, p_mesh_db->app_key[0].index);
     if (p_event == NULL)
         return MESH_CLIENT_ERR_NO_MEMORY;
 
     p_cb->p_dfu_status_callback = p_dfu_status_callback;
 
     wiced_bt_mesh_fw_provider_get_status(p_event, mesh_provision_process_event);
+
+    if (interval)
+    {
+        wiced_init_timer(&p_cb->dfu_status_timer, dfu_status_timer_cb, NULL, WICED_SECONDS_PERIODIC_TIMER);
+        wiced_start_timer(&p_cb->dfu_status_timer, interval);
+    }
+
     return MESH_CLIENT_SUCCESS;
+}
+
+void dfu_status_timer_cb(TIMER_PARAM_TYPE arg)
+{
+    mesh_provision_cb_t* p_cb = &provision_cb;
+
+    mesh_client_dfu_get_status(p_cb->p_dfu_status_callback, 0);
 }
 
 /*
@@ -1814,7 +1817,6 @@ void mesh_client_dfu_ota_finish(uint8_t status)
 {
     wiced_bt_mesh_fw_provider_ota_finish(status);
 }
-
 
 int element_is_in_group(uint16_t element_addr, uint16_t group_addr)
 {
@@ -2273,6 +2275,10 @@ int mesh_client_sensor_setting_set(const char *device_name, int property_id, int
                 Log("sensor model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -2283,7 +2289,6 @@ int mesh_client_sensor_setting_set(const char *device_name, int property_id, int
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
 
@@ -2291,12 +2296,11 @@ int mesh_client_sensor_setting_set(const char *device_name, int property_id, int
     config_data.property_id = (uint16_t)property_id;
     config_data.prop_value_len = wiced_bt_mesh_db_get_property_value_len(setting_property_id);
     memcpy(config_data.setting_raw_val, val, config_data.prop_value_len);
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, dst, app_key->index);
 
     if (p_event == NULL)
     {
         Log("setting get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = WICED_TRUE;
@@ -2360,6 +2364,10 @@ int mesh_client_sensor_get(const char *p_name, int property_id)
                 Log("sensor model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -2370,17 +2378,15 @@ int mesh_client_sensor_get(const char *p_name, int property_id)
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
 
     get_data.property_id = (uint16_t)property_id;
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, dst, app_key->index);
 
     if (p_event == NULL)
     {
         Log("sensor get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     Log("Sensor Get addr:%04x app_key_idx:%04x", p_event->dst, p_event->app_key_idx);
@@ -2479,6 +2485,10 @@ int mesh_client_sensor_cadence_set(const char *p_name, int property_id,
                 Log("sensor model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -2504,11 +2514,10 @@ int mesh_client_sensor_cadence_set(const char *p_name, int property_id,
     config_data.cadence_data.fast_cadence_low = fast_cadence_low;
     config_data.cadence_data.fast_cadence_high = fast_cadence_high;
 
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("cadence set no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
 
@@ -2584,7 +2593,7 @@ int mesh_client_light_lc_mode_get(const char* p_name, mesh_client_light_lc_mode_
         Log("not connected\n");
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index, 0, NULL);
+    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("property get no mem\n");
@@ -2633,7 +2642,7 @@ int mesh_client_light_lc_mode_set(const char* p_name, int mode, mesh_client_ligh
         Log("not connected\n");
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index, 0, NULL);
+    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("property get no mem\n");
@@ -2679,7 +2688,7 @@ int mesh_client_light_lc_occupancy_mode_get(const char* p_name, mesh_client_ligh
         Log("not connected\n");
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index, 0, NULL);
+    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("property get no mem\n");
@@ -2728,7 +2737,7 @@ int mesh_client_light_lc_occupancy_mode_set(const char* p_name, int mode, mesh_c
         Log("not connected\n");
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index, 0, NULL);
+    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("property get no mem\n");
@@ -2787,7 +2796,7 @@ int mesh_client_light_lc_property_get(const char* p_name, int property_id, mesh_
 
     get_data.id = (uint16_t)property_id;
 
-    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index, 0, NULL);
+    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index);
 
     if (p_event == NULL)
     {
@@ -2810,7 +2819,6 @@ int mesh_client_light_lc_property_set(const char* p_name, int property_id, int v
     uint16_t dst = get_device_addr(p_name);
     wiced_bt_mesh_light_lc_property_set_data_t set_data;
     uint16_t num_nodes = 0;
-    uint16_t* group_list = NULL;
     wiced_bt_mesh_db_app_key_t* app_key;
 
     if (p_mesh_db == NULL)
@@ -2840,7 +2848,6 @@ int mesh_client_light_lc_property_set(const char* p_name, int property_id, int v
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
 
@@ -2856,7 +2863,7 @@ int mesh_client_light_lc_property_set(const char* p_name, int property_id, int v
     set_data.value[1] = (value >> 8) & 0xFF;
     set_data.value[0] = value & 0xFF;
 
-    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index, 0, NULL);
+    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LC_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("LC Property Set no mem\n");
@@ -2879,7 +2886,6 @@ int mesh_client_light_lc_on_off_set(const char* p_name, uint8_t on_off, wiced_bo
     wiced_bt_mesh_onoff_set_data_t set_data;
     uint16_t dst = get_device_addr(p_name);
     uint16_t num_nodes = 0;
-    uint16_t* group_list = NULL;
     wiced_bt_mesh_db_app_key_t* app_key;
 
     if (p_mesh_db == NULL)
@@ -2909,14 +2915,12 @@ int mesh_client_light_lc_on_off_set(const char* p_name, uint8_t on_off, wiced_bo
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_ONOFF_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t* p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_ONOFF_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("onoff get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = reliable;
@@ -3419,10 +3423,6 @@ void mesh_provision_process_event(uint16_t event, wiced_bt_mesh_event_t *p_event
 
     case WICED_BT_MESH_FW_DISTRIBUTION_STATUS:
         mesh_process_fw_distribution_status(p_event, p_data);
-        return;
-
-    case WICED_BT_MESH_FW_DISTRIBUTION_START_OTA:
-        mesh_process_fw_distribution_start_ota(p_event, p_data);
         return;
 
     case WICED_BT_MESH_HEALTH_ATTENTION_STATUS:
@@ -5631,7 +5631,7 @@ void mesh_process_sensor_descriptor_status(uint16_t addr, wiced_bt_mesh_sensor_d
             app_setup_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Setup");
             memset(p_op, 0, sizeof(pending_operation_t));
             p_op->operation = CONFIG_OPERATION_SENSOR_SETTINGS_GET;
-            p_op->p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, addr, app_setup_key->index, 0, NULL);
+            p_op->p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, addr, app_setup_key->index);
 
             //get all settings of sensor
             p_op->uu.sensor_get.property_id = ptr->descriptor_list[i].property_id;
@@ -5642,7 +5642,7 @@ void mesh_process_sensor_descriptor_status(uint16_t addr, wiced_bt_mesh_sensor_d
             app_setup_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Setup");
             memset(p_op, 0, sizeof(pending_operation_t));
             p_op->operation = CONFIG_OPERATION_SENSOR_CADENCE_GET;
-            p_op->p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, addr, app_setup_key->index, 0, NULL);
+            p_op->p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT, addr, app_setup_key->index);
 
             //get all settings of sensor
             p_op->uu.sensor_get.property_id = ptr->descriptor_list[i].property_id;
@@ -5751,6 +5751,11 @@ uint8_t mesh_client_reset_device(const char *component_name)
     {
         Log("Already removed\n");
         return MESH_CLIENT_SUCCESS;
+    }
+    if (p_cb->state != PROVISION_STATE_IDLE)
+    {
+        Log("invalid state:%d\n", p_cb->state);
+        return MESH_CLIENT_ERR_INVALID_STATE;
     }
     return mesh_reset_node(p_cb, node);
 }
@@ -6197,18 +6202,8 @@ void configure_queue_local_device_operations(mesh_provision_cb_t *p_cb)
                 if ((model_id != WICED_BT_MESH_CORE_MODEL_ID_CONFIG_SRV) &&
                     (model_id != WICED_BT_MESH_CORE_MODEL_ID_CONFIG_CLNT))
                 {
-                    if ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
-                    {
-                        //wiced_bt_mesh_config_model_app_bind_data_t
-                        p_op->operation = CONFIG_OPERATION_MODEL_APP_BIND;
-                        p_op->uu.app_key_bind.operation = OPERATION_BIND;
-                        p_op->p_event = wiced_bt_mesh_create_event(0, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_CONFIG_CLNT, p_cb->unicast_addr, 0xFFFF);
-                        p_op->uu.app_key_bind.element_addr = p_cb->unicast_addr + element_idx;
-                        p_op->uu.app_key_bind.company_id = MESH_COMPANY_ID_BT_SIG;
-                        p_op->uu.app_key_bind.model_id = model_id;
-                        p_op->uu.app_key_bind.app_key_idx = app_key->index;
-                        configure_pending_operation_queue(p_cb, p_op);
-                    }
+                    model_app_bind(p_cb, WICED_TRUE, p_cb->unicast_addr + element_idx, MESH_COMPANY_ID_BT_SIG, model_id, app_key->index);
+
 #if SUBSCRIBE_LOCAL_MODELS_TO_ALL_GROUPS
                     // subscribe all client models to receive all messages for all groups.  When a device is provisioned
                     // it is configured to publish status data to the group
@@ -6235,19 +6230,8 @@ void configure_queue_local_device_operations(mesh_provision_cb_t *p_cb)
             }
             for (j = 0; j < num_vs_models; j++)
             {
-                uint16_t company_id = p_comp_data[0] + (p_comp_data[1] << 8);
-                if ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
-                {
-                    //wiced_bt_mesh_config_model_app_bind_data_t
-                    p_op->operation = CONFIG_OPERATION_MODEL_APP_BIND;
-                    p_op->uu.app_key_bind.operation = OPERATION_BIND;
-                    p_op->p_event = wiced_bt_mesh_create_event(0, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_CONFIG_CLNT, p_cb->unicast_addr, 0xFFFF);
-                    p_op->uu.app_key_bind.element_addr = p_cb->unicast_addr + element_idx;
-                    p_op->uu.app_key_bind.company_id = p_comp_data[0] + (p_comp_data[1] << 8);
-                    p_op->uu.app_key_bind.model_id = p_comp_data[2] + (p_comp_data[3] << 8);
-                    p_op->uu.app_key_bind.app_key_idx = app_key->index;
-                    configure_pending_operation_queue(p_cb, p_op);
-                }
+                model_app_bind(p_cb, WICED_TRUE, p_cb->unicast_addr + element_idx, p_comp_data[0] + (p_comp_data[1] << 8), p_comp_data[2] + (p_comp_data[3] << 8), app_key->index);
+
                 p_comp_data += 4;
                 comp_data_len -= 4;
             }
@@ -6337,6 +6321,26 @@ void app_key_add(mesh_provision_cb_t *p_cb, uint16_t addr, wiced_bt_mesh_db_net_
             configure_pending_operation_queue(p_cb, p_op);
         }
     }
+}
+
+void model_app_bind(mesh_provision_cb_t* p_cb, wiced_bool_t is_local,  uint16_t addr, uint16_t company_id, uint16_t model_id, uint16_t app_key_idx)
+{
+    pending_operation_t* p_op;
+
+    if ((p_op = (pending_operation_t*)wiced_bt_get_buffer(sizeof(pending_operation_t))) == NULL)
+        return;
+
+    p_op->operation = CONFIG_OPERATION_MODEL_APP_BIND;
+    p_op->uu.app_key_bind.operation = OPERATION_BIND;
+    if (is_local)
+        p_op->p_event = wiced_bt_mesh_create_event(0, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_CONFIG_CLNT, p_cb->unicast_addr, 0xFFFF);
+    else
+        p_op->p_event = mesh_configure_create_event(p_cb->addr, (p_cb->addr != p_cb->unicast_addr));
+    p_op->uu.app_key_bind.element_addr = addr;
+    p_op->uu.app_key_bind.company_id = company_id;
+    p_op->uu.app_key_bind.model_id = model_id;
+    p_op->uu.app_key_bind.app_key_idx = app_key_idx;
+    configure_pending_operation_queue(p_cb, p_op);
 }
 
 /*
@@ -6444,15 +6448,7 @@ void configure_queue_remote_device_operations(mesh_provision_cb_t *p_cb)
                 if ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
                 {
                     app_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Generic");
-
-                    p_op->operation = CONFIG_OPERATION_MODEL_APP_BIND;
-                    p_op->uu.app_key_bind.operation = OPERATION_BIND;
-                    p_op->p_event = mesh_configure_create_event(p_cb->addr, (p_cb->addr != p_cb->unicast_addr));
-                    p_op->uu.app_key_bind.element_addr = p_cb->addr + element_idx;
-                    p_op->uu.app_key_bind.company_id = MESH_COMPANY_ID_BT_SIG;
-                    p_op->uu.app_key_bind.model_id = model_id;
-                    p_op->uu.app_key_bind.app_key_idx = app_key->index;
-                    configure_pending_operation_queue(p_cb, p_op);
+                    model_app_bind(p_cb, WICED_FALSE, p_cb->addr + element_idx, MESH_COMPANY_ID_BT_SIG, model_id, app_key->index);
                 }
             }
             if ((p_model_elem = model_needs_default_sub(MESH_COMPANY_ID_BT_SIG, model_id)) != NULL)
@@ -6481,33 +6477,13 @@ void configure_queue_remote_device_operations(mesh_provision_cb_t *p_cb)
                 if (!p_model_elem->is_setup)
 #endif
                 {
-                    if ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
-                    {
-                        app_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Generic");
-
-                        p_op->operation = CONFIG_OPERATION_MODEL_APP_BIND;
-                        p_op->p_event = mesh_configure_create_event(p_cb->addr, (p_cb->addr != p_cb->unicast_addr));
-                        p_op->uu.app_key_bind.operation = OPERATION_BIND;
-                        p_op->uu.app_key_bind.element_addr = p_cb->addr + element_idx;
-                        p_op->uu.app_key_bind.company_id = MESH_COMPANY_ID_BT_SIG;
-                        p_op->uu.app_key_bind.model_id = model_id;
-                        p_op->uu.app_key_bind.app_key_idx = app_key->index;
-                        configure_pending_operation_queue(p_cb, p_op);
-                    }
+                    app_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Generic");
+                    model_app_bind(p_cb, WICED_FALSE, p_cb->addr + element_idx, MESH_COMPANY_ID_BT_SIG, model_id, app_key->index);
                 }
 #ifdef USE_SETUP_APPKEY
-                if ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
                 {
                     app_key_setup = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Setup");
-
-                    p_op->operation = CONFIG_OPERATION_MODEL_APP_BIND;
-                    p_op->p_event = mesh_configure_create_event(p_cb->addr, (p_cb->addr != p_cb->unicast_addr));
-                    p_op->uu.app_key_bind.operation = OPERATION_BIND;
-                    p_op->uu.app_key_bind.element_addr = p_cb->addr + element_idx;
-                    p_op->uu.app_key_bind.company_id = MESH_COMPANY_ID_BT_SIG;
-                    p_op->uu.app_key_bind.model_id = model_id;
-                    p_op->uu.app_key_bind.app_key_idx = app_key_setup->index;
-                    configure_pending_operation_queue(p_cb, p_op);
+                    model_app_bind(p_cb, WICED_FALSE, p_cb->addr + element_idx, MESH_COMPANY_ID_BT_SIG, model_id, app_key_setup->index);
                 }
 #endif
                 if ((p_group_list != NULL) && model_needs_sub(model_id, p_models_array))
@@ -6538,19 +6514,9 @@ void configure_queue_remote_device_operations(mesh_provision_cb_t *p_cb)
                     app_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Generic");
                     app_key_add(p_cb, p_cb->addr, net_key, app_key);
                 }
-                if ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
-                {
-                    app_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Generic");
+                app_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Generic");
+                model_app_bind(p_cb, WICED_FALSE, p_cb->addr + element_idx, MESH_COMPANY_ID_BT_SIG, model_id, app_key->index);
 
-                    p_op->operation = CONFIG_OPERATION_MODEL_APP_BIND;
-                    p_op->p_event = mesh_configure_create_event(p_cb->addr, (p_cb->addr != p_cb->unicast_addr));
-                    p_op->uu.app_key_bind.operation = OPERATION_BIND;
-                    p_op->uu.app_key_bind.element_addr = p_cb->addr + element_idx;
-                    p_op->uu.app_key_bind.company_id = MESH_COMPANY_ID_BT_SIG;
-                    p_op->uu.app_key_bind.model_id = model_id;
-                    p_op->uu.app_key_bind.app_key_idx = app_key->index;
-                    configure_pending_operation_queue(p_cb, p_op);
-                }
                 // if this a client model (for example a switch we need to configure publication.  We also
                 // configure publication for top level servers of the device.  For example a color bulb will be configured
                 // to send HSL status on a change.
@@ -6597,7 +6563,7 @@ void configure_queue_remote_device_operations(mesh_provision_cb_t *p_cb)
 
                     memset(p_op, 0, sizeof(pending_operation_t));
                     p_op->operation = CONFIG_OPERATION_SENSOR_DESC_GET;
-                    p_op->p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT,  p_cb->addr + element_idx, app_key->index, 0, NULL);
+                    p_op->p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_SENSOR_CLNT,  p_cb->addr + element_idx, app_key->index);
                     // get all descriptors
                     p_op->uu.sensor_get.property_id = 0;
                     configure_pending_operation_queue(p_cb, p_op);
@@ -6637,18 +6603,7 @@ void configure_queue_remote_device_operations(mesh_provision_cb_t *p_cb)
                 if (company_id != p_cb->company_id)
                     continue;
 
-                if ((p_op = (pending_operation_t *)wiced_bt_get_buffer(sizeof(pending_operation_t))) != NULL)
-                {
-                    //wiced_bt_mesh_config_model_app_bind_data_t
-                    p_op->operation = CONFIG_OPERATION_MODEL_APP_BIND;
-                    p_op->p_event = mesh_configure_create_event(p_cb->addr, (p_cb->addr != p_cb->unicast_addr));
-                    p_op->uu.app_key_bind.operation = OPERATION_BIND;
-                    p_op->uu.app_key_bind.element_addr = p_cb->addr + element_idx;
-                    p_op->uu.app_key_bind.company_id = company_id;
-                    p_op->uu.app_key_bind.model_id = model_id;
-                    p_op->uu.app_key_bind.app_key_idx = p_app_key->index;
-                    configure_pending_operation_queue(p_cb, p_op);
-                }
+                model_app_bind(p_cb, WICED_FALSE, p_cb->addr + element_idx, company_id, model_id, p_app_key->index);
                 if (p_group_list != NULL)
                 {
                     for (k = 0; p_group_list[k] != 0; k++)
@@ -6697,7 +6652,7 @@ void configure_queue_remote_device_operations(mesh_provision_cb_t *p_cb)
 
                 p_op->operation = CONFIG_OPERATION_DEF_TRANS_TIME;
                 p_op->uu.default_trans_time.time = 0;
-                p_op->p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_DEFTT_CLNT, p_cb->addr + element_idx, app_key_setup->index, 0, NULL);
+                p_op->p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_DEFTT_CLNT, p_cb->addr + element_idx, app_key_setup->index);
                 if (p_op->p_event)
                 {
                     p_op->p_event->retrans_cnt = 4;       // Try 5 times (this is in addition to network layer retransmit)
@@ -7937,7 +7892,7 @@ int mesh_client_identify(const char *p_name, uint8_t duration)
         Log("device not found in DB\n");
         return MESH_CLIENT_ERR_NOT_FOUND;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_HEALTH_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_HEALTH_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         wiced_bt_free_buffer(group_list);
@@ -8023,7 +7978,7 @@ int mesh_client_on_off_get(const char *p_name)
         wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_ONOFF_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_ONOFF_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("onoff get no mem\n");
@@ -8076,6 +8031,10 @@ int mesh_client_on_off_set(const char *p_name, uint8_t on_off, wiced_bool_t reli
                 Log("onoff model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8086,14 +8045,12 @@ int mesh_client_on_off_set(const char *p_name, uint8_t on_off, wiced_bool_t reli
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_ONOFF_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_ONOFF_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("onoff get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = reliable;
@@ -8147,6 +8104,10 @@ int mesh_client_level_get(const char *p_name)
                 Log("level model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8157,14 +8118,12 @@ int mesh_client_level_get(const char *p_name)
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_LEVEL_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_LEVEL_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("onoff get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     Log("Level Get addr:%04x app_key_idx:%04x", p_event->dst, p_event->app_key_idx);
@@ -8214,6 +8173,10 @@ int mesh_client_level_set(const char *p_name, int16_t level, wiced_bool_t reliab
                 Log("level model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8224,14 +8187,12 @@ int mesh_client_level_set(const char *p_name, int16_t level, wiced_bool_t reliab
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_LEVEL_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_LEVEL_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("onoff get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = reliable;
@@ -8286,6 +8247,10 @@ int mesh_client_level_delta_set(const char *p_name, int32_t delta, wiced_bool_t 
                 Log("level model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8296,14 +8261,12 @@ int mesh_client_level_delta_set(const char *p_name, int32_t delta, wiced_bool_t 
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_LEVEL_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_GENERIC_LEVEL_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("onoff get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = reliable;
@@ -8359,6 +8322,10 @@ int mesh_client_lightness_get(const char *p_name)
                 Log("lightness model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8369,14 +8336,12 @@ int mesh_client_lightness_get(const char *p_name)
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LIGHTNESS_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LIGHTNESS_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("lightness get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = WICED_TRUE;
@@ -8428,6 +8393,10 @@ int mesh_client_lightness_set(const char *p_name, uint16_t lightness, wiced_bool
                 Log("lightness model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8438,14 +8407,12 @@ int mesh_client_lightness_set(const char *p_name, uint16_t lightness, wiced_bool
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LIGHTNESS_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_LIGHTNESS_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("lightness get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = reliable;
@@ -8501,6 +8468,10 @@ int mesh_client_hsl_get(const char *p_name)
                 Log("hsl model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8511,14 +8482,12 @@ int mesh_client_hsl_get(const char *p_name)
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_HSL_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_HSL_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("hsl get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = WICED_TRUE;
@@ -8570,6 +8539,10 @@ int mesh_client_hsl_set(const char *p_name, uint16_t lightness, uint16_t hue, ui
                 Log("hsl model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8580,14 +8553,12 @@ int mesh_client_hsl_set(const char *p_name, uint16_t lightness, uint16_t hue, ui
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_HSL_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_HSL_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("hsl get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = reliable;
@@ -8643,6 +8614,10 @@ int mesh_client_ctl_get(const char *p_name)
                 Log("ctl model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8653,14 +8628,12 @@ int mesh_client_ctl_get(const char *p_name)
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_CTL_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_CTL_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("ctl get no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = WICED_TRUE;
@@ -8712,6 +8685,10 @@ int mesh_client_ctl_set(const char *p_name, uint16_t lightness, uint16_t tempera
                 Log("ctl model not present in group\n");
                 return MESH_CLIENT_ERR_METHOD_NOT_AVAIL;
             }
+            if (num_nodes == 1)
+                dst = group_list[0];
+
+            wiced_bt_free_buffer(group_list);
         }
     }
     if (dst == 0)
@@ -8722,14 +8699,12 @@ int mesh_client_ctl_set(const char *p_name, uint16_t lightness, uint16_t tempera
     if (!mesh_client_is_proxy_connected())
     {
         Log("not connected\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NOT_CONNECTED;
     }
-    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_CTL_CLNT, dst, app_key->index, num_nodes, group_list);
+    wiced_bt_mesh_event_t *p_event = mesh_create_control_event(p_mesh_db, MESH_COMPANY_ID_BT_SIG, WICED_BT_MESH_CORE_MODEL_ID_LIGHT_CTL_CLNT, dst, app_key->index);
     if (p_event == NULL)
     {
         Log("ctl set no mem\n");
-        wiced_bt_free_buffer(group_list);
         return MESH_CLIENT_ERR_NO_MEMORY;
     }
     p_event->reply = reliable;
@@ -8745,9 +8720,20 @@ int mesh_client_ctl_set(const char *p_name, uint16_t lightness, uint16_t tempera
     return MESH_CLIENT_SUCCESS;
 }
 
+int mesh_client_core_adv_tx_power_set(uint8_t adv_tx_power)
+{
+    Log("mesh_client_core_adv_tx_power_set called. tx_power:%d\n", adv_tx_power);
+#ifdef CLIENTCONTROL
+    wiced_bt_mesh_adv_tx_power_set(adv_tx_power);
+#endif
+    return MESH_CLIENT_SUCCESS;
+}
+
 int mesh_client_add_vendor_model(uint16_t company_id, uint16_t model_id, uint8_t num_opcodes, uint8_t *buffer, uint16_t data_len)
 {
+    mesh_provision_cb_t* p_cb = &provision_cb;
     wiced_bt_mesh_add_vendor_model_data_t vendata;
+    wiced_bt_mesh_db_app_key_t* app_key;
 
     Log("mesh_client_add_vendor_model called\n");
 
@@ -8761,6 +8747,14 @@ int mesh_client_add_vendor_model(uint16_t company_id, uint16_t model_id, uint8_t
     memcpy(vendata.opcode, buffer, 3 * num_opcodes);
 
     wiced_bt_mesh_add_vendor_model(&vendata);
+
+#ifdef USE_VENDOR_APPKEY
+    app_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Vendor");
+#else
+    app_key = wiced_bt_mesh_db_app_key_get_by_name(p_mesh_db, "Generic");
+#endif
+    model_app_bind(p_cb, WICED_TRUE, p_cb->unicast_addr, company_id, model_id, app_key->index);
+    configure_execute_pending_operation(p_cb);
     return MESH_CLIENT_SUCCESS;
 }
 
@@ -8830,7 +8824,8 @@ int mesh_client_vendor_data_set(const char *device_name, uint16_t company_id, ui
     }
     p_event->opcode = opcode;
 
-    Log("Send VS Data addr:%04x app_key_idx:%04x company_id:%04x model_id:%04x opcode:%02x", p_event->dst, p_event->app_key_idx, company_id, model_id, opcode);
+    Log("Send VS Data addr:%04x app_key_idx:%04x company_id:%04x model_id:%04x opcode:%02x data_len:%d",
+        p_event->dst, p_event->app_key_idx, company_id, model_id, opcode, data_len);
 
     wiced_bt_mesh_client_vendor_data(p_event, buffer, data_len);
     return MESH_CLIENT_SUCCESS;
@@ -9164,37 +9159,53 @@ void mesh_process_scan_extended_report(mesh_provision_cb_t *p_cb, wiced_bt_mesh_
 
 void mesh_process_fw_distribution_status(wiced_bt_mesh_event_t *p_event, void *p)
 {
-    int i;
     mesh_provision_cb_t *p_cb = &provision_cb;
-    wiced_bt_mesh_fw_distribution_status_data_t *p_data = (wiced_bt_mesh_fw_distribution_status_data_t *)p;
-    uint8_t progress = 0;
+    wiced_bt_mesh_fw_distribution_status_data_t *p_status = (wiced_bt_mesh_fw_distribution_status_data_t *)p;
+    uint8_t *p_data = NULL;
+    uint32_t data_length = 0;
 
-    Log("FW Distribution Phase %d Distributor:%x\n", p_data->phase, p_event->src);
-    for (i = 0; i < p_data->num_nodes; i++)
+    if (p_event)
+        wiced_bt_mesh_release_event(p_event);
+
+    if (p_status->num_nodes)
     {
-        Log("Node:%04x Phase:%d Progress:%d%%\n", p_data->node[i].unicast_address, p_data->node[i].phase, p_data->node[i].progress);
-        if (p_data->node[i].phase == WICED_BT_MESH_FW_UPDATE_PHASE_TRANSFER_ACTIVE)
-            progress = p_data->node[i].progress;
+        if (p_status->state == WICED_BT_MESH_DFU_STATE_UPLOAD)
+        {
+            p_data = &p_status->node[0].progress;
+            data_length = 1;
+        }
+        else if (p_status->state == WICED_BT_MESH_DFU_STATE_DISTRIBUTE || p_status->state == WICED_BT_MESH_DFU_STATE_COMPLETE)
+        {
+            if (!p_cb->p_dfu_status_data)
+            {
+                p_cb->p_dfu_status_data = wiced_bt_get_buffer(p_status->list_size * 4 + 2);
+                if (!p_cb->p_dfu_status_data)
+                    return;
+                memcpy(p_cb->p_dfu_status_data, &p_status->list_size, 2);
+            }
+            memcpy(p_cb->p_dfu_status_data + 2 + (p_status->node_index * 4), &p_status->node[0], p_status->num_nodes * 4);
+
+            if (p_status->list_size > p_status->node_index + p_status->num_nodes)
+                return;
+
+            p_data = p_cb->p_dfu_status_data;
+            data_length = p_status->list_size * 4 + 2;
+        }
     }
 
     if (p_cb->p_dfu_status_callback != NULL)
     {
-        p_cb->p_dfu_status_callback(p_data->phase, progress);
+        p_cb->p_dfu_status_callback(p_status->state, p_data, data_length);
     }
-    wiced_bt_mesh_release_event(p_event);
 
-    if (p_data->phase == WICED_BT_MESH_FW_DISTR_PHASE_FAILED || p_data->phase == WICED_BT_MESH_FW_DISTR_PHASE_COMPLETED)
-        mesh_client_dfu_clean_up();
-}
-
-void mesh_process_fw_distribution_start_ota(wiced_bt_mesh_event_t *p_event, void *p)
-{
-    mesh_provision_cb_t *p_cb = &provision_cb;
-
-    if (p_cb->p_dfu_event_callback != NULL)
+    if (p_cb->p_dfu_status_data)
     {
-        p_cb->p_dfu_event_callback(DFU_EVENT_START_OTA, NULL, 0);
+        wiced_bt_free_buffer(p_cb->p_dfu_status_data);
+        p_cb->p_dfu_status_data = NULL;
     }
+
+    if (p_status->state == WICED_BT_MESH_DFU_STATE_COMPLETE || p_status->state == WICED_BT_MESH_DFU_STATE_FAILED)
+        mesh_client_dfu_clean_up();
 }
 
 void mesh_process_on_off_status(wiced_bt_mesh_event_t *p_event, void *p)
@@ -9401,7 +9412,7 @@ uint16_t rand16()
     return (uint16_t)rand();
 }
 
-wiced_bt_mesh_event_t* mesh_create_control_event(wiced_bt_mesh_db_mesh_t* p_mesh_db, uint16_t company_id, uint16_t model_id, uint16_t dst, uint16_t app_key_idx, uint16_t num_in_group, uint16_t* group_list)
+wiced_bt_mesh_event_t* mesh_create_control_event(wiced_bt_mesh_db_mesh_t* p_mesh_db, uint16_t company_id, uint16_t model_id, uint16_t dst, uint16_t app_key_idx)
 {
     wiced_bt_mesh_event_t *p_event = wiced_bt_mesh_create_event(0, company_id, model_id, dst, app_key_idx);
     if (p_event == NULL)
@@ -9417,18 +9428,15 @@ wiced_bt_mesh_event_t* mesh_create_control_event(wiced_bt_mesh_db_mesh_t* p_mesh
     }
     else
     {
-        p_event->retrans_cnt = 2;            // Try 3 times (this is in addition to network layer retransmit)
-        if (dst >= 0xC000)                   // for group address, peer replies with random delay 20-500 msec
+        if (WICED_BT_MESH_IS_GROUP_ADDR(dst))     // for group address, do not retry
         {
-            p_event->num_in_group  = num_in_group;
-            p_event->group_list    = group_list;
-            p_event->retrans_time  = 12;    // Every 600 msec
-            p_event->reply_timeout = 80;    // wait for the reply 4 seconds
+            p_event->retrans_cnt = 0;
         }
         else
         {
+            p_event->retrans_cnt = 2;       // Try 3 times (this is in addition to network layer retransmit)
             p_event->retrans_time  = 6;     // Every 300 msec
-            p_event->reply_timeout = 40;    // wait for the reply 2 seconds
+            p_event->reply_timeout = 60;    // wait for the reply 3 seconds
         }
     }
     return p_event;

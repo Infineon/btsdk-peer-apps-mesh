@@ -362,4 +362,10 @@ int mpConvFromHex(DWORD *a, int ndigits, const char *s)
         return n;
 }
 
+BOOL32 ecdsa_verify_(unsigned char *digest, unsigned char *signature, Point *key)
+{
+    // Dudley: Just a replacehold to avoid compiling issue, should not be called in this MeshApp client.
+    return 0;
+}
+
 #endif

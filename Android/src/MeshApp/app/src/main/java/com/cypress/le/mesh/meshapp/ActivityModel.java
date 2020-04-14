@@ -79,7 +79,7 @@ public class ActivityModel extends AppCompatActivity implements IServiceCallback
     ImageButton move;
     ImageButton addToGroup;
     ImageButton status;
-    ImageButton otaUpgrade;
+    ImageButton mBtnOta;
     TextView compInfoTxt;
     TextView statusTxt;
 
@@ -115,7 +115,7 @@ public class ActivityModel extends AppCompatActivity implements IServiceCallback
         getSupportActionBar().setTitle(name);
         lv = (ExpandableHeightListView) findViewById(R.id.list);
         delete = (ImageButton) findViewById(R.id.imageButton3);
-        otaUpgrade = (ImageButton) findViewById(R.id.otaupgrade);
+        mBtnOta = (ImageButton) findViewById(R.id.activity_model_btn_ota_upgrade);
 
         move = (ImageButton) findViewById(R.id.movebtn);
         addToGroup = (ImageButton) findViewById(R.id.addToGroup);
@@ -184,15 +184,14 @@ public class ActivityModel extends AppCompatActivity implements IServiceCallback
             }
         });
 
-        otaUpgrade.setOnClickListener(new View.OnClickListener() {
+        mBtnOta.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Log.d(TAG,"clicked upgrade");
+                Log.d(TAG, "OTA");
                 Intent intent;
                 Bundle bundle = new Bundle();
-                bundle.putString("GroupName", mGroupName);
                 bundle.putString("name", name);
-                intent = new Intent(ActivityModel.this, ActivityOtaUpgrade.class);
+                intent = new Intent(ActivityModel.this, ActivityOta.class);
                 intent.putExtras(bundle);
 
                 startActivity(intent);
@@ -494,24 +493,10 @@ public class ActivityModel extends AppCompatActivity implements IServiceCallback
     @Override
     public void onNodeConnStateChanged(final byte status, final String componentName) {
         Log.d(TAG,"onNodeConnStateChanged in Model UI");
-        if(isUpgradeInProgress) {
-            serviceReference.getMesh().startOtaUpgrade(componentName, mDfuMethod);
-        }
-
-        /*
-        switch (status) {
-            case IMeshControllerCallback.MESH_CLIENT_NODE_WARNING_UNREACHABLE:
-                show("Node" +componentName+" failed to connect ", Toast.LENGTH_SHORT);
-                break;
-            case IMeshControllerCallback.MESH_CLIENT_NODE_ERROR_UNREACHABLE:
-                show("!!! Action Required Node " +componentName+" unreachable", Toast.LENGTH_SHORT);
-                break;
-        }
-        */
     }
 
     @Override
-    public void onOTAUpgradeStatus(byte status, int percentComplete) {
+    public void onOtaStatus(byte status, int percentComplete) {
 
     }
 
@@ -532,17 +517,8 @@ public class ActivityModel extends AppCompatActivity implements IServiceCallback
     }
 
     @Override
-    public void onDfuStatus(byte status, byte progress) {
-        Log.d(TAG,"onDfuStatus");
-        String txt =compInfoTxt.getText().toString();
-        txt = txt + "\nstatus:"+status+" progress:"+progress+"%";
-        final String finalTxt = txt;
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                compInfoTxt.setText(finalTxt);
-            }
-        });
+    public void onDfuStatus(byte status, byte[] data) {
+
     }
 
     @Override

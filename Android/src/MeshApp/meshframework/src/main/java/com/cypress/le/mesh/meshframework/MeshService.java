@@ -46,16 +46,12 @@ import java.util.UUID;
 
 
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-public class MeshService extends Service implements IMeshGattClientCallback {
-
+public class MeshService extends Service {
     private static String TAG = "MeshService";
 
     public static final int TRANSPORT_GATT = 1;
     public static final int TRANSPORT_GATEWAY = 2;
     private static boolean USE_INTERNAL_STORAGE = true;
-
-    public static final int MESH_CLIENT_ERR_NOT_CONNECTED = 2;
-    public static final int MESH_CLIENT_ERR_INVALID_ARGS = 8;
 
     static String BIGBDaddr = null;
     static String BigBdAddr = "";
@@ -69,50 +65,87 @@ public class MeshService extends Service implements IMeshGattClientCallback {
     private TrackingHelper mTrackingHelper = null;
 
     //Enable TRANSPORT_MESH_CONTROLLER_GATT to choose controller GATT
-    private static int mTransport              = TRANSPORT_GATT;//TRANSPORT_MESH_CONTROLLER_GATT;
-    private static MeshGattClient mMeshGattClient = null;
+    private int mTransport = TRANSPORT_GATT;//TRANSPORT_MESH_CONTROLLER_GATT;
 
-    static MeshNativeHelper mMeshHelper = null;
-    static Timer mTrackingTimer = null;
+    private MeshGattClient mMeshGattClient = null;
 
-    private boolean provision_connecting = false;
-    private int retries = 0;
+    private MeshNativeHelper mMeshNativeHelper = null;
+    private Timer            mTrackingTimer    = null;
 
     /* Mesh Client changes*/
     private String mCurrNetwork = null;
     IMeshControllerCallback mMeshControllerCb = null;
 
-    private int mConnectionId = 0;
-
     // Binder given to clients
     private final IBinder mBinder = new LocalBinder();
-    private String mFileName = null;
-    private String mMetadataFile = null;
 
-
-    void register(IMeshControllerCallback cb){
-        infoLog("register register");
-        mMeshControllerCb = cb;
-    }
-
-    void stopTracking() {
-        //stop hsl timer
-        CURRENT_TRACKING_STATE = STATE_IDLE;
-        mTrackingHelper.stopTracking();
-        if(mTrackingTimer != null)
-        {
-        mTrackingTimer.cancel();
-        mTrackingTimer.purge();
-        mTrackingTimer = null;
+    // Class used for the client Binder.  Because we know this service always
+    // runs in the same process as its clients, we don't need to deal with IPC.
+    public class LocalBinder extends Binder {
+        MeshService getService() {
+            // Return this instance of LocalService so clients can call public methods
+            return MeshService.this;
         }
     }
 
+
+    @Override
+    public void onCreate() {
+        Log.i(TAG, "onCreate");
+        super.onCreate();
+
+        mMeshNativeHelper = MeshNativeHelper.getInstance();
+        mMeshNativeHelper.registerNativeCallback(nativeCallback);
+        mMeshNativeHelper.meshClientInit();
+
+        if (USE_INTERNAL_STORAGE)
+            mMeshNativeHelper.setFileStorge(getFilesDir().getAbsolutePath());
+        else
+            mMeshNativeHelper.setFileStorge(Environment.getExternalStorageDirectory().getAbsolutePath());
+
+        mMeshGattClient = new MeshGattClient(this, mMeshNativeHelper, gattClientCallback);
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.i(TAG, "onDestroy");
+        mMeshGattClient   = null;
+        mMeshNativeHelper = null;
+        mMeshControllerCb = null;
+        super.onDestroy();
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        Log.i(TAG, "onBind intent:" + intent);
+        return (mBinder);
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        Log.i(TAG, "onUnbind");
+        return super.onUnbind(intent);
+    }
+
+    // DeathReceipient handlers used to unregister applications that
+    // die ungracefully (ie. crash or forced close).
+    class MeshDeathRecipient implements IBinder.DeathRecipient {
+        public void binderDied() {
+            Log.e(TAG, "Binder is dead - closing network (" + mCurrNetwork + ")!");
+        }
+    }
+
+    void register(IMeshControllerCallback cb){
+        Log.i(TAG, "register");
+        mMeshControllerCb = cb;
+    }
+
     void startTracking() {
-        //start hsl timer
+        // start HSL timer
         mTrackingHelper = new TrackingHelper();
         CURRENT_TRACKING_STATE = STATE_TRACKING;
         mTrackingHelper.startTracking();
-        if(mTrackingTimer == null)
+        if (mTrackingTimer == null)
             mTrackingTimer = new Timer();
         mTrackingTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -122,12 +155,23 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         }, 0, 100);
     }
 
+    void stopTracking() {
+        // Stop HSL timer
+        CURRENT_TRACKING_STATE = STATE_IDLE;
+        mTrackingHelper.stopTracking();
+        if (mTrackingTimer != null) {
+            mTrackingTimer.cancel();
+            mTrackingTimer.purge();
+            mTrackingTimer = null;
+        }
+    }
+
     int isNetworkExist(String meshName) {
         return mMeshNativeHelper.meshClientNetworkExists(meshName);
     }
 
     int setDeviceConfig(String deviceName, int isGattProxy, int isFriend, int isRelay, int sendNetBeacon, int relayXmitCount, int relayXmitInterval, int defaultTtl, int netXmitCount, int netXmitInterval) {
-        if(deviceName == null || deviceName.equals(""))
+        if (deviceName == null || deviceName.equals(""))
             deviceName = "";
         return mMeshNativeHelper.meshClientSetDeviceConfig(deviceName, isGattProxy, isFriend, isRelay, sendNetBeacon, relayXmitCount, relayXmitInterval, defaultTtl, netXmitCount, netXmitInterval);
     }
@@ -142,31 +186,32 @@ public class MeshService extends Service implements IMeshGattClientCallback {
 
     int vendorDataSet(String deviceName, short companyId, short modelId, byte opcode, byte[] buffer, short len) {
         if(!isConnectedToNetwork())
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         return mMeshNativeHelper.meshClientVendorDataSet(deviceName, companyId, modelId, opcode, buffer, len);
     }
 
     int identify(String name, byte duration) {
         if(!isConnectedToNetwork())
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         return mMeshNativeHelper.meshClientIdentify(name,duration);
     }
 
     int lightnessGet(String deviceName) {
         if (!isConnectedToNetwork())
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         return mMeshNativeHelper.meshClientLightnessGet(deviceName);
     }
 
     int lightnessSet(String name, int lightness, boolean reliable, int transitionTime, short delay) {
         int res;
-        if(!isConnectedToNetwork())
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
-        if(CURRENT_TRACKING_STATE == STATE_TRACKING) {
+        if (!isConnectedToNetwork())
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
+        if (CURRENT_TRACKING_STATE == STATE_TRACKING) {
             mTrackingHelper.setTrackingType(TrackingHelper.TRACK_LIGHTNESS_SET);
             mTrackingHelper.LightnessSetMessage(name, lightness, transitionTime,delay);
             res = 1;
-        } else {
+        }
+        else {
             res = mMeshNativeHelper.meshClientLightnessSet(name, lightness, reliable, transitionTime,delay);
         }
         return res;
@@ -178,29 +223,17 @@ public class MeshService extends Service implements IMeshGattClientCallback {
 
     int ctlSet(String name, int lightness, short temperature, short deltaUv, boolean reliable, int transitionTime, short delay) {
         int res;
-        if(!isConnectedToNetwork())
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
-        if(CURRENT_TRACKING_STATE == STATE_TRACKING) {
+        if (!isConnectedToNetwork())
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
+        if (CURRENT_TRACKING_STATE == STATE_TRACKING) {
             mTrackingHelper.setTrackingType(TrackingHelper.TRACK_CTL_SET);
             mTrackingHelper.CtlSetMessage(name, lightness, temperature, deltaUv, transitionTime,delay);
             res = 1;
-        } else {
+        }
+        else {
             res = mMeshNativeHelper.meshClientCtlSet(name, lightness, temperature, deltaUv, reliable, transitionTime,delay);
         }
         return res;
-    }
-
-    @Override
-    public void onNetworkConnectionStateChange() {
-        if(mMeshControllerCb != null) {
-            Log.d(TAG,"onNetworkConnectionStateChange status:"+isConnectedToNetwork());
-            mMeshControllerCb.onNetworkConnectionStatusChanged((byte)mTransport, isConnectedToNetwork()?IMeshControllerCallback.NETWORK_CONNECTION_STATE_CONNECTED:IMeshControllerCallback.NETWORK_CONNECTION_STATE_DISCONNECTED);
-        }
-    }
-
-    @Override
-    public void onOTAUpgradeStatusChanged(byte status, int percent) {
-        mMeshControllerCb.onOTAUpgradeStatus(status, percent);
     }
 
     String[] getTargetMethods(String componentName) {
@@ -215,32 +248,31 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         return mMeshNativeHelper.meshConnectComponent(componentName, (byte) TRANSPORT_GATT, scanDuration);
     }
 
-    public int startOtaUpgrade(String componentName, byte upgradeType) {
-        Log.d(TAG,"otaUpgrade fileName:"+mFileName + ", upgradeType = " + upgradeType);
-//        if(upgradeType == MeshController.DFU_METHOD_PROXY_TO_ALL || upgradeType == MeshController.DFU_METHOD_APP_TO_ALL) {
-//            return mMeshNativeHelper.meshClientDfuStart(upgradeType, componentName);
-//        } else if (upgradeType == MeshController.DFU_METHOD_APPLY) {
-//            mMeshGattClient.otaUpgradeApply();
-//            return 0;
-//        } else {
-//            mMeshGattClient.startOtaUpgrade(componentName, mFileName, mMetadataFile, upgradeType);
-//            return 0;
-//        }
-        return mMeshGattClient.startOtaUpgrade(componentName, mFileName, mMetadataFile, upgradeType);
+    public int startDfu(String firmwareFile, byte dfuMethod) {
+        Log.i(TAG, "startDfu: firmwareFile = " + firmwareFile + "dfuMethod = " + dfuMethod);
+//        Log.i(TAG, "startDfu: metadataFile = " + metadataFile);
+        return mMeshNativeHelper.meshClientDfuStart(firmwareFile, dfuMethod);
     }
 
-    public void setOTAFiles(String fwFile, String metadataFile) {
-        Log.d(TAG,"setOTaFiles fw file :"+fwFile+" metadataFile :"+metadataFile);
-        mFileName = fwFile;
-        mMetadataFile = metadataFile;
-        if(fwFile != null) {
-            mMeshNativeHelper.meshClientSetDfuFiles(fwFile, metadataFile);
+    public void stopDfu() {
+        Log.i(TAG, "stopDfu");
+        mMeshNativeHelper.meshClientDfuStop();
+    }
+
+    public void getDfuStatus(int statusInterval) {
+        Log.i(TAG, "getDfuStatus: statusInterval = " + statusInterval);
+        mMeshNativeHelper.meshClientDfuGetStatus(statusInterval);
+    }
+
+    public void startOta(String firmwareFile) {
+        Log.i(TAG, "startOta: firmwareFile = " + firmwareFile);
+        if (mMeshGattClient != null) {
+            mMeshGattClient.startOta(firmwareFile, false);
         }
     }
 
-    public int stopOtaUpgrade() {
-        mMeshGattClient.stopOtaUpgrade();
-        return mMeshNativeHelper.meshClientDfuStop();
+    public void stopOta() {
+        mMeshGattClient.stopOta();
     }
 
     boolean sendReceivedData(byte[] data) {
@@ -248,14 +280,14 @@ public class MeshService extends Service implements IMeshGattClientCallback {
             mMeshNativeHelper.SendRxProxyPktToCore(data, data.length);
             return true;
         } else {
-            Log.d(TAG,"Invalid transport!!!");
+            Log.i(TAG,"Invalid transport!!!");
             return false;
         }
     }
 
     String importNetwork(String provisionerName, String jsonString) {
-        infoLog("importNetwork ");
-        if((provisionerName == null || provisionerName.equals("")) || (jsonString == null || jsonString.equals("")))
+        Log.i(TAG, "importNetwork ");
+        if (provisionerName == null || provisionerName.equals("") || jsonString == null || jsonString.equals(""))
             return null;
 
         if(isConnectedToNetwork()) {
@@ -272,27 +304,27 @@ public class MeshService extends Service implements IMeshGattClientCallback {
     }
 
     String exportNetwork(String meshName) {
-        infoLog("exportNetwork ");
+        Log.i(TAG, "exportNetwork ");
         if((meshName == null || meshName.equals("")))
             return null;
         return mMeshNativeHelper.meshClientNetworkExport(meshName);
     }
 
     int deleteNetwork(String provisionerName, String meshName) {
-        if((provisionerName == null || provisionerName.equals("")) || (meshName == null || meshName.equals("")))
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+        if (provisionerName == null || provisionerName.equals("") || meshName == null || meshName.equals(""))
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         return mMeshNativeHelper.meshClientNetworkDelete(provisionerName, meshName);
     }
 
     byte getComponentInfo(String componentName) {
         if(componentName == null || componentName.equals(""))
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         return mMeshNativeHelper.meshClientGetComponentInfo(componentName);
     }
 
      String[] getComponentGroupList(String componentName) {
         if(componentName == null || componentName.equals("")) {
-            Log.d(TAG, "componentName is not valid");
+            Log.i(TAG, "componentName is not valid");
             return null;
         }
         return mMeshNativeHelper.meshClientGetComponentGroupList(componentName);
@@ -300,18 +332,14 @@ public class MeshService extends Service implements IMeshGattClientCallback {
 
     int removeComponentFromGroup(String componentName, String groupName) {
         if(componentName == null || componentName.equals("") || groupName == null || groupName.equals(""))
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         return mMeshNativeHelper.meshClientRemoveComponentFromGroup(componentName, groupName);
     }
 
     int addComponentToGroup(String componentName, String groupName) {
         if(componentName == null || componentName.equals("") || groupName == null || groupName.equals(""))
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         return mMeshNativeHelper.meshClientAddComponentToGroup(componentName, groupName);
-    }
-
-    int dfuGetStatus(String componentName) {
-        return mMeshNativeHelper.meshClientDfuGetStatus(componentName);
     }
 
     int networkConnectionChanged(int connId) {
@@ -326,7 +354,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals("") || propertyId == 0)
         {
             Log.d(TAG, "componentName is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientSensorCadenceSet(componentName, propertyId, fastCadencePeriodDivisor, triggerType,
                 triggerDeltaDown, triggerDeltaUp, minInterval, fastCadenceLow, fastCadenceHigh);
@@ -354,7 +382,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals("") || propertyId == 0 || val == null)
         {
             Log.d(TAG, "componentName is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientSensorSettingSet(componentName, propertyId, settingPropertyId, val);
 
@@ -364,7 +392,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals("") && propertyId == 0)
         {
             Log.d(TAG, "params is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientSensorGet(componentName, propertyId);
     }
@@ -392,7 +420,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
                 method == null || method.equals(""))
         {
             Log.d(TAG, "params is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientGetPublicationPeriod(componentName, isClient == true ?(byte)1:0, method);
     }
@@ -401,7 +429,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals(""))
         {
             Log.d(TAG, "params is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientGetLightLcMode(componentName);
     }
@@ -410,7 +438,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals(""))
         {
             Log.d(TAG, "params is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientSetLightLcMode(componentName, mode);
     }
@@ -419,7 +447,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals(""))
         {
             Log.d(TAG, "params is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientGetLightLcOccupancyMode(componentName);
     }
@@ -428,7 +456,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals(""))
         {
             Log.d(TAG, "params is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientSetLightLcOccupancyMode(componentName, mode);
     }
@@ -437,7 +465,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals(""))
         {
             Log.d(TAG, "params is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientGetLightLcProperty(componentName, propertyId);
     }
@@ -446,7 +474,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals(""))
         {
             Log.d(TAG, "params is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientSetLightLcProperty(componentName, propertyId, value);
     }
@@ -455,37 +483,24 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(componentName == null || componentName.equals(""))
         {
             Log.d(TAG, "params is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientSetLightLcOnoffSet(componentName, onoff, ackRequired, transitionTime, delay);
     }
 
-    /**
-     * Class used for the client Binder.  Because we know this service always
-     * runs in the same process as its clients, we don't need to deal with IPC.
-     */
-    public class LocalBinder extends Binder {
-        MeshService getService() {
-            // Return this instance of LocalService so clients can call public methods
-            return MeshService.this;
-        }
-    }
-
     boolean isConnectedToNetwork() {
-
         boolean res = false;
         if(mTransport == MeshController.TRANSPORT_IP)
             res = true;
         else
             res = mMeshNativeHelper.meshClientIsConnectedToNetwork();
-        infoLog("isConnectedToNetwork : "+res);
+        Log.i(TAG, "isConnectedToNetwork : "+res);
         return res;
     }
 
-
     boolean scanMeshDevices(boolean start, UUID uuid) {
         boolean ret = true;
-        infoLog("scanMeshDevices start:" + start + " ret:" + ret);
+        Log.i(TAG, "scanMeshDevices: start = " + start + ", uuid = " + uuid);
         mMeshNativeHelper.meshClientScanUnprovisioned(start?1:0, asBytes(uuid));
         return ret;
     }
@@ -494,103 +509,10 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         return mTransport;
     }
 
-    @Override
-    public void onCreate() {
-        debugLog("onCreate");
-        super.onCreate();
-
-        mMeshHelper = MeshNativeHelper.getInstance();
-        mMeshHelper.registerNativeCallback(nativeCallback);
-        mMeshHelper.meshClientInit();
-
-        if(USE_INTERNAL_STORAGE)
-            mMeshHelper.setFileStorge(getFilesDir().getAbsolutePath());
-        else
-            mMeshHelper.setFileStorge(Environment.getExternalStorageDirectory().getAbsolutePath());
-
-        mMeshGattClient = MeshGattClient.getInstance(this);
-
-        mMeshGattClient.init(this);
-        infoLog("on create end");
-
-    }
-
-    static String toHexString(byte[] bytes) {
-        int len = bytes.length;
-        if(len == 0)
-            return null;
-
-        char[] buffer = new char[len * 3 - 1];
-
-        for (int i = 0, index = 0; i < len; i++) {
-            if (i > 0) {
-                buffer[index++] = ' ';
-            }
-
-            int data = bytes[i];
-            if (data < 0) {
-                data += 256;
-            }
-
-            byte n = (byte) (data >>> 4);
-            if (n < 10) {
-                buffer[index++] = (char) ('0' + n);
-            }
-            else {
-                buffer[index++] = (char) ('A' + n - 10);
-            }
-
-            n = (byte) (data & 0x0F);
-            if (n < 10) {
-                buffer[index++] = (char) ('0' + n);
-            }
-            else {
-                buffer[index++] = (char) ('A' + n - 10);
-            }
-        }
-        return new String(buffer);
-    }
-
-    @Override
-    public void onDestroy() {
-        debugLog("onDestroy");
-        mMeshGattClient = null;
-        mMeshHelper = null;
-        mMeshNativeHelper = null;
-        mMeshControllerCb = null;
-        super.onDestroy();
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        debugLog("onBind intent:" + intent);
-        return (mBinder);
-    }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        debugLog("onUnbind");
-        return super.onUnbind(intent);
-    }
-
-    /**
-     * DeathReceipient handlers used to unregister applications that
-     * die ungracefully (ie. crash or forced close).
-     */
-    class MeshDeathRecipient implements IBinder.DeathRecipient {
-
-        public void binderDied() {
-            errorLog("Binder is dead - closing network (" + mCurrNetwork + ")!");
-            if (mCurrNetwork == null) return;
-        }
-    }
-
     // -- MeshController apis --
-     MeshNativeHelper mMeshNativeHelper = MeshNativeHelper.getInstance();
-
     int createNetwork(String provisionerName, String meshName) {
-        if((provisionerName == null || provisionerName.equals("")) || (meshName == null || meshName.equals("")))
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+        if (provisionerName == null || provisionerName.equals("") || meshName == null || meshName.equals(""))
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         return mMeshNativeHelper.meshClientNetworkCreate(provisionerName, meshName);
     }
 
@@ -598,13 +520,13 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         mCurrNetwork = meshName;
         int res;
         if(provisionerName == null || provisionerName.equals(""))
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
 
         ArrayList<String> networks = new ArrayList<String>(Arrays.asList(mMeshNativeHelper.meshClientGetAllNetworks()));
         if(networks.contains(meshName)) {
             res = mMeshNativeHelper.meshClientNetworkOpen(provisionerName, meshName);
         } else {
-            res = MESH_CLIENT_ERR_INVALID_ARGS;
+            res = MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
 
         return res;
@@ -616,8 +538,8 @@ public class MeshService extends Service implements IMeshGattClientCallback {
 
     int createGroup(String groupName, String parentGroupName) {
         if(groupName == null || groupName.equals("")){
-            Log.d(TAG,"returning MESH_CLIENT_ERR_INVALID_ARGS because groupName was emtpy !!!");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            Log.i(TAG,"returning MeshController.MESH_CLIENT_ERR_INVALID_ARGS because groupName was emtpy !!!");
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         if(parentGroupName == null)
             parentGroupName = "";
@@ -627,7 +549,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
     int deleteGroup(String groupName) {
 
         if(groupName == null || groupName.equals(""))
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
 
         return mMeshNativeHelper.meshClientGroupDelete(groupName);
     }
@@ -648,7 +570,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
 
     String[] getDeviceComponents(byte[] uuid) {
         if(uuid == null) {
-            Log.d(TAG, "uuid is null");
+            Log.i(TAG, "uuid is null");
             return null;
         }
 
@@ -657,16 +579,16 @@ public class MeshService extends Service implements IMeshGattClientCallback {
 
     String[] getGroupComponents(String groupName) {
         if(groupName == null || groupName.equals("")) {
-            Log.d(TAG, "groupname is not valid");
+            Log.i(TAG, "groupname is not valid");
             return null;
         }
         return mMeshNativeHelper.meshClientGetGroupComponents(groupName);
     }
 
     int getComponentType(String componentName) {
-        if(componentName == null || componentName.equals("")) {
-            Log.d(TAG, "componentName is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+        if (componentName == null || componentName.equals("")) {
+            Log.i(TAG, "componentName is not valid");
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientGetComponentType(componentName);
     }
@@ -674,15 +596,15 @@ public class MeshService extends Service implements IMeshGattClientCallback {
     int isLightController(String componentName) {
         if(componentName == null || componentName.equals("")) {
             Log.d(TAG, "componentName is not valid");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientIsLightController(componentName);
     }
 
     int rename(String oldName, String newName) {
         if((oldName == null || oldName.equals("")) || (newName == null || newName.equals(""))) {
-            Log.d(TAG, "invalid params one of the param is null");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            Log.i(TAG, "invalid params one of the param is null");
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientRename(oldName, newName);
     }
@@ -691,16 +613,16 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if((componentName == null || componentName.equals("")) ||
                 (fromGroupName == null || fromGroupName.equals("")) ||
                 (toGroupName == null || toGroupName.equals(""))) {
-            Log.d(TAG, "invalid params one of the param is null");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            Log.i(TAG, "invalid params one of the param is null");
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientMoveComponentToGroup(componentName, fromGroupName, toGroupName);
     }
 
     int configurePublication(String componentName, boolean isClient, String method, String targetName, int publishPeriod) {
         if((componentName == null || componentName.equals("")) || (targetName == null || targetName.equals(""))) {
-            Log.d(TAG, "invalid params one of the param is null");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            Log.i(TAG, "invalid params one of the param is null");
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
         return mMeshNativeHelper.meshClientConfigurePublication(componentName, isClient == true ?(byte)1:0 , method, targetName, publishPeriod);
     }
@@ -708,11 +630,9 @@ public class MeshService extends Service implements IMeshGattClientCallback {
     byte provision(final String deviceName ,final String groupName, final UUID deviceUUID, final byte identifyDuration) {
 
         if (mCurrNetwork == null){
-            errorLog("error provision node. active network not set.");
-            return MESH_CLIENT_ERR_INVALID_ARGS;
+            Log.e(TAG, "error provision node. active network not set.");
+            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
         }
-        provision_connecting = true;
-        retries = 3;
 
         UUID   uuid =  deviceUUID;
         final byte[] buffer = new byte[16];
@@ -729,7 +649,7 @@ public class MeshService extends Service implements IMeshGattClientCallback {
             buffer[index + 7 - i] = (byte)(lsb & 0xff);
             lsb = (lsb >> 8);
         }
-        Log.d(TAG,"uuid : "+toHexString(buffer));
+        Log.i(TAG,"uuid : "+ Constants.toHexString(buffer));
 
 //        scanMeshDevices(false);
 
@@ -761,27 +681,27 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         if(isConnectedToNetwork())
             return mMeshNativeHelper.meshClientonoffGet(deviceName);
         else
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
     }
 
     int onoffSet(String deviceName, boolean onoff, boolean reliable, int transitionTime, short delay) {
         if(isConnectedToNetwork())
             return mMeshNativeHelper.meshClientonoffSet(deviceName, (byte) ((onoff==true)?0x01:0x00), reliable, transitionTime, delay);
         else
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
     }
 
     int levelGet(String deviceName) {
         if(isConnectedToNetwork())
             return mMeshNativeHelper.meshClientLevelGet(deviceName);
         else
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
     }
 
     int levelSet(String deviceName, short level, boolean reliable, int transitionTime, short delay) {
         int res;
         if(!isConnectedToNetwork())
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         if(CURRENT_TRACKING_STATE == STATE_TRACKING) {
             mTrackingHelper.setTrackingType(TrackingHelper.TRACK_LEVEL_SET);
             mTrackingHelper.levelSetMessage(deviceName, level, transitionTime, delay);
@@ -794,14 +714,14 @@ public class MeshService extends Service implements IMeshGattClientCallback {
 
     int hslGet(String deviceName) {
         if(!isConnectedToNetwork())
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         return mMeshNativeHelper.meshClientHslGet(deviceName);
     }
 
     int hslSet(String deviceName, int lightness, int hue, int saturation, boolean reliable, int transitionTime, short delay) {
         int res;
         if(!isConnectedToNetwork())
-            return MESH_CLIENT_ERR_NOT_CONNECTED;
+            return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         if(CURRENT_TRACKING_STATE == STATE_TRACKING) {
             mTrackingHelper.setTrackingType(TrackingHelper.TRACK_HSL_SET);
             mTrackingHelper.hslSetMessage(deviceName, (short)lightness, (short)hue, (short)saturation, transitionTime, delay);
@@ -814,15 +734,14 @@ public class MeshService extends Service implements IMeshGattClientCallback {
 
      // ++ MeshController apis ++
 
-    void Sleep(int ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    private IMeshGattClientCallback gattClientCallback = new IMeshGattClientCallback() {
+        @Override
+        public void onOtaStatus(byte status, int percent) {
+            mMeshControllerCb.onOtaStatus(status, percent);
         }
-    }
+    };
 
-    private  IMeshNativeCallback nativeCallback = new IMeshNativeCallback() {
+    private IMeshNativeCallback nativeCallback = new IMeshNativeCallback() {
         //Native callbacks
         @Override
         public void onProvGattPktReceivedCallback(byte[] p_data, int len) {
@@ -846,23 +765,16 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         @Override
         public void onLinkStatus(byte isConnected, int connId, short addr, byte isOverGatt) {
             byte connStatus;
-            Log.d(TAG,"onLinkStatusCallback" + isConnected+ "  isOverGatt"+isOverGatt);
-//            if(mMeshControllerCb != null && isConnected == 0) {
-//                mMeshControllerCb.onOTAUpgradeStatus(Constants.OTA_UPGRADE_STATUS_DISCONNECTED, 0);
-//            }
+            Log.i(TAG, "onLinkStatus: isConnected = " + isConnected + ", connId = " + connId + ", addr = " + addr + ", isOverGatt = " + isOverGatt);
 
-            if(isConnected != 0)
-                connStatus = IMeshControllerCallback.NETWORK_CONNECTION_STATE_CONNECTED;
-            else
-                connStatus = IMeshControllerCallback.NETWORK_CONNECTION_STATE_DISCONNECTED;
+            connStatus = (isConnected != 0) ?
+                IMeshControllerCallback.NETWORK_CONNECTION_STATE_CONNECTED :
+                IMeshControllerCallback.NETWORK_CONNECTION_STATE_DISCONNECTED;
 
 			// on receiving link status notify application network connections status
-            if(mMeshControllerCb != null){
-                Log.d(TAG, "Notifying application that networkconnection state is :"+connStatus);
-                mMeshControllerCb.onNetworkConnectionStatusChanged((byte)mTransport, (byte)connStatus);
+            if (mMeshControllerCb != null) {
+                mMeshControllerCb.onNetworkConnectionStatusChanged((byte)mTransport, connStatus);
             }
-
-
         }
 
         @Override
@@ -945,19 +857,6 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         }
 
         @Override
-        public void meshClientDfuStartCb() {
-            Log.i(TAG, "meshClientDfuStartCb");
-            if (mMeshGattClient != null) {
-                mMeshGattClient.startOta();
-            }
-        }
-
-        @Override
-        public void meshClientDfuStatusCb(byte status, byte progress) {
-            mMeshControllerCb.onDfuStatus(status, progress);
-        }
-
-        @Override
         public void meshClientSensorStatusCb(String componentName, int propertyId, byte[] data) {
             mMeshControllerCb.onSensorStatusCb(componentName, propertyId, data);
         }
@@ -983,6 +882,27 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         }
 
         @Override
+        public boolean meshClientDfuIsOtaSupportedCb() {
+            if (mMeshGattClient != null) {
+                return mMeshGattClient.isOtaSupportedCb();
+            }
+            return false;
+        }
+
+        @Override
+        public void meshClientDfuStartOtaCb(String firmwareFileName) {
+            Log.i(TAG, "meshClientDfuStartOtaCb: " + firmwareFileName);
+            if (mMeshGattClient != null) {
+                mMeshGattClient.startOta(firmwareFileName, true);
+            }
+        }
+
+        @Override
+        public void meshClientDfuStatusCb(byte state, byte[] data) {
+            mMeshControllerCb.onDfuStatus(state, data);
+        }
+
+        @Override
         public void meshClientConnect(byte[] bdaddr) {
 
             if(mMeshGattClient != null)
@@ -992,22 +912,13 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         @Override
         public void meshClientDisconnect(int connId) {
             if(mMeshGattClient != null)
-                mMeshGattClient.disconnect((short)connId);
+                mMeshGattClient.disconnect(connId);
         }
 
         @Override
         public void meshClientNodeConnectStateCb(byte status, String componentName) {
-           Log.d(TAG,"meshClientNodeConnectStateCb status:"+status);
-
+            Log.i(TAG, "meshClientNodeConnectStateCb: status:" + status);
             mMeshControllerCb.onNodeConnectionStateChanged(status, componentName);
-            //TODO remove this once NodeconnectionStateChange is fixed
-            //Sleep(200);
-
-            //TODO : Check with Victor startOTAUpgrade public api cannot call connect component internally
-//           if(status == Constants.MESH_CLIENT_NODE_CONNECTED) {
-//               mMeshControllerCb.onOTAUpgradeStatus(Constants.OTA_UPGRADE_STATUS_CONNECTED, 0);
-//               mMeshGattClient.startOtaUpgrade(mFileName);
-//           }
         }
 
         @Override
@@ -1016,18 +927,6 @@ public class MeshService extends Service implements IMeshGattClientCallback {
         }
 
     };
-
-    private static void infoLog(String msg) {
-        if (DebugUtils.VDBG) Log.i(TAG, msg);
-    }
-
-    private void debugLog(String msg) {
-        if (DebugUtils.DBG) infoLog(msg);
-    }
-
-    private void errorLog(String msg) {
-        if (DebugUtils.ERR) Log.e(TAG, msg);
-    }
 
     private byte[] asBytes(UUID uuid) {
         if (uuid == null)

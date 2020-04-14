@@ -10,6 +10,16 @@
 import UIKit
 import MeshFramework
 
+/**
+ * Currently, by default, the Mesh Device Firmware Update (DFU) is disabled (false), becuase this function has been fully suppported yet.
+ * When the Mesh DFU is supported and ready, user can enabled it in the MeshApp's setting page.
+ */
+public var IS_MESH_DFU_ENABLED: Bool {
+    get {
+        return UserDefaults.standard.bool(forKey: "mesh_dfu_enabled_preference")
+    }
+}
+
 class FirmwareUpgradeViewController: UIViewController, OtaManagerDelegate {
     @IBOutlet weak var navigationBarItem: UINavigationItem!
     @IBOutlet weak var menuBarButtonItem: UIBarButtonItem!
@@ -198,12 +208,11 @@ extension FirmwareUpgradeViewController: UITableViewDataSource, UITableViewDeleg
         meshLog("FirmwareUpgradeViewController, tableView didSelectRowAt, row=\(indexPath.row)")
         stopScan()
         OtaManager.shared.activeOtaDevice = OtaManager.shared.otaDevices[indexPath.row]
-        if let _ = MeshFrameworkManager.shared.getOpenedMeshNetworkName() {
+        meshLog("FirmwareUpgradeViewController, IS_MESH_DFU_ENABLED: \(IS_MESH_DFU_ENABLED), is_Mesh_Network_Opened: \(MeshFrameworkManager.shared.getOpenedMeshNetworkName() == nil ? false : true)")
+        if IS_MESH_DFU_ENABLED, let _ = MeshFrameworkManager.shared.getOpenedMeshNetworkName() {
             UtilityManager.navigateToViewController(sender: self, targetVCClass: MeshOtaDfuViewController.self)
         } else {
             UtilityManager.navigateToViewController(sender: self, targetVCClass: DeviceOtaUpgradeViewController.self)
         }
-        // TODO: need developing.
-        //UtilityManager.navigateToViewController(sender: self, targetVCClass: MeshOtaDfuViewController.self)
     }
 }

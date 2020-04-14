@@ -228,7 +228,7 @@ public class MeshController {
     /**
      * Indicates that the sensor cadence values has to be sent in percentage format
      */
-    public static final boolean MESH_CLIENT_TRIGGER_TYPE_PERCENTAGE        = true;
+    public static final boolean MESH_CLIENT_TRIGGER_TYPE_PERCENTAGE    = true;
 
     /**
      * Indicates that the LC mode is enabled
@@ -252,12 +252,6 @@ public class MeshController {
 
     private static final int COMMAND_FAILURE = 0;
     private static final int COMMAND_SUCCESS = 1;
-
-    public static final byte DFU_METHOD_PROXY_TO_ALL             = 0;
-    public static final byte DFU_METHOD_APP_TO_ALL               = 1;
-    public static final byte DFU_METHOD_APP_TO_DEVICE            = 2;
-    public static final byte DFU_METHOD_PROXY_TO_DEVICE          = 3;
-    public static final byte DFU_METHOD_APPLY                    = 4;
 
     /**
      * Indicates the mesh service is not connected successfully.
@@ -339,7 +333,7 @@ public class MeshController {
     /**
      * Indicates that the control method is of type SENSOR
      */
-    public static final String MESH_CONTROL_METHOD_SENSOR        = "SENSOR";
+    public static final String MESH_CONTROL_METHOD_SENSOR     = "SENSOR";
     /**
      * Indicates that the control method is of type vendor
      */
@@ -1000,7 +994,7 @@ public class MeshController {
      * <li>{@link #MESH_CLIENT_ERR_NO_MEMORY} The mesh stack cannot allocate memory to perform the operation,</li>
      * <li>{@link #MESH_CLIENT_SERVICE_NOT_CONNECTED} The mesh service is not initialized,</li>
      * <li>{@link #MESH_CLIENT_SUCCESS} The operation has started successfully.</li></ul>
-	 */
+     */
 
     public int levelGet(String componentName) {
         Log.d(TAG,"levelGet");
@@ -1501,8 +1495,8 @@ public class MeshController {
     /**
      * Start device firmware upgrade
      *
-     * @param componentName component name of the device to be OTA upgraded
-     * @param upgradeType the values can be
+     * @param firmwareFile the firmware file name
+     * @param metadataFile the MetaData file name
      * {@link #DFU_METHOD_APP_TO_ALL},
      * {@link #DFU_METHOD_PROXY_TO_DEVICE},
      * {@link #DFU_METHOD_APP_TO_ALL},
@@ -1519,25 +1513,31 @@ public class MeshController {
      * <li>{@link #MESH_CLIENT_SUCCESS}.</li></ul>
      */
 
-    public int startOtaUpgrade(String componentName, byte upgradeType) {
-        Log.d(TAG,"startOtaUpgrade");
+    public int startDfu(String firmwareFile, byte dfuMethod) {
         if (isServiceConnected()) {
-            return service.startOtaUpgrade(componentName, upgradeType);
+            return service.startDfu(firmwareFile, dfuMethod);
         }
         return MESH_CLIENT_SERVICE_NOT_CONNECTED;
     }
 
-    public void setOTAFiles(String fwFile, String metadataFile) {
-        Log.d(TAG,"setOTAFileNames");
+    public int stopDfu() {
         if (isServiceConnected()) {
-            service.setOTAFiles(fwFile, metadataFile);
+            service.stopDfu();
+            return MESH_CLIENT_SUCCESS;
+        }
+        return MESH_CLIENT_SERVICE_NOT_CONNECTED;
+    }
+
+    public void getDfuStatus(int statusInterval) {
+        if (isServiceConnected()) {
+            service.getDfuStatus(statusInterval);
         }
     }
 
-    public int dfuGetStatus(String componentName) {
-        Log.d(TAG,"dfuGetStatus");
+    public int startOta(String firmwareFile) {
         if (isServiceConnected()) {
-            return service.dfuGetStatus(componentName);
+            service.startOta(firmwareFile);
+            return MESH_CLIENT_SUCCESS;
         }
         return MESH_CLIENT_SERVICE_NOT_CONNECTED;
     }
@@ -1552,10 +1552,11 @@ public class MeshController {
      * <li>{@link #MESH_CLIENT_ERR_NETWORK_CLOSED} if the network is not opened,</li>
      * <li>{@link #MESH_CLIENT_SERVICE_NOT_CONNECTED} The mesh service is not initialized.</li></ul>
      */
-    public int stopOtaUpgrade() {
-        Log.d(TAG,"stopOtaUpgrade");
+    public int stopOta() {
+        Log.d(TAG,"stopOta");
         if (isServiceConnected()) {
-            return service.stopOtaUpgrade();
+            service.stopOta();
+            return MESH_CLIENT_SUCCESS;
         }
         return MESH_CLIENT_SERVICE_NOT_CONNECTED;
     }

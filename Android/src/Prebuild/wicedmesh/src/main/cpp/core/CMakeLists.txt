@@ -9,6 +9,8 @@ add_definitions(-DWICED_BT_TRACE_ENABLE)
 add_definitions(-DMESH_MODELS_DEBUG)
 add_definitions(-DMESH_CORE_DEBUG)
 add_definitions(-DPB_GATT_SUPPORTED)
+add_definitions(-DMESH_DFU_SUPPORTED)
+
 set(INCLUDE_DIR
   "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../../../../../dev-kit/btsdk-include/"
   "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../../../../../dev-kit/baselib/20819A1/include/hal/"

@@ -47,6 +47,7 @@
 		1868D5902190382B00CC27FB /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1868D58E2190382B00CC27FB /* LaunchScreen.storyboard */; };
 		1868DBBB219457B500CC27FB /* MeshFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1868DBB92194530200CC27FB /* MeshFramework.framework */; };
 		1868DBBC219457B500CC27FB /* MeshFramework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1868DBB92194530200CC27FB /* MeshFramework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		188A102E240E22DE00A93534 /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 188A102D240E22DE00A93534 /* Settings.bundle */; };
 		1891A5A221CA2AC4000EEFCB /* UnprovisionedDeviceListEmptyTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1891A5A121CA2AC4000EEFCB /* UnprovisionedDeviceListEmptyTableViewCell.swift */; };
 		1891A5A421CA2AD5000EEFCB /* UnprovisionedDeviceListTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1891A5A321CA2AD5000EEFCB /* UnprovisionedDeviceListTableViewCell.swift */; };
 		1891AA3521CB7709000EEFCB /* ProvisioningStatusPopoverViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1891AA3421CB7709000EEFCB /* ProvisioningStatusPopoverViewController.swift */; };
@@ -131,6 +132,7 @@
 		1868D5912190382B00CC27FB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1868D5A321903C4500CC27FB /* MeshApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MeshApp.entitlements; sourceTree = "<group>"; };
 		1868DBB92194530200CC27FB /* MeshFramework.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = MeshFramework.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		188A102D240E22DE00A93534 /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		1891A5A121CA2AC4000EEFCB /* UnprovisionedDeviceListEmptyTableViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnprovisionedDeviceListEmptyTableViewCell.swift; sourceTree = "<group>"; };
 		1891A5A321CA2AD5000EEFCB /* UnprovisionedDeviceListTableViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnprovisionedDeviceListTableViewCell.swift; sourceTree = "<group>"; };
 		1891AA3421CB7709000EEFCB /* ProvisioningStatusPopoverViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProvisioningStatusPopoverViewController.swift; sourceTree = "<group>"; };
@@ -353,6 +355,7 @@
 				1868D58C2190382B00CC27FB /* Assets.xcassets */,
 				1868D58E2190382B00CC27FB /* LaunchScreen.storyboard */,
 				1868D5912190382B00CC27FB /* Info.plist */,
+				188A102D240E22DE00A93534 /* Settings.bundle */,
 			);
 			path = MeshApp;
 			sourceTree = "<group>";
@@ -503,6 +506,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				188A102E240E22DE00A93534 /* Settings.bundle in Resources */,
 				1868D5902190382B00CC27FB /* LaunchScreen.storyboard in Resources */,
 				1868D58D2190382B00CC27FB /* Assets.xcassets in Resources */,
 				1868D58B2190382A00CC27FB /* Main.storyboard in Resources */,
@@ -728,17 +732,17 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = LCV43QB9EG;
 				INFOPLIST_FILE = MeshApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cypress.iot.le.mesh.MeshApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = dudley_meshapp_development;
+				PROVISIONING_PROFILE_SPECIFIER = dudley_meshapp_development_20200319;
 				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -754,14 +758,14 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = LCV43QB9EG;
 				INFOPLIST_FILE = MeshApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cypress.iot.le.mesh.MeshApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = cypress.iot.le.mesh.meshapp.production;

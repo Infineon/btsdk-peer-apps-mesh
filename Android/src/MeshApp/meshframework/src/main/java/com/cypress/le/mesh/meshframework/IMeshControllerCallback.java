@@ -164,7 +164,7 @@ public interface IMeshControllerCallback {
 
     /**
      * HSL status received from a component
-     *  @param name  Name of the component which reported HSL state change
+     * @param name  Name of the component which reported HSL state change
      * @param lightness Current lightness of the component
      * @param hue Current hue of the component
      * @param saturation Current saturation of the component
@@ -199,8 +199,8 @@ public interface IMeshControllerCallback {
     void onNetworkConnectionStatusChanged(byte transport, byte status);
 
     /**
-     *  CTL status received from a component
-     *  @param deviceName Name of the component for which response is received
+     * CTL status received from a component
+     * @param deviceName Name of the component for which response is received
      * @param presentLightness Current lightness of the component
      * @param presentTemperature Current temperature of the component
      * @param targetLightness Target lightness of component
@@ -211,7 +211,7 @@ public interface IMeshControllerCallback {
 
     /**
      * Lightness status received from a component.
-     *  @param deviceName Name of the component for which response is received
+     * @param deviceName Name of the component for which response is received
      * @param target Target lightness of component
      * @param present Current lightness of component
      * @param remainingTime Remaining time to transit to target state
@@ -245,7 +245,7 @@ public interface IMeshControllerCallback {
      * <li>{@link #OTA_UPGRADE_STATUS_SERVICE_NOT_FOUND}</li></ul>
      * @param percentComplete Percentage of OTA firmware upgrade completed.
      */
-    void onOTAUpgradeStatus(byte status, int percentComplete);
+    void onOtaStatus(byte status, int percentComplete);
 
     /**
      *  When MeshController is connected to an external proxy such  gateway through cloud, application would require an interface through which it can receive the proxy data from the Mesh Stack. Typically application would send the received proxy packet to the gateway using an IoT Protocol of his choice.
@@ -294,12 +294,12 @@ public interface IMeshControllerCallback {
      *               <li>{@link #DISTRIBUTION_STATUS_FAILED} distribution failed</li>
      *               <li>{@link #DISTRIBUTION_STATUS_COMPLETED} distribution completed</li>
      *               </ul>
-     * @param progress current progress
+     * @param data state related data
      */
-    void onDfuStatus(byte status, byte progress);
+    void onDfuStatus(byte state, byte[] data);
 
     /**
-     *  Sensor Status callback is used to indicate the status of the sensorGet operation
+     * Sensor Status callback is used to indicate the status of the sensorGet operation
      * @param componentName  Name of the component
      * @param propertyId  Target Name of the component
      * @param data Current Sensor value
@@ -311,6 +311,7 @@ public interface IMeshControllerCallback {
      * @param source  Source id of device
      * @param companyId  Company ID of the vendor
      * @param modelId  model ID of the vendor
+     * @param opcode Opcode
      * @param data Vendor data
      * @param dataLen Vendor data length
      */

@@ -40,6 +40,7 @@
 #include "Win10Interface.h"
 #include "afxcmn.h"
 #include "WsOtaDownloader.h"
+#include "wiced_bt_mesh_models.h"
 
 
 #define WM_USER_PROXY_DATA              (WM_USER + (WICED_BT_MESH_CORE_UUID_CHARACTERISTIC_PROXY_DATA_OUT & 0xFF))
@@ -78,7 +79,10 @@ public:
     BOOL        m_scan_started;
     BOOL        m_bConnecting;
     BOOL        m_bScanning;
-    uint8_t     m_dfuMethod;
+    BOOL        m_bDfuStatus;
+    CString     m_sDfuImageFilePath;
+    mesh_dfu_fw_id_t        m_DfuFwId;
+    mesh_dfu_meta_data_t    m_DfuMetaData;
 
     void OnCancel();
     void SetDlgItemHex(DWORD id, DWORD val);
@@ -115,7 +119,6 @@ protected:
 private:
     HANDLE m_hDevice;
     HANDLE m_hCfgEvent;
-    int m_dfuAction;
     int m_dfuState;
 
     // Implementation
@@ -154,15 +157,14 @@ public:
 public:
     void CMeshClientDlg::updateProvisionerUuid();
     void SetHexValue(DWORD id, LPBYTE val, DWORD val_len);
-    void OnOtaUpgradeContinue();
-    void OnOtaUpgradeApply();
     void OnNodeConnected();
+    BOOL ReadDfuManifestFile(CString sFilePath);
     uint32_t GetDfuImageSize();
     void GetDfuImageChunk(uint8_t *p_data, uint32_t offset, uint16_t data_len);
     BOOL GetDfuImageInfo(void *p_fw_id, void *p_va_data);
-    void OnDfuStatusCallback(uint8_t status, uint8_t progress);
-    void ConnectDfuDistributor();
+    BOOL IsOtaSupported();
     void StartOta();
+    void OnDfuStatusCallback(uint8_t state, uint8_t* p_data, uint32_t data_length);
 
 public:
     afx_msg void OnTimer(UINT_PTR nIDEvent);
@@ -201,7 +203,6 @@ public:
     afx_msg void OnBnClickedIdentify();
     afx_msg void OnBnClickedReconfigure();
     afx_msg void OnBnClickedBrowse();
-    afx_msg void OnBnClickedInfoBrowse();
     afx_msg void OnCbnSelchangeConfigureControlDevice();
     afx_msg void OnCbnSelchangeConfigureMoveDevice();
     afx_msg void OnBnClickedNetworkImport();
@@ -209,7 +210,6 @@ public:
     afx_msg void OnBnClickedOtaUpgradeStop();
     afx_msg void OnBnClickedGetComponentInfo();
     afx_msg void OnBnClickedOtaUpgradeStatus();
-    afx_msg void OnBnClickedOtaUpgradeApply();
     afx_msg void OnBnClickedSensorGet();
     afx_msg void OnCbnSelchangeControlDevice();
     afx_msg void OnBnClickedSensorConfigure();

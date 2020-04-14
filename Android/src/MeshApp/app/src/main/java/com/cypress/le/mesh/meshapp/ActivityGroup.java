@@ -958,7 +958,7 @@ public class ActivityGroup extends AppCompatActivity implements LightingService.
     }
 
     @Override
-    public void onOTAUpgradeStatus(byte status, int percentComplete) {
+    public void onOtaStatus(byte status, int percentComplete) {
 
     }
 
@@ -973,7 +973,7 @@ public class ActivityGroup extends AppCompatActivity implements LightingService.
     }
 
     @Override
-    public void onDfuStatus(byte status, byte progress) {
+    public void onDfuStatus(byte status, byte[] data) {
 
     }
 

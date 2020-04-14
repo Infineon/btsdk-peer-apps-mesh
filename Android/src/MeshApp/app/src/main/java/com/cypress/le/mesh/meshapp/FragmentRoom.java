@@ -358,7 +358,7 @@ public class FragmentRoom extends Fragment implements LightingService.IServiceCa
     }
 
     @Override
-    public void onOTAUpgradeStatus(byte status, int percentComplete) {
+    public void onOtaStatus(byte status, int percentComplete) {
 
     }
 
@@ -386,7 +386,7 @@ public class FragmentRoom extends Fragment implements LightingService.IServiceCa
     }
 
     @Override
-    public void onDfuStatus(byte status, byte progress) {
+    public void onDfuStatus(byte status, byte[] data) {
 
     }
 
@@ -550,10 +550,10 @@ public class FragmentRoom extends Fragment implements LightingService.IServiceCa
                         }
                     }
                     break;
-                case R.id.ota:
-                    Log.d(TAG, "ota upgrade");
+                case R.id.menu_network_dfu:
+                    Log.d(TAG, "DFU");
                     Intent intent;
-                    intent = new Intent(getContext(), com.cypress.le.mesh.meshapp.leotaapp.MainActivity.class);
+                    intent = new Intent(getContext(), com.cypress.le.mesh.meshapp.ActivityDfu.class);
                     startActivity(intent);
                     break;
                 case R.id.importfile:

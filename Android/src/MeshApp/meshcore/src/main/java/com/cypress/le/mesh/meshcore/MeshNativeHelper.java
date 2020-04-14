@@ -433,11 +433,10 @@ public class MeshNativeHelper {
     public static native int meshClientRemoveComponentFromGroup(String componentName, String groupName);
 
     //DFU APIS
-    public static native int meshClientDfuGetStatus(String componentName);
-    public static native int meshClientDfuStart(byte dfuMethod, boolean otaSupported, String componentName);
-    public static native int meshClientDfuStop();
+    public static native int  meshClientDfuStart(String firmwareFile, byte dfuMethod);
+    public static native int  meshClientDfuStop();
     public static native void meshClientDfuOtaFinished(byte status);
-    public static native void meshClientSetDfuFiles(String fw_fileName, String metadata_file);
+    public static native void meshClientDfuGetStatus(int statusInterval);
 
     //SENSOR APIS
     public static native int meshClientSensorCadenceSet(String deviceName, int propertyId, short fastCadencePeriodDivisor, boolean triggerType,
@@ -506,14 +505,19 @@ public class MeshNativeHelper {
         mCallback.meshClientSetScanTypeCb(scantype);
     }
 
-    static void meshClientDfuStartCb() {
-        Log.d(TAG, "meshClientDfuStartCb");
-        mCallback.meshClientDfuStartCb();
+    static boolean meshClientDfuIsOtaSupportedCb() {
+        Log.i(TAG, "meshClientDfuIsOtaSupportedCb");
+        return mCallback.meshClientDfuIsOtaSupportedCb();
     }
 
-    static void meshClientDfuStatusCb(byte status, byte progress) {
-        Log.d(TAG, "meshClientDfuStatus");
-        mCallback.meshClientDfuStatusCb(status, progress);
+    static void meshClientDfuStartOtaCb(String firmwareFileName) {
+        Log.i(TAG, "meshClientDfuStartOtaCb: " + firmwareFileName);
+        mCallback.meshClientDfuStartOtaCb(firmwareFileName);
+    }
+
+    static void meshClientDfuStatusCb(byte state, byte[] data) {
+        Log.i(TAG, "meshClientDfuStatus");
+        mCallback.meshClientDfuStatusCb(state, data);
     }
 
     static void meshClientSensorStatusCb(String componentName, int propertyid, byte[] data) {

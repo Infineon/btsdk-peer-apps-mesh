@@ -183,6 +183,7 @@ open class MeshFrameworkManager {
     open func initMeshLibrary(forUser user: String) -> Int {
         lock.lock()
         if currentUserName != nil {
+            lock.unlock()
             return MeshErrorCode.MESH_ERROR_MESH_LIBRARY_HAS_INITIALIZED
         }
         lock.unlock()
@@ -539,6 +540,10 @@ open class MeshFrameworkManager {
 
     open func getAllMeshNetworks() -> [String]? {
         return MeshNativeHelper.meshClientGetAllNetworks()
+    }
+
+    open func isMeshGroup(name: String) -> Bool {
+        return MeshNativeHelper.meshClientIsGroup(name);
     }
 
     /**
@@ -1399,89 +1404,40 @@ open class MeshFrameworkManager {
     // DFU APIs
     //
 
-    public typealias MeshClientDfuStatusCallback = (_ status: UInt8, _ progress: UInt8, _ error: Int) -> ()
-    private var meshClientDfuComponentName: String?
-    private var meshClientDfuStatusCb: MeshClientDfuStatusCallback?
-    private var meshClientDfuStatusTimer: Timer?
-    @objc private func meshClientDfuGetStatusTimeoutHandler(_ timer: Timer) {
-        self.lock.lock()
-        guard let componentName = timer.userInfo as? String, componentName == meshClientDfuComponentName else {
-            self.lock.unlock()
-            meshLog("error: MeshFrameworkManager, meshClientDfuGetStatus, unknown timer timeout")
-            return
-        }
-        meshClientDfuComponentName = nil
-        let completion = self.meshClientDfuStatusCb
-        self.meshClientDfuStatusCb = nil
-        self.lock.unlock()
+    /**
+     Send command to the DFU distributor device to report DFU status in every specific internal time, or stop the report the report.
 
-        meshLog("error: MeshFrameworkManager, meshClientDfuGetStatus for device: \(componentName) timeout")
-        if let callback = completion {
-            callback(UInt8(MeshErrorCode.MESH_ERROR_PRECEDURE_NOT_COMPELTE), 0, MeshErrorCode.MESH_ERROR_PRECEDURE_TIMEOUT)
-        } else {
-            NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_DFU_STATUS),
-                                            object: nil,
-                                            userInfo: [MeshNotificationConstants.USER_INFO_KEY_DEVICE_NAME: componentName,
-                                                       MeshNotificationConstants.USER_INFO_KEY_DFU_STATUS: Int(MeshErrorCode.MESH_ERROR_PRECEDURE_NOT_COMPELTE),
-                                                       MeshNotificationConstants.USER_INFO_KEY_DFU_PROGRESS: Int(0)])
+     @param interval                Indicates the internval time that the mesh library should  get the DFU status from the DFU distributor device, and report to
+                        When the internval time is set to 0, then the DFU status reporting will be cancelled and stopped..
+
+     @return        If get MESH_SUCCESS, the mesh library has been started to report the DFU status or the reporting has been stop report;
+              Otherwise, the return code indicates the error code that caused the failure.
+     */
+    private var meshClientGetStatusInterval: Int = 0        // 0 - indicates the DFU get status is not running, othewise it has running.
+    public var isDfuStatusReportingEnabled: Bool {
+        get {
+            return (meshClientGetStatusInterval == 0) ? false : true
         }
     }
-    open func meshClientDfuGetStatus(componentName: String) -> Int {
+    open func meshClientDfuGetStatus(interval: Int = Int(DFU_DISTRIBUTION_STATUS_TIMEOUT)) -> Int {
+        var ret = MeshErrorCode.MESH_SUCCESS
         self.lock.lock()
-        guard meshClientDfuComponentName == nil else {
+        if meshClientGetStatusInterval == interval {
             self.lock.unlock()
-            meshLog("error: MeshFrameworkManager, meshClientDfuGetStatus for device: \(String(describing: meshClientDfuComponentName)) has been sent, busying")
-            return MeshErrorCode.MESH_ERROR_API_IS_BUSYING
-        }
-        meshClientDfuComponentName = componentName
-        self.lock.unlock()
-
-        let error = Int(MeshNativeHelper.meshClientDfuGetStatus(componentName))
-        if error == MeshErrorCode.MESH_SUCCESS {
-            meshClientDfuStatusTimer?.invalidate()
-            meshClientDfuStatusTimer = Timer.scheduledTimer(timeInterval: TimeInterval(OtaConstants.DFU_DISTRIBUTION_STATUS_TIMEOUT),
-                                                            target: self,
-                                                            selector: #selector(meshClientDfuGetStatusTimeoutHandler),
-                                                            userInfo: componentName,
-                                                            repeats: false)
+            // The DFU get status has running or stopped already, return early.
+            return MeshErrorCode.MESH_SUCCESS
         } else {
-            self.lock.lock()
-            meshClientDfuComponentName = nil
-            self.lock.unlock()
+            ret = Int(MeshNativeHelper.meshClientDfuGetStatus(Int32(interval)))
+            if (ret == MeshErrorCode.MESH_SUCCESS) {
+                meshClientGetStatusInterval = interval
+            }
         }
-        return error
-    }
-    open func meshClientDfuGetStatus(componentName: String, completion: @escaping MeshClientDfuStatusCallback) {
-        self.lock.lock()
-        guard meshClientDfuComponentName == nil else {
-            self.lock.unlock()
-            meshLog("error: MeshFrameworkManager, meshClientDfuGetStatus for device: \(String(describing: meshClientDfuComponentName)) has been sent, busying")
-            completion(UInt8(MeshErrorCode.MESH_ERROR_INVALID_STATE), 0, MeshErrorCode.MESH_ERROR_API_IS_BUSYING)
-            return
-        }
-        meshClientDfuComponentName = componentName
-        meshClientDfuStatusCb = completion
         self.lock.unlock()
-
-        let error = Int(MeshNativeHelper.meshClientDfuGetStatus(componentName))
-        if error == MeshErrorCode.MESH_SUCCESS {
-            meshClientDfuStatusTimer?.invalidate()
-            meshClientDfuStatusTimer = Timer.scheduledTimer(timeInterval: TimeInterval(OtaConstants.DFU_DISTRIBUTION_STATUS_TIMEOUT),
-                                                            target: self,
-                                                            selector: #selector(meshClientDfuGetStatusTimeoutHandler),
-                                                            userInfo: componentName,
-                                                            repeats: false)
-        } else {
-            self.lock.unlock()
-            meshClientDfuComponentName = nil
-            meshClientDfuStatusCb = nil
-            self.lock.unlock()
-            completion(UInt8(MeshErrorCode.MESH_ERROR_PRECEDURE_NOT_COMPELTE), 0, error)
-        }
+        return ret;
     }
 
-    open func meshClientDfuStart(componentName: String, dfuMethod: Int, firmwareId: Data, validationData: Data) -> Int {
-        return Int(MeshNativeHelper.meshClientDfuStart(Int32(dfuMethod), componentName: componentName, firmwareId: firmwareId, validationData: validationData))
+    open func meshClientDfuStart(dfuMethod: Int, firmwareId: Data, validationData: Data) -> Int {
+        return Int(MeshNativeHelper.meshClientDfuStart(Int32(dfuMethod), firmwareId: firmwareId, validationData: validationData))
     }
 
     open func meshClientDfuStop() -> Int {
@@ -2100,6 +2056,15 @@ extension MeshFrameworkManager {
         return Int(ret)
     }
 
+    open func meshClientIsNodeBlocked(networkName: String, by name: String) -> Bool {
+        let ret = MeshNativeHelper.meshClientIsNodeBlocked(networkName, elementName: name)
+        if ret < 0 {
+            meshLog("error: MeshFramework, meshClientIsNodeBlocked, \((ret == -2) ? "element Name: \(name) not found" : "network \(networkName).json file not exist")")
+            return false
+        }
+        return (ret > 0) ? true : false
+    }
+
     open func isMeshClientProvisionKeyRefreshing() -> Bool {
         return MeshNativeHelper.isMeshClientProvisionKeyRefreshing()
     }
@@ -2236,10 +2201,8 @@ extension MeshFrameworkManager: IMeshNativeCallback {
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_SUCCESS:
             lock.lock()
             provisionUuid = nil
-            if let provTimer = provisionTimer {
-                provTimer.invalidate()
-                provisionTimer = nil
-            }
+            provisionTimer?.invalidate()
+            provisionTimer = nil
             lock.unlock()
             meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision success")
         case MeshConstants.MESH_CLIENT_PROVISION_STATUS_END:
@@ -2256,10 +2219,8 @@ extension MeshFrameworkManager: IMeshNativeCallback {
                 meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus), provision failed")
                 lock.lock()
                 provisionUuid = nil
-                if let provTimer = provisionTimer {
-                    provTimer.invalidate()
-                    provisionTimer = nil
-                }
+                provisionTimer?.invalidate()
+                provisionTimer = nil
                 lock.unlock()
             } else {
                 meshLog("IMeshNativeCallback, meshClientProvisionCompletedCb, uuid=\(uuid.description), provisionStatus=\(provisionStatus)")
@@ -2402,7 +2363,11 @@ extension MeshFrameworkManager: IMeshNativeCallback {
             meshLog("info: meshClientNodeConnectStateCb, mesh device:\(componentName) connected")
             unreachableMeshDevices.removeAll(where: {$0 == componentName})
         } else {
-            meshLog("warning: meshClientNodeConnectStateCb, mesh device:\(componentName) unreachable")
+            if status == MeshConstants.MESH_CLIENT_NODE_WARNING_UNREACHABLE {
+                meshLog("error: meshClientNodeConnectStateCb, failed to connect to mesh device:\(componentName)")
+            } else {
+                meshLog("error: meshClientNodeConnectStateCb, mesh device:\(componentName) unreachable")
+            }
             if unreachableMeshDevices.filter({$0 == componentName}).count == 0 {
                 unreachableMeshDevices.append(componentName)
             }
@@ -2413,6 +2378,11 @@ extension MeshFrameworkManager: IMeshNativeCallback {
              */
         }
 
+        NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_NODE_CONNECTION_STATUS_CHANGED),
+                                        object: nil,
+                                        userInfo: [MeshNotificationConstants.USER_INFO_KEY_NODE_CONNECTION_STATUS: Int(status),
+                                                   MeshNotificationConstants.USER_INFO_KEY_NODE_NAME: componentName])
+
         lock.lock()
         if let completion = componentConnectCb, let connectName = componentConnectName {
             componentConnectCb = nil
@@ -2421,16 +2391,11 @@ extension MeshFrameworkManager: IMeshNativeCallback {
             componentConnectTimer = nil
             lock.unlock()
             completion(Int(status), connectName, MeshErrorCode.MESH_SUCCESS)
-            return
+        } else {
+            componentConnectCb = nil
+            componentConnectName = nil
+            lock.unlock()
         }
-        componentConnectCb = nil
-        componentConnectName = nil
-        lock.unlock()
-
-        NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_NODE_CONNECTION_STATUS_CHANGED),
-                                        object: nil,
-                                        userInfo: [MeshNotificationConstants.USER_INFO_KEY_NODE_CONNECTION_STATUS: Int(status),
-                                                   MeshNotificationConstants.USER_INFO_KEY_NODE_NAME: componentName])
     }
 
     /**
@@ -2446,29 +2411,13 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Mesh library calls this routine to notify uppler layer (such as: App) about the DFU status.
      * This API will be triggerred after calling meshClientDfuGetStatus API successfully.
      */
-    public func meshClientDfuStatusCb(_ status: UInt8, progress: UInt8) {
-        meshLog("IMeshNativeCallback, meshClientDfuStatusCb, status: \(status), progress: \(progress)")
-        var dfuComponentName: String = ""
-        var dfuCompletion: MeshClientDfuStatusCallback? = nil
-        self.lock.lock()
-        if let componentName = self.meshClientDfuComponentName {
-            dfuComponentName = componentName
-            self.meshClientDfuComponentName = nil
-
-            dfuCompletion = self.meshClientDfuStatusCb
-            self.meshClientDfuStatusCb = nil
-            self.meshClientDfuStatusTimer?.invalidate()
-            self.meshClientDfuStatusTimer = nil
-        }
-        self.lock.unlock()
-
+    public func meshClientDfuStatusCb(_ state: UInt8, data: Data) {
+        meshLog("IMeshNativeCallback, meshClientDfuStatusCb, state: \(state), data: \(data.dumpHexBytes())")
+        OtaUpgrader.meshDfuState = Int(state)
         NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_DFU_STATUS),
                                         object: nil,
-                                        userInfo: [MeshNotificationConstants.USER_INFO_KEY_DEVICE_NAME: dfuComponentName,
-                                                   MeshNotificationConstants.USER_INFO_KEY_DFU_STATUS: Int(status),
-                                                   MeshNotificationConstants.USER_INFO_KEY_DFU_PROGRESS: Int(progress)])
-
-        dfuCompletion?(status, progress, MeshErrorCode.MESH_SUCCESS)
+                                        userInfo: [MeshNotificationConstants.USER_INFO_KEY_DFU_STATE: Int(state),
+                                                   MeshNotificationConstants.USER_INFO_KEY_DFU_STATE_DATA: data])
     }
 
     /**
@@ -2545,13 +2494,19 @@ extension MeshFrameworkManager: IMeshNativeCallback {
                                                    MeshNotificationConstants.USER_INFO_KEY_LIGHT_LC_PROPERTY_VALUE: Int(value)])
     }
 
-    public func onDfuEventReceived(_ event: UInt8, data: Data) {
-        meshLog("IMeshNativeCallback, onDfuEventStartOta, event: \(event), data: \(data.dumpHexBytes())")
-        OtaUpgrader.shared.onDfuEventReceived(event: Int(event), data: data)
-    }
-
     public func updateProvisionerUuid(_ uuid: UUID) {
         MeshFrameworkManager.shared.updateUniqueId(uuid: uuid)
+    }
+
+    /*
+     * implemention of the callbacks for DFU process.
+     */
+    public func meshClientStartOtaTransferForDfu() {
+        OtaUpgrader.shared.startOtaTransferForDfu()
+    }
+
+    public func meshClientIsOtaSupportedForDfu() -> Bool {
+        return OtaUpgrader.shared.isOtaSupportedForDfu()
     }
 }
 

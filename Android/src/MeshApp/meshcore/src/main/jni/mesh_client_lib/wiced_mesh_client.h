@@ -420,14 +420,7 @@ uint8_t mesh_client_get_component_info(char *component_name, mesh_client_compone
 #define DFU_METHOD_APP_TO_ALL                       1
 #define DFU_METHOD_APP_TO_DEVICE                    2
 
-/*
- * Callback to return DFU event.
- */
-typedef void(*mesh_client_dfu_event_t)(uint8_t event, uint8_t *p_event_data, uint32_t event_data_length);
-
-#define DFU_EVENT_START_OTA                         1
-
-int mesh_client_dfu_start(uint8_t dfu_method, char* component_name, uint8_t* fw_id, uint8_t fw_id_len, uint8_t* va_data, uint8_t va_data_len, wiced_bool_t ota_supported, mesh_client_dfu_event_t p_dfu_event_callback);
+int mesh_client_dfu_start(uint8_t *fw_id, uint8_t fw_id_len, uint8_t *meta_data, uint8_t meta_data_len, wiced_bool_t auto_apply, wiced_bool_t self_distributor);
 
 /*
  * The function can be called to stop DFU process
@@ -440,14 +433,14 @@ int mesh_client_dfu_stop(void);
 void mesh_client_dfu_ota_finish(uint8_t status);
 
 /*
- * Component info callback is used to indicate the status of the get component info operation and return the retrieved information.
+ * DFU state callback is executed as a result of the Get operation or when DFU state is changed locally.
  */
-typedef void(*mesh_client_dfu_status_t)(uint8_t status, uint8_t progress);
+typedef void(*mesh_client_dfu_status_t)(uint8_t state, uint8_t *p_data, uint32_t data_length);
 
 /*
 * The function can be called to get status of a DFU process
 */
-int mesh_client_dfu_get_status(char *distributor_name, mesh_client_dfu_status_t p_dfu_status_callback);
+int mesh_client_dfu_get_status(mesh_client_dfu_status_t p_dfu_status_callback, uint32_t interval);
 
 /*
  * On/Off state callback is executed as a result of the Get/Set operation or when state of the device is changed locally
@@ -534,6 +527,11 @@ int mesh_client_ctl_get(const char *device_name);
  * Set state of CTL light
  */
 int mesh_client_ctl_set(const char *device_name, uint16_t lightness, uint16_t temperature, uint16_t delta_uv, wiced_bool_t reliable, uint32_t transition_time, uint16_t delay);
+
+/*
+ * Set Mesh core ADV Tx Power
+ */
+int mesh_client_core_adv_tx_power_set(uint8_t adv_tx_power);
 
 /*
  * Add vendor-specific model

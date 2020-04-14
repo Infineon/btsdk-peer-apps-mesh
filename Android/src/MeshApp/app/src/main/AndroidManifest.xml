@@ -38,13 +38,19 @@
             android:label="@string/title_activity_group"
             android:screenOrientation="portrait" />
         <activity
-            android:name=".ActivityOtaUpgrade"
+            android:name=".ActivityDfu"
+            android:label="DFU Upgrade"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateHidden" />
+        <activity
+            android:name=".ActivityOta"
             android:label="OTA Upgrade"
             android:screenOrientation="portrait" />
         <activity
             android:name=".NewRoom"
             android:label="@string/title_activity_add_group"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateHidden" />
         <activity
             android:name=".Delete"
             android:label="@string/title_activity_delete"
@@ -70,11 +76,6 @@
             <!-- android:value=".ActivityGroup" -->
             <!-- tools:replace= "android:value"/> -->
         </activity>
-        <activity
-            android:name=".leotaapp.MainActivity"
-            android:label="OTA Upgrade"
-            android:screenOrientation="portrait"
-            android:windowSoftInputMode="stateHidden" />
 
         <service android:name="com.cypress.le.mesh.meshframework.MeshService"></service>
         <service

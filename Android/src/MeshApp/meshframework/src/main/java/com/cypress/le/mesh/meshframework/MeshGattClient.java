@@ -30,7 +30,6 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
-import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
@@ -43,174 +42,183 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
 import android.os.ParcelUuid;
 import android.util.Log;
 
 import com.cypress.le.mesh.meshcore.MeshNativeHelper;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
 
- class MeshGattClient {
 
+public class MeshGattClient {
     private static final String TAG = "MeshGattClient";
 
+    private static final int MSG_GATT_CONNECTED         = 1;
+    private static final int MSG_GATT_MTU_TIMEOUT       = 2;
+    private static final int MSG_GATT_SERVICE_DISCOVERY = 3;
+    private static final int MSG_DEVICE_CONNECTED       = 4;
 
-     public static final UUID CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
-     private static final long MTU_REQUEST_TIMEOUT = 5000;
-     private static final int MSG_REQUEST_MTU = 1;
-     private static BluetoothLeScanner    mLeScanner = null;
-     private BluetoothManager mBluetoothManager = null;
-     private BluetoothAdapter mBluetoothAdapter = null;
-     private Context mCtx = null;
-     private MeshNativeHelper mMeshNativeHelper = null;
-     private static BluetoothGatt mGatt = null;
-     private static BluetoothGattService        mGattService = null;
-     private static BluetoothGattCharacteristic mGattChar    = null;
-     private static BluetoothGattCharacteristic mGattCharNotify = null;
-     static LinkedList<BluetoothCommand> mCommandQueue = new LinkedList<BluetoothCommand>();
-     static Executor mCommandExecutor = Executors.newSingleThreadExecutor();
-     static Semaphore mCommandLock = new Semaphore(1,true);
-     private int mMtuSize = 0;
-     private static BluetoothDevice mCurrentDev = null;
+    private static final long GATT_MTU_DELAY               = 100;
+    private static final long GATT_MTU_TIMEOUT             = 5000;
+    private static final long GATT_SERVICE_DISCOVERY_DELAY = 100;
+    private static final long DEVICE_CONNECTED_DELAY       = 100;
 
-     private String mComponentName;
-     private String mFileName;
-     private String mMetadata;
-     private byte   mDfuMethod;
-     private boolean mOtaSupported = false;
+    private Context                     mCtx              = null;
+    private BluetoothAdapter            mBluetoothAdapter = null;
+    private BluetoothLeScanner          mLeScanner        = null;
+    private BluetoothGatt               mGatt             = null;
+    private BluetoothGattService        mGattService      = null;
+    private BluetoothGattCharacteristic mGattCharData     = null;
+    private BluetoothGattCharacteristic mGattCharNotify   = null;
+    private BluetoothDevice             mDevice           = null;
 
-     private static IMeshGattClientCallback mCallback = null;
-     private static OTAUpgrade otaUpgrade = null;
+    private MeshNativeHelper        mMeshNativeHelper = null;
+    private IMeshGattClientCallback mCallback         = null;
+    private OtaUpgrade              mOtaUpgrade       = null;
+    private GattUtils.RequestQueue  mRequestQueue     = GattUtils.createRequestQueue();
 
-     private static MeshGattClient ourInstance = new MeshGattClient();
-     private final GattUtils.RequestQueue mRequestQueue = GattUtils.createRequestQueue();
+    private short   mMtuSize                = 0;
+    private boolean mOtaSupported           = false; // Whether device support Cypress OTA service
+    private boolean mSecureServiceSupported = false; // Whether support secure OTA service
 
-     private  BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-         @Override
-         public void onReceive(Context context, Intent intent) {
-             switch (intent.getAction()) {
-                 case BluetoothAdapter.ACTION_STATE_CHANGED:
-                     if(intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1) == BluetoothAdapter.STATE_OFF) {
-                     mMeshNativeHelper.meshClientConnectionStateChanged((short)0, (short)0);
-                 } break;
-             }
+    public MeshGattClient(Context ctx, MeshNativeHelper meshNativeHelper, IMeshGattClientCallback callback) {
+        mCtx              = ctx;
+        mMeshNativeHelper = meshNativeHelper;
+        mCallback         = callback;
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-         }
-     };
-
-    //return our provision client instance
-    static MeshGattClient getInstance(IMeshGattClientCallback callback)
-    {
-        mCallback = callback;
-        return ourInstance;
-    }
-
-    public boolean init(Context ctx) {
-        infoLog("MeshGattClient init , mGatt = " + mGatt);
-        mCtx = ctx;
-        mMeshNativeHelper = MeshNativeHelper.getInstance();
-        if (mBluetoothManager == null) {
-            mBluetoothManager = (BluetoothManager) mCtx.getSystemService(Context.BLUETOOTH_SERVICE);
-            if (mBluetoothManager == null)
-                return false;
-        }
-        if (mBluetoothAdapter == null) {
-            mBluetoothAdapter = mBluetoothManager.getAdapter();
-            if (mBluetoothAdapter == null)
-                return false;
-        }
         IntentFilter filter = new IntentFilter();
         filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         mCtx.registerReceiver(mBroadcastReceiver, filter);
-        return true;
-
     }
+
+    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            switch (intent.getAction()) {
+            case BluetoothAdapter.ACTION_STATE_CHANGED:
+                if (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1) == BluetoothAdapter.STATE_OFF) {
+                    mMeshNativeHelper.meshClientConnectionStateChanged((short)0, (short)0);
+                }
+                break;
+            }
+        }
+    };
+
+    private ScanCallback mScanCallback = new ScanCallback() {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            byte[] scanData = result.getScanRecord().getBytes();
+            Log.i(TAG, "onScanResult: (" + scanData.length + ") " + Constants.toHexString(scanData));
+            BluetoothDevice device = result.getDevice();
+            if (device == null) {
+                Log.i(TAG, "onScanResult: device is null");
+                return;
+            }
+            String address = device.getAddress();
+            String name = result.getScanRecord().getDeviceName();
+            Log.i(TAG, "onScanResult: device = " + address + ", rssi = " + result.getRssi() + ", name = " + name);
+
+            byte[] identity = new byte[scanData.length];
+            System.arraycopy(scanData, 0, identity, 0, scanData.length);
+
+            String[] dev = address.split(":");
+            byte[] bdAddr = new byte[6];        // mac.length == 6 bytes
+            for (int j = 0; j < dev.length; j++) {
+                bdAddr[j] = Integer.decode("0x" + dev[j]).byteValue();
+            }
+            mMeshNativeHelper.meshClientAdvertReport(bdAddr, (byte)0, (byte)result.getRssi(), identity, identity.length);
+        }
+    };
+
+    public boolean meshAdvScan(boolean start) {
+        Log.i(TAG, "meshAdvScan: start = " + start);
+        if (start == false) {
+            if (mLeScanner == null) {
+                Log.i(TAG, "meshAdvScan: scan stopped already");
+                return true;
+            }
+            mLeScanner.stopScan(mScanCallback);
+            mLeScanner = null;
+            return true;
+        }
+
+        if (mLeScanner != null) {
+            Log.e(TAG, "meshAdvScan: scan is running already");
+            return true;
+        }
+        if (mBluetoothAdapter == null) {
+            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            if (mBluetoothAdapter == null) {
+                Log.e(TAG, "meshAdvScan: BluetoothAdapter is null");
+                return false;
+            }
+        }
+        mLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
+        if (mLeScanner == null) {
+            Log.e(TAG, "meshAdvScan: Failed to get scanner");
+            return false;
+        }
+
+        List<ScanFilter> scanFilters = new ArrayList<ScanFilter>();
+        ScanFilter scanFilterProv
+            = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(Constants.UUID_SERVICE_MESH_PROVISIONING)).build();
+        ScanFilter scanFilterProxy
+            = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(Constants.UUID_SERVICE_MESH_PROXY)).build();
+        scanFilters.add(scanFilterProv);
+        scanFilters.add(scanFilterProxy);
+        ScanSettings setting
+            = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+        mLeScanner.startScan(scanFilters, setting, mScanCallback);
+        return true;
+    }
+
 
     private BluetoothGattCallback mGattCallbacks = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(final BluetoothGatt gatt, int status, int newState) {
-            Log.i(TAG, "onConnectionStateChange: status = " + status
-                    + ", newState = " + newState);
-
+            Log.i(TAG, "onConnectionStateChange: status = " + status + ", newState = " + newState);
             if (status != 0 && newState != BluetoothProfile.STATE_DISCONNECTED) {
                 gatt.disconnect();
-                mMeshNativeHelper.meshClientConnectionStateChanged((short)0, (short) mMtuSize);
+                mMeshNativeHelper.meshClientConnectionStateChanged((short)0, mMtuSize);
             }
             else if (newState == BluetoothProfile.STATE_CONNECTED) {
-                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        Message msg = new Message();
-                        msg.what = MSG_REQUEST_MTU;
-                        mHandler.sendMessageDelayed(msg, MTU_REQUEST_TIMEOUT);
-                        boolean res = mGatt.requestMtu(Constants.MTU_SIZE_GATT);
-                        infoLog("result of request MTU = "+res);
-                    }
-                }, 100);
-                mCurrentDev = gatt.getDevice();
-
+                mHandler.sendEmptyMessageDelayed(MSG_GATT_CONNECTED, GATT_MTU_DELAY);
+                mDevice = gatt.getDevice();
             }
             else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-
                 gatt.close();
-
-                Log.e(TAG, "setting mGatt,mGattService,mGattNotify as NULL");
                 mGatt           = null;
                 mGattService    = null;
                 mGattCharNotify = null;
-                mCurrentDev = null;
-                mMeshNativeHelper.meshClientConnectionStateChanged((short)0, (short) mMtuSize);
-                //mCallback.onNetworkConnectionStateChange();
+                mDevice         = null;
+                mMeshNativeHelper.meshClientConnectionStateChanged((short)0, mMtuSize);
             }
-
         }
-
 
         @Override
         public void onMtuChanged(final BluetoothGatt gatt, int mtu, int status) {
-            Log.d(TAG, "onMtuChanged " + mtu);
-            mHandler.removeMessages(MSG_REQUEST_MTU);
+            Log.i(TAG, "onMtuChanged: mtu = " + mtu + ", status = " + status);
+            mHandler.removeMessages(MSG_GATT_MTU_TIMEOUT);
             mMeshNativeHelper.meshClientSetGattMtu(mtu);
-            mMtuSize = mtu;
-
-            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    infoLog("Starting discovery services in LEMesh Proxy");
-                    mCurrentDev = gatt.getDevice();
-                    if (!gatt.discoverServices()) {
-                        gatt.disconnect();
-                    }
-                }
-            }, 100);
-
+            mMtuSize = (short)mtu;
+            mHandler.sendEmptyMessageDelayed(MSG_GATT_SERVICE_DISCOVERY, GATT_SERVICE_DISCOVERY_DELAY);
         }
 
         @Override
         public void onDescriptorRead(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
-
-            if(descriptor.getCharacteristic().getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_CONTROL_POINT_UUID) ||
-                    descriptor.getCharacteristic().getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_CONTROL_POINT_UUID_2)) {
-                otaUpgrade.onOTADescriptorRead(gatt,descriptor,status);
+            if (descriptor.getCharacteristic().getUuid().equals(Constants.UUID_CHARACTERISTIC_CYPRESS_OTA_FW_UPGRDE_CONTROL_POINT)) {
+                mOtaUpgrade.onOtaDescriptorRead(gatt, descriptor, status);
             }
-
         }
 
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
-            if(descriptor.getCharacteristic().getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_CONTROL_POINT_UUID) ||
-                    descriptor.getCharacteristic().getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_CONTROL_POINT_UUID_2)) {
-                otaUpgrade.onOTADescriptorWrite(gatt,descriptor,status);
+            if (descriptor.getCharacteristic().getUuid().equals(Constants.UUID_CHARACTERISTIC_CYPRESS_OTA_FW_UPGRDE_CONTROL_POINT)) {
+                mOtaUpgrade.onOtaDescriptorWrite(gatt, descriptor, status);
             }
         }
 
@@ -222,135 +230,148 @@ import java.util.concurrent.Semaphore;
                 return;
             }
 
+            /*
+            // List all the services
+            List<BluetoothGattService> serviceList = gatt.getServices();
+            Log.i(TAG, "onServicesDiscovered: service num = " + serviceList.size());
+            // Loops through available Characteristics.
+            for (BluetoothGattService service : serviceList) {
+                Log.i(TAG, "listServices: service " + service.getUuid());
+                List<BluetoothGattCharacteristic> charList = service.getCharacteristics();
+                Log.i(TAG, "listServices: Characteristic num = " + charList.size());
+                for (BluetoothGattCharacteristic characteristic : charList) {
+                    Log.i(TAG, "listServices:     Characteristic " + characteristic);
+                }
+            }
+            */
+
             boolean connectProvisioning = mMeshNativeHelper.meshClientIsConnectingProvisioning();
             Log.i(TAG, "onServicesDiscovered: connectProvisioning = " + connectProvisioning);
-            if(connectProvisioning) //connecting to provisioning
-            {
-                mGattService = gatt.getService(Constants.UUID_SERVICE_SMART_MESH_PROVISIONING);
+            if (connectProvisioning) { // Connecting to provisioning
+                mGattService = gatt.getService(Constants.UUID_SERVICE_MESH_PROVISIONING);
                 if (mGattService == null) {
-                    Log.e(TAG, "onServicesDiscovered: SIG Mesh Service ("
-                            + Constants.UUID_SERVICE_SMART_MESH_PROVISIONING + ") not found");
+                    Log.e(TAG, "onServicesDiscovered: SIG Mesh Provisioning Service ("
+                            + Constants.UUID_SERVICE_MESH_PROVISIONING + ") not found");
                     mGatt.disconnect();
+                    mGatt = null;
                     return;
                 }
 
-                ArrayList<BluetoothGattCharacteristic> array = (ArrayList<BluetoothGattCharacteristic>)
-                        mGattService.getCharacteristics();
+                ArrayList<BluetoothGattCharacteristic> array
+                    = (ArrayList<BluetoothGattCharacteristic>) mGattService.getCharacteristics();
+                Log.i(TAG, "onServicesDiscovered: Provisioning Service Characteristics num = " + array.size());
+                for (int i = 0; i < array.size(); i++) {
+                    Log.i(TAG, " Characteristics[" + i + "]: " + array.get(i).getUuid());
+                }
 
-                for(int i =0;i<array.size();i++)
-                    Log.d(TAG," list array > "+array.get(i).getUuid());
-
-                mGattChar = mGattService.getCharacteristic(
+                mGattCharData = mGattService.getCharacteristic(
                         Constants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_IN);
-                if (mGattChar == null) {
-                    Log.e(TAG, "onServicesDiscovered: SIG MESH Characteristic (" +
-                            Constants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_IN + ") not found");
+                if (mGattCharData == null) {
+                    Log.e(TAG, "onServicesDiscovered: Provisioning Service DataIn Characteristic (" +
+                          Constants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_IN + ") not found");
                     mGatt.disconnect();
+                    mGatt = null;
                     return;
                 }
 
                 mGattCharNotify = mGattService.getCharacteristic(
                         Constants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_OUT);
-                if(mGattCharNotify == null) {
-                    Log.e(TAG, "onServicesDiscovered: SIG MESH Characteristic notify (" +
-                            Constants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_OUT + ") not found");
+                if (mGattCharNotify == null) {
+                    Log.e(TAG, "onServicesDiscovered: Provisioning Service Notify Characteristic (" +
+                          Constants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_OUT + ") not found");
+                    mGatt.disconnect();
+                    mGatt = null;
+                    return;
                 }
-
-            } else { //connecting to proxy
-
-                mOtaSupported = false;
-                mGattService = gatt.getService(Constants.UUID_UPGRADE_SERVICE);
+            }
+            else { // Connecting to proxy
+                mOtaSupported           = false;
+                mSecureServiceSupported = false;
+                mGattService = gatt.getService(Constants.UUID_SERVICE_CYPRESS_OTA_FW_UPGRDE);
                 if (mGattService != null) {
                     Log.i(TAG, "onServicesDiscovered: Proxy device supports Cypress OTA Service");
                     mOtaSupported = true;
                 }
-                mGattService = gatt.getService(Constants.UUID_SECURE_UPGRADE_SERVICE);
+                mGattService = gatt.getService(Constants.UUID_SERVICE_CYPRESS_OTA_SEC_FW_UPGRDE);
                 if (mGattService != null) {
                     Log.i(TAG, "onServicesDiscovered: Proxy device supports Cypress Secure OTA Service");
-                    mOtaSupported = true;
+                    mOtaSupported           = true;
+                    mSecureServiceSupported = true;
                 }
 
-                mGattService = gatt.getService(Constants.UUID_SERVICE_SMART_MESH_PROXY);
+                mGattService = gatt.getService(Constants.UUID_SERVICE_MESH_PROXY);
                 if (mGattService == null) {
-                    Log.e(TAG, "onServicesDiscovered:  Mesh Service ("
-                            + Constants.UUID_SERVICE_SMART_MESH_PROXY + ") not found");
+                    Log.e(TAG, "onServicesDiscovered: SIG Mesh Proxy Service ("
+                            + Constants.UUID_SERVICE_MESH_PROXY + ") not found");
                     gatt.disconnect();
                     return;
                 }
 
-                ArrayList<BluetoothGattCharacteristic> array = (ArrayList<BluetoothGattCharacteristic>)
-                        mGattService.getCharacteristics();
+                ArrayList<BluetoothGattCharacteristic> array
+                    = (ArrayList<BluetoothGattCharacteristic>) mGattService.getCharacteristics();
+                Log.i(TAG, "onServicesDiscovered: Proxy Service Characteristics num = " + array.size());
+                for (int i = 0; i < array.size(); i++) {
+                    Log.i(TAG, " Characteristics[" + i + "]: " + array.get(i).getUuid());
+                }
 
-                for(int i =0;i<array.size();i++)
-                    Log.d(TAG," list array > "+array.get(i).getUuid());
-
-
-                mGattChar = mGattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN);
-                if (mGattChar == null) {
-                    Log.e(TAG, "onServicesDiscovered: Mesh Characteristic ("
-                            + Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN + ") not found");
+                mGattCharData = mGattService.getCharacteristic(
+                        Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN);
+                if (mGattCharData == null) {
+                    Log.e(TAG, "onServicesDiscovered: Proxy Service DataIn Characteristic (" +
+                          Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN + ") not found");
                     gatt.disconnect();
                     return;
                 }
 
-                mGattCharNotify = mGattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_OUT);
+                mGattCharNotify = mGattService.getCharacteristic(
+                        Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_OUT);
                 if (mGattCharNotify == null) {
-                    Log.e(TAG, "onServicesDiscovered: mesh Characteristic (" + Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_OUT + ") not found");
+                    Log.e(TAG, "onServicesDiscovered: Proxy Service Notify Characteristic (" +
+                          Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_OUT + ") not found");
                     gatt.disconnect();
                     return;
                 }
             }
+            Log.i(TAG, "onServicesDiscovered: Gatt connected");
 
             gatt.setCharacteristicNotification(mGattCharNotify, true);
-            BluetoothGattDescriptor descriptor = mGattCharNotify.getDescriptor(CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID);
+            BluetoothGattDescriptor descriptor = mGattCharNotify.getDescriptor(
+                    Constants.UUID_DESCRIPTOR_CHARACTERISTIC_UPDATE_NOTIFICATION);
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            boolean ret = gatt.writeDescriptor(descriptor);
+            Log.i(TAG, "onServicesDiscovered: Update_Notify descriptor write: " + ret);
 
-            if(gatt.writeDescriptor(descriptor)==true) {
-                Log.d(TAG, "write true" );
-            } else {
-                Log.d(TAG, "write false" );
-            }
-            sleep(100);
-            //send a broadcast to MeshService_old that proxy is connected
-            Log.e(TAG,"Gatt connection is Successful");
-            if (mGatt == null || mGattService == null || mGattChar == null) {
-                // TBD: better to use an error message pop-up
-                Log.e(TAG, "send: mGatt = " + mGatt + ", mGattService = " + mGattService
-                        + ", mGattChar = " + mGattChar);
-            } else {
-                Log.e(TAG,"All the required fields are good ");
+            mHandler.sendEmptyMessageDelayed(MSG_DEVICE_CONNECTED, DEVICE_CONNECTED_DELAY);
+            /*
+            // Sleep 100 ms
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
 
+            // Send a broadcast to MeshService_old that proxy is connected
             new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                 @Override
                 public void run() {
-
-
-                    if(mGattService.getUuid().equals(Constants.UUID_SERVICE_SMART_MESH_PROXY)) {
-                        Log.d(TAG, "Proxy GATT connection/discovery/Enabling notification/MTU exchange successful");
-
-                    } else {
-                        Log.d(TAG, "Provision GATT connection/discovery/Enabling notification/MTU exchange successful");
-                    }
-                    mMeshNativeHelper.meshClientConnectionStateChanged((short)1, (short) mMtuSize);
+                    Log.i(TAG, "onServicesDiscovered: set GATT MTU size = " + mMtuSize);
+                    mMeshNativeHelper.meshClientConnectionStateChanged((short)1, mMtuSize);
                     mMeshNativeHelper.meshClientSetGattMtu(mMtuSize);
                 }
             }, 100);
-            mCurrentDev = gatt.getDevice();
-
+            mDevice = gatt.getDevice();
+            */
         }
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            Log.i(TAG, "onCharacteristicWrite: status = " + status
-                    + " char:" + characteristic.getUuid());
-            if(characteristic.getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_CONTROL_POINT_UUID) ||
-                    characteristic.getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_DATA_UUID) ||
-                    characteristic.getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_CONTROL_POINT_UUID_2) ||
-                    characteristic.getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_DATA_UUID_2)) {
-                otaUpgrade.onOtaCharacteristicWrite(gatt,characteristic,status);
-            } else {
-                //dequeueCommand();
+            UUID uuid = characteristic.getUuid();
+            Log.i(TAG, "onCharacteristicWrite: status = " + status + ", char = " + uuid);
+            if (uuid.equals(Constants.UUID_CHARACTERISTIC_CYPRESS_OTA_FW_UPGRDE_DATA) ||
+                uuid.equals(Constants.UUID_CHARACTERISTIC_CYPRESS_OTA_FW_UPGRDE_CONTROL_POINT)) {
+                mOtaUpgrade.onOtaCharacteristicWrite(gatt, characteristic, status);
+            }
+            else {
                 mRequestQueue.next();
             }
         }
@@ -362,431 +383,174 @@ import java.util.concurrent.Semaphore;
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt,
                                             BluetoothGattCharacteristic characteristic) {
-              if(characteristic.getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_CONTROL_POINT_UUID)
-                    || characteristic.getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_DATA_UUID) ||
-            characteristic.getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_CONTROL_POINT_UUID_2)
-                    || characteristic.getUuid().equals(OTAUpgradeConstants.UPGRADE_CHARACTERISTIC_DATA_UUID_2)) {
-                Log.d(TAG, "recieved notification during OTA upgrade");
-                otaUpgrade.onOtaCharacteristicChanged(gatt, characteristic);
-            } else {
-                byte[] charData = characteristic.getValue();
-                int adv_len = charData.length;
-                Log.d(TAG, "recieved notification "+characteristic.getService().getUuid().toString());
-                  if(characteristic.getService().getUuid().equals(Constants.UUID_SERVICE_SMART_MESH_PROVISIONING)){
-                    Log.e(TAG, "recieved provis packet from remote device : len = " + charData.length + " val = " + toHexString(charData));
-                    Log.e(TAG, "notification uuid = " + characteristic.getUuid());
-                    mMeshNativeHelper.SendRxProvisPktToCore(charData, adv_len);
-                } else if(characteristic.getService().getUuid().equals(Constants.UUID_SERVICE_SMART_MESH_PROXY)){
-                    Log.e(TAG, "recieved proxy packet from the remote device: len = " + charData.length + " val = " + toHexString(charData));
-                    Log.e(TAG, "notification uuid = " + characteristic.getUuid());
-                    mMeshNativeHelper.SendRxProxyPktToCore(charData, adv_len);
+            UUID uuid = characteristic.getUuid();
+            if (uuid.equals(Constants.UUID_CHARACTERISTIC_CYPRESS_OTA_FW_UPGRDE_DATA) ||
+                uuid.equals(Constants.UUID_CHARACTERISTIC_CYPRESS_OTA_FW_UPGRDE_CONTROL_POINT)) {
+                Log.i(TAG, "onCharacteristicChanged: OTA char changed");
+                mOtaUpgrade.onOtaCharacteristicChanged(characteristic);
+            }
+            else {
+                byte[] data = characteristic.getValue();
+                int    len  = data.length;
+                Log.i(TAG, "onCharacteristicChanged: " + uuid.toString());
+                UUID serviceUuid = characteristic.getService().getUuid();
+                if (serviceUuid.equals(Constants.UUID_SERVICE_MESH_PROVISIONING)) {
+                    Log.i(TAG, "onCharacteristicChanged: provis packet: len = " + len + ", val = " + Constants.toHexString(data));
+                    mMeshNativeHelper.SendRxProvisPktToCore(data, len);
+                }
+                else if (serviceUuid.equals(Constants.UUID_SERVICE_MESH_PROXY)) {
+                    Log.e(TAG, "onCharacteristicChanged: proxy packet: len = " + len + ", val = " + Constants.toHexString(data));
+                    mMeshNativeHelper.SendRxProxyPktToCore(data, len);
                 }
             }
         }
     };
 
-    boolean connect(byte[] bdaddr) {
-        Log.e(TAG, "connect: 1");
+
+    public boolean connect(byte[] bdaddr) {
+        Log.i(TAG, "connect: addr = " + Constants.toHexString(bdaddr, ':'));
+        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(bdaddr);
+        if (device == null) {
+            Log.e(TAG, "connect: Device " + Constants.toHexString(bdaddr, ':') + " not found");
+            return false;
+        }
+        return connect(device);
+    }
+
+    public boolean connect(BluetoothDevice device) {
+        Log.i(TAG, "connect: device = " + device.getAddress());
         if (mGatt != null) {
             Log.e(TAG, "connect: GATT is busy...");
             mGatt.close();
         }
-        //clearCommandQueue();
         mRequestQueue.clear();
 
-        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(bdaddr);
-        //API 23(Android-M) introduced connectGatt with Transport
+        // API 23(Android-M) introduced connectGatt with Transport
         if (Build.VERSION.SDK_INT >= 23)
             mGatt = device.connectGatt(mCtx, false, mGattCallbacks, BluetoothDevice.TRANSPORT_LE);
         else
             mGatt = device.connectGatt(mCtx, false, mGattCallbacks);
 
-        if (mGatt != null) return true;
-        Log.e(TAG, "connect: Failed to connect device " + device);
-        return false;
-    }
-
-    private void clearCommandQueue() {
-        infoLog("clearCommandQueue");
-        mCommandQueue.clear();
-        mCommandQueue = null;
-        mCommandQueue = new LinkedList<BluetoothCommand>();
-        mCommandLock = new Semaphore(1,true);
-        mCommandExecutor = null;
-        mCommandExecutor = Executors.newSingleThreadExecutor();
-    }
-
-    boolean connect(BluetoothDevice device) {
-        Log.e(TAG, "connect: 2");
-        if (mGatt != null) {
-            Log.e(TAG, "connect: GATT is busy...");
-            return false;
-        }
-        mCommandQueue.clear();
-        mCommandQueue = null;
-        mCommandQueue = new LinkedList<BluetoothCommand>();
-        mCommandLock = new Semaphore(1,true);
-
-        //API 23(Android-M) introduced connectGatt with Transport
-        if (Build.VERSION.SDK_INT >= 23)
-            mGatt = device.connectGatt(mCtx, false, mGattCallbacks, BluetoothDevice.TRANSPORT_LE);
-        else
-            mGatt = device.connectGatt(mCtx, false, mGattCallbacks);
-
-        if (mGatt != null) return true;
-        Log.e(TAG, "connect: Failed to connect device " + device);
-        return false;
-    }
-
-    private boolean refreshDeviceCache(BluetoothGatt gatt){
-        Log.i(TAG, "refreshDeviceCache");
-        try {
-            BluetoothGatt localBluetoothGatt = gatt;
-            Method localMethod = localBluetoothGatt.getClass().getMethod("refresh", new Class[0]);
-            if (localMethod != null) {
-                Log.i(TAG, "refreshDeviceCache : invoking local method");
-                boolean bool = ((Boolean) localMethod.invoke(localBluetoothGatt, new Object[0])).booleanValue();
-                return bool;
-            }
-        }
-        catch (Exception localException) {
-            Log.e(TAG, "An exception occured while refreshing device");
-            localException.printStackTrace();
-        }
-        return false;
-    }
-
-    public boolean connectProxy(BluetoothDevice device){
-        connect(device);
-        return true;
-    }
-
-    public boolean disconnectDevice(){
-        boolean ret = false ;
-        Log.e(TAG, "Disconnecting the current proxy device");
-        if(mGatt != null){
-            mGatt.disconnect();
-            ret = true;
-            mGatt = null;
-        } else {
-            Log.e(TAG,"Error : mGatt interface is null");
-        }
-        return ret;
-    }
-
-    public boolean meshAdvScan(boolean start) {
-        Log.e(TAG,"meshAdvScan , start =" + start);
-        ScanSettings setting;
-
-        if(mLeScanner != null && start) {
-            Log.e(TAG,"meshAdvScan already running , start =" + start);
-            return false;
-        }
-
-        if (mBluetoothAdapter == null) {
-            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (mBluetoothAdapter == null)
-                return false;
-        }
-
-        if (mLeScanner == null) {
-            Log.e(TAG,"mLeScaner is null");
-            mLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
-            if (mLeScanner == null)
-                return false;
-        }
-
-        // Stop scan
-        if(start == false) {
-            Log.d(TAG,"Stop scanning");
-            mLeScanner.stopScan(mScanCallback);
-            mLeScanner = null;
+        if (mGatt != null)
             return true;
-        }
-
-        setting = new ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
-        ScanFilter scanFilterprov =
-                new ScanFilter.Builder()
-                        .setServiceUuid(new ParcelUuid(Constants.UUID_SERVICE_SMART_MESH_PROVISIONING))
-                        .build();
-        ScanFilter scanFilterproxy =
-                new ScanFilter.Builder()
-                        .setServiceUuid(new ParcelUuid(Constants.UUID_SERVICE_SMART_MESH_PROXY))
-                        .build();
-        List<ScanFilter> scanFilters = new ArrayList<ScanFilter>();
-        scanFilters.add(scanFilterprov);
-        scanFilters.add(scanFilterproxy);
-        mLeScanner.startScan(scanFilters,setting,mScanCallback);
-        return true;
+        Log.e(TAG, "connect: Failed to connect device " + device.getAddress());
+        return false;
     }
 
-    /* Send Provisioning Packet from JNI to gattClient and write to device */
-    public void sendProvisionPacket(byte[] packet, int len){
-        infoLog("sendProvisionPacket");
-        infoLog("DATA : " + toHexString(packet));
-        writeData(packet,Constants.UUID_SERVICE_SMART_MESH_PROVISIONING);
-    }
-
-    /* Send Provisioning Packet from JNI to gattClient and write to device */
-    public void sendProxyPacket(byte[] packet, int len){
-        infoLog("sendProxyPacket");
-        infoLog("DATA : " + toHexString(packet));
-        writeData(packet,Constants.UUID_SERVICE_SMART_MESH_PROXY);
-    }
-
-    /* Send OTA Packet from OTAUpgrade to gattClient and write to device */
-    public void sendOTAPacket(byte[] packet, int len){
-        infoLog("sendOTAPacket");
-        infoLog("DATA : " + toHexString(packet));
-        writeData(packet, OTAUpgradeConstants.UPGRADE_SERVICE_UUID);
-    }
-
-    /* Write Data to Device */
-    public boolean writeData(byte value[], UUID uuid){
-
-        //check mBluetoothGatt is available
-        if (mGatt == null) {
-            Log.e(TAG, "lost connection");
-
-            return false;
-        }
-        BluetoothGattService Service = mGatt.getService(uuid);
-        if (Service == null) {
-            Log.e(TAG, "service not found!");
-            return false;
-        }
-        BluetoothGattCharacteristic charac1 = null;
-        if(uuid == Constants.UUID_SERVICE_SMART_MESH_PROXY)
-            charac1 = Service.getCharacteristic(Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN);
-        else if(uuid == Constants.UUID_SERVICE_SMART_MESH_PROVISIONING)
-            charac1 = Service.getCharacteristic(Constants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_IN);
-     //   sendQueuedCommand(value, service);
-        mRequestQueue.addWriteCharacteristic(mGatt, charac1, value);
-        mRequestQueue.execute();
-        return true;
-    }
-
-    public static void queueCommand(BluetoothCommand command, UUID service){
-        Log.d(TAG,"queueCommand");
-        synchronized (mCommandQueue) {
-
-            mCommandQueue.add(command);  //Add to end of stack
-
-            //Schedule a new runnable to process that command (one command at a time executed only)
-            ExecuteCommandRunnable runnable = new ExecuteCommandRunnable(command, service);
-            mCommandExecutor.execute(runnable);
-        }
-    }
-
-    //Remove the current command from the queue, and release the cs
-    //signalling the next queued command (if any) that it can start
-    protected void dequeueCommand(){
-//        if(!mCommandQueue.isEmpty()) {
-//            mCommandQueue.pop();
-//            mCommandLock.release();
-//        }
-        Log.e(TAG, "dequeueCommand");
-        mCommandQueue.pop();
-        mCommandLock.release();
-    }
-
-    public void connectProxy(String bdaddr) {
-        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(bdaddr);
-        connectProxy(device);
-    }
-
-    public void disconnect(short connId) {
-        disconnectDevice();
-    }
-
-    public int startOtaUpgrade(String componentName, String fileName, String metadata, byte dfuMethod) {
-        Log.d(TAG,"startOtaUpgrade mGatt:"+mGatt);
-        Log.i(TAG, "startOtaUpgrade: componentName = " + componentName + ", dfuMethod = " + dfuMethod + ", otaSupported = " + mOtaSupported);
-        Log.i(TAG, "startOtaUpgrade: fileName = " + fileName + ", metadata = " + metadata);
-
-        mComponentName = componentName;
-        mFileName      = fileName;
-        mMetadata      = metadata;
-        mDfuMethod     = dfuMethod;
-
-        if(dfuMethod == MeshController.DFU_METHOD_PROXY_TO_ALL || dfuMethod == MeshController.DFU_METHOD_APP_TO_ALL){
-            Log.d(TAG,"send dfu start command");
-            return mMeshNativeHelper.meshClientDfuStart(dfuMethod, mOtaSupported, componentName);
-        }
-        else if (dfuMethod == MeshController.DFU_METHOD_APP_TO_DEVICE){
-            if(otaUpgrade == null)
-            {
-                Log.d(TAG,"otaupgrade is null creating new object");
-                otaUpgrade = new OTAUpgrade();
-            }
-
-            // MTU size is to accomodate extra bytes added from encryption
-            otaUpgrade.start(componentName, mCallback, fileName, dfuMethod,mOtaSupported, metadata, mGatt, mCurrentDev, (mMtuSize - 17), mRequestQueue);
-            return 0;
+    public void disconnect(int connId) {
+        Log.i(TAG, "disconnect: connId = " + connId);
+        if (mGatt != null) {
+            mGatt.disconnect();
+            mGatt = null;
         }
         else {
-            return 1;
-        }
-
-
-
-
-
-//        if(otaUpgrade == null)
-//        {
-//            Log.d(TAG,"otaupgrade is null creating new object");
-//            otaUpgrade = new OTAUpgrade();
-//        }
-//
-//        // MTU size is to accomodate extra bytes added from encryption
-//        otaUpgrade.start(componentName, mCallback, fileName, dfuMethod, metadata, mGatt, mCurrentDev, (mMtuSize - 17), mRequestQueue);
-    }
-
-    public int stopOtaUpgrade() {
-        if(otaUpgrade != null) {
-            return otaUpgrade.stop();
-        } else {
-            return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
+            Log.e(TAG, "disconnect: mGatt is null");
         }
     }
 
-    public void startOta() {
-        Log.i(TAG, "startOta");
-        if (otaUpgrade == null) {
-            otaUpgrade = new OTAUpgrade();
+    // Send provisioning packet through GATT to device
+    public void sendProvisionPacket(byte[] packet, int len) {
+        Log.i(TAG, "sendProvisionPacket: (" + len + ") " + Constants.toHexString(packet));
+        BluetoothGattCharacteristic characteristic = GattUtils.getCharacteristic(mGatt,
+                    Constants.UUID_SERVICE_MESH_PROVISIONING,
+                    Constants.UUID_CHARACTERISTIC_MESH_PROVISIONING_DATA_IN);
+        if (characteristic == null) {
+            Log.e(TAG, "sendProvisionPacket: characteristic not found!");
+            return;
+        }
+        mRequestQueue.addWriteCharacteristic(mGatt, characteristic, packet);
+        mRequestQueue.execute();
+    }
+
+    // Send proxy packet through GATT to device
+    public void sendProxyPacket(byte[] packet, int len) {
+        Log.i(TAG, "sendProxyPacket: (" + len + ") " + Constants.toHexString(packet));
+        BluetoothGattCharacteristic characteristic = GattUtils.getCharacteristic(mGatt,
+                    Constants.UUID_SERVICE_MESH_PROXY,
+                    Constants.UUID_CHARACTERISTIC_MESH_PROXY_DATA_IN);
+        if (characteristic == null) {
+            Log.e(TAG, "sendProxyPacket: characteristic not found!");
+            return;
+        }
+        mRequestQueue.addWriteCharacteristic(mGatt, characteristic, packet);
+        mRequestQueue.execute();
+    }
+
+    public boolean isOtaSupportedCb() {
+        Log.i(TAG, "isOtaSupportedCb: mOtaSupported = " + mOtaSupported + ", mSecureServiceSupported = " + mSecureServiceSupported);
+        return (mOtaSupported || mSecureServiceSupported);
+    }
+
+    public void startOta(String firmwareFile, boolean isDfu) {
+        Log.i(TAG, "startOta: isDfu:" + isDfu + ", name = " + firmwareFile);
+        if (mOtaUpgrade == null) {
+            mOtaUpgrade = new OtaUpgrade(mMeshNativeHelper, mCallback, mGatt, mRequestQueue, mOtaSupported, mSecureServiceSupported, (mMtuSize - 17));
         }
 
         // MTU size is to accomodate extra bytes added from encryption
-        otaUpgrade.start(mComponentName, mCallback, mFileName, mDfuMethod, mOtaSupported, mMetadata, mGatt, mCurrentDev, (mMtuSize - 17), mRequestQueue);
+        mOtaUpgrade.start(firmwareFile, isDfu);
+    }
+
+    public int stopOta() {
+        Log.i(TAG, "stopOta");
+        if (mOtaUpgrade != null) {
+            return mOtaUpgrade.stop();
+        }
+        return MeshController.MESH_CLIENT_ERR_INVALID_ARGS;
     }
 
     public void otaUpgradeApply() {
-        if(otaUpgrade == null) {
-            otaUpgrade = new OTAUpgrade();
+        Log.i(TAG, "otaUpgradeApply");
+        if (mOtaUpgrade == null) {
+            mOtaUpgrade = new OtaUpgrade(mMeshNativeHelper, mCallback, mGatt, mRequestQueue, mOtaSupported, mSecureServiceSupported, (mMtuSize - 17));
         }
-        otaUpgrade.apply(mCallback, mGatt, mRequestQueue);
-
-    }
-
-    //Runnable to execute a command from the queue
-    static class ExecuteCommandRunnable implements Runnable{
-
-        BluetoothCommand mCommand;
-        UUID mService;
-
-        public ExecuteCommandRunnable(BluetoothCommand command, UUID service) {
-            mCommand = command;
-            mService = service;
-        }
-
-        @Override
-        public void run() {
-            Log.d(TAG,"sendQueuedCommand : run");
-            //Acquire semaphore cs to ensure no other operations can run until this one completed
-            mCommandLock.acquireUninterruptibly();
-            //Tell the command to start itself.
-            mCommand.executeCommand(mGatt, mService);
-        }
-    }
-
-    final ScanCallback mScanCallback = new ScanCallback() {
-
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            infoLog("onScanResultStart");
-            infoLog("bytes = "+toHexString(result.getScanRecord().getBytes())+ " length"+result.getScanRecord().getBytes().length);
-            if(result.getDevice() != null)
-                infoLog("device = " + result.getDevice().getAddress().toString() + "  rssi = " + result.getRssi());
-            byte[] scandata = result.getScanRecord().getBytes();
-            BluetoothDevice device = result.getDevice();
-            String name = result.getScanRecord().getDeviceName();
-            infoLog("NAME = "+name);
-            Map<ParcelUuid, byte[]> data = ( Map<ParcelUuid, byte[]>) result.getScanRecord().getServiceData();
-
-            byte[] identity = new byte[result.getScanRecord().getBytes().length];
-            System.arraycopy(result.getScanRecord().getBytes(), 0, identity, 0, result.getScanRecord().getBytes().length);
-            String[] dev = device.getAddress().split(":");
-            byte[] devAddress = new byte[6];        // mac.length == 6 bytes
-            for(int j = 0; j < dev.length; j++) {
-                devAddress[j] = Integer.decode("0x" + dev[j]).byteValue();
-            }
-            Log.d(TAG,"bdaddr = "+toHexString(devAddress));
-            mMeshNativeHelper.meshClientAdvertReport(devAddress, (byte)0, (byte)result.getRssi(), identity, identity.length);
-
-        }
-    };
-
-    private static void sendQueuedCommand(byte[] data, UUID service){
-        //Use a sample command with a delay in it to demonstarted
-        Log.d(TAG,"sendQueuedCommand "+toHexString(data));
-        BluetoothCommand command = new DelayCommand(data, mCurrentDev);
-        queueCommand(command, service);
-    }
-
-    public static String toHexString(byte[] bytes) {
-        int len = bytes.length;
-        if (len == 0)
-            return null;
-
-        char[] buffer = new char[len * 3 - 1];
-
-        for (int i = 0, index = 0; i < len; i++) {
-            if (i > 0) {
-                buffer[index++] = ' ';
-            }
-
-            int data = bytes[i];
-            if (data < 0) {
-                data += 256;
-            }
-
-            byte n = (byte) (data >>> 4);
-            if (n < 10) {
-                buffer[index++] = (char) ('0' + n);
-            } else {
-                buffer[index++] = (char) ('A' + n - 10);
-            }
-
-            n = (byte) (data & 0x0F);
-            if (n < 10) {
-                buffer[index++] = (char) ('0' + n);
-            } else {
-                buffer[index++] = (char) ('A' + n - 10);
-            }
-        }
-        return new String(buffer);
+        mOtaUpgrade.apply();
     }
 
     private  Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
-                case MSG_REQUEST_MTU :
-                    Log.d(TAG,"Request MTU timeout disconnecting gatt");
-                    if(mGatt != null)
+            case MSG_GATT_CONNECTED:
+                Log.i(TAG, "MSG_GATT_CONNECTED: mtu = " + Constants.MTU_SIZE_GATT);
+                if (mGatt != null) {
+                    boolean res = mGatt.requestMtu(Constants.MTU_SIZE_GATT);
+                    Log.i(TAG, "MSG_GATT_CONNECTED: res = " + res);
+                    if (res) {
+                        mHandler.sendEmptyMessageDelayed(MSG_GATT_MTU_TIMEOUT, GATT_MTU_TIMEOUT);
+                    }
+                    else {
                         mGatt.disconnect();
-            };
+                        mGatt = null;
+                    }
+                }
+                break;
+            case MSG_GATT_MTU_TIMEOUT:
+                Log.i(TAG, "MSG_GATT_MTU_TIMEOUT");
+                if (mGatt != null) {
+                    mGatt.disconnect();
+                    mGatt = null;
+                }
+                break;
+            case MSG_GATT_SERVICE_DISCOVERY:
+                Log.i(TAG, "MSG_GATT_SERVICE_DISCOVERY");
+                if (mGatt != null) {
+                    if (!mGatt.discoverServices()) {
+                        mGatt.disconnect();
+                        mGatt = null;
+                        Log.e(TAG, "MSG_GATT_SERVICE_DISCOVERY: failed");
+                    }
+                }
+                else {
+                    Log.e(TAG, "MSG_GATT_SERVICE_DISCOVERY: GATT is null");
+                }
+                break;
+            case MSG_DEVICE_CONNECTED:
+                Log.i(TAG, "MSG_DEVICE_CONNECTED: mtu = " + mMtuSize);
+                mMeshNativeHelper.meshClientConnectionStateChanged((short)1, mMtuSize);
+                mMeshNativeHelper.meshClientSetGattMtu(mMtuSize);
+                break;
+            }
         }
     };
-
-    private void infoLog(String msg) {
-        if (DebugUtils.VDBG) Log.i(TAG, msg);
-    }
-
-    private void debugLog(String msg) {
-        if (DebugUtils.DBG) Log.d(TAG, msg);
-    }
-
-    private void errorLog(String msg) {
-        if (DebugUtils.ERR) infoLog(msg);
-    }
-
-    private void sleep(long milliseconds) {
-        try {
-            Thread.sleep(milliseconds);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
 }

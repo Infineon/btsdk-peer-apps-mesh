@@ -718,9 +718,8 @@ class ComponentViewController: UIViewController {
 
     func onFirmwareOta() {
         meshLog("ComponentViewController, onFirmwareOta, go to device firmware OTA page")
-        //UtilityManager.navigateToViewController(sender: self, targetVCClass: DeviceOtaUpgradeViewController.self)
-
-        if let vc = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: String(describing: MeshOtaDfuViewController.self)) as? MeshOtaDfuViewController {
+        meshLog("ComponentViewController, IS_MESH_DFU_ENABLED: \(IS_MESH_DFU_ENABLED)")
+        if IS_MESH_DFU_ENABLED, let vc = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: String(describing: MeshOtaDfuViewController.self)) as? MeshOtaDfuViewController {
             vc.modalPresentationStyle = .fullScreen
             vc.deviceName = self.deviceName
             vc.groupName = self.groupName
@@ -728,6 +727,21 @@ class ComponentViewController: UIViewController {
                 OtaManager.shared.activeOtaDevice = OtaMeshDevice(meshName: deviceName)
             }
             self.present(vc, animated: true, completion: nil)
+        } else if let vc = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: String(describing: DeviceOtaUpgradeViewController.self)) as? DeviceOtaUpgradeViewController {
+            vc.modalPresentationStyle = .fullScreen
+            vc.deviceName = self.deviceName
+            vc.groupName = self.groupName
+            if let deviceName = self.deviceName {
+                OtaManager.shared.activeOtaDevice = OtaMeshDevice(meshName: deviceName)
+            }
+            self.present(vc, animated: true, completion: nil)
+        } else {
+            if IS_MESH_DFU_ENABLED {
+                meshLog("error: ComponentViewController, onFirmwareOta, failed to instantiateViewController: MeshOtaDfuViewController")
+            } else {
+                meshLog("error: ComponentViewController, onFirmwareOta, failed to instantiateViewController: DeviceOtaUpgradeViewController")
+            }
+            UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to instantiate OTA View Controller.", title: "Error")
         }
     }
 

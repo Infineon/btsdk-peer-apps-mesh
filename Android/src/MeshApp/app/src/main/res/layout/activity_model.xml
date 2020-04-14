@@ -119,7 +119,7 @@
             android:orientation="vertical">
 
             <ImageButton
-                android:id="@+id/otaupgrade"
+                android:id="@+id/activity_model_btn_ota_upgrade"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_gravity="center"
@@ -134,7 +134,7 @@
                 android:layout_weight="10"
                 android:layout_margin="15dp"
                 android:gravity="center"
-                android:text="OTA upgrade"
+                android:text="Device OTA"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
