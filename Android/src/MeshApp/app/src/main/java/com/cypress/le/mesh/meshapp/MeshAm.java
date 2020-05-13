@@ -1850,7 +1850,7 @@ public class MeshAm extends Service {
         }
 
         @Override
-        public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte[] data, short dataLen) {
+        public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen) {
 
         }
 

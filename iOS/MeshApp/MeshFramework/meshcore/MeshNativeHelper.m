@@ -230,7 +230,7 @@ void meshClientSensorStatusChangedCb(const char *device_name, int property_id, u
                                                        data:[NSData dataWithBytes:value length:length]];
 }
 
-void meshClientVendorSpecificDataCb(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *p_data, uint16_t data_len)
+void meshClientVendorSpecificDataCb(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t ttl, uint8_t *p_data, uint16_t data_len)
 {
     if (device_name == NULL || *device_name == '\0') {
         WICED_BT_TRACE("[MeshNativeHelper meshClientVendorSpecificDataCb] error: invalid device_name NULL\n");
@@ -239,7 +239,10 @@ void meshClientVendorSpecificDataCb(const char *device_name, uint16_t company_id
     WICED_BT_TRACE("[MeshNativeHelper meshClientVendorSpecificDataCb] device_name:%s, company_id:%d, model_id:%d, opcode:%d, data_len:%d\n",
           device_name, company_id, model_id, opcode, data_len);
     [nativeCallbackDelegate onMeshClientVendorSpecificDataChanged:[NSString stringWithUTF8String:device_name]
-                                                        companyId:company_id modelId:model_id opcode:opcode
+                                                        companyId:company_id
+                                                          modelId:model_id
+                                                           opcode:opcode
+                                                              ttl:ttl
                                                              data:[NSData dataWithBytes:p_data length:data_len]];
 }
 
@@ -1217,12 +1220,12 @@ void meshClientComponentInfoStatusCallback(uint8_t status, char *component_name,
     return ret;
 }
 
-+(int) meshClientVendorDataSet:(NSString *)deviceName companyId:(uint16_t)companyId modelId:(uint16_t)modelId opcode:(uint8_t)opcode data:(NSData *)data
++(int) meshClientVendorDataSet:(NSString *)deviceName companyId:(uint16_t)companyId modelId:(uint16_t)modelId opcode:(uint8_t)opcode disable_ntwk_retransmit:(uint8_t)disable_ntwk_retransmit data:(NSData *)data
 {
     WICED_BT_TRACE("[MeshNativeHelper meshClientVendorDataSet] deviceName:%s\n", deviceName.UTF8String);
     int ret;
     EnterCriticalSection();
-    ret = mesh_client_vendor_data_set(deviceName.UTF8String, companyId, modelId, opcode, (uint8_t *)data.bytes, data.length);
+    ret = mesh_client_vendor_data_set(deviceName.UTF8String, companyId, modelId, opcode, disable_ntwk_retransmit, (uint8_t *)data.bytes, data.length);
     LeaveCriticalSection();
     return ret;
 }

@@ -1280,11 +1280,11 @@ public class MeshController {
      * <li>{@link MeshController#MESH_CLIENT_SERVICE_NOT_CONNECTED} The mesh service is not initialized.</li></ul>
      */
 
-    public int vendorDataSend(String deviceName, short companyId, short modelId, byte opcode, byte[] buffer, short len)
+    public int vendorDataSend(String deviceName, short companyId, short modelId, byte opcode,boolean disable_ntwk_retransmit, byte[] buffer, short len)
     {
         Log.d(TAG,"vendorDataSend");
         if (isServiceConnected()) {
-            return service.vendorDataSet(deviceName, companyId, modelId, opcode, buffer, len);
+            return service.vendorDataSet(deviceName, companyId, modelId, opcode,disable_ntwk_retransmit, buffer, len);
         }
         return COMMAND_FAILURE;
     }

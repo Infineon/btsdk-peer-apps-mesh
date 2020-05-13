@@ -515,7 +515,7 @@ public class NodeAdapter extends BaseAdapter {
 
                 if (vendorData.getText().toString() != null) {
                     byte[] bytes = hexStringToByteArray(vendorData.getText().toString());
-                    service.getMesh().vendorDataSend(mCompName, company_id, model_id, opcode, bytes, (short) bytes.length);
+                    service.getMesh().vendorDataSend(mCompName, company_id, model_id, opcode,false, bytes, (short) bytes.length);
                 }
             }
         });

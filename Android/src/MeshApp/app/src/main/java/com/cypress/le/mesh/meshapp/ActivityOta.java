@@ -450,7 +450,7 @@ public class ActivityOta extends AppCompatActivity implements LightingService.IS
     }
 
     @Override
-    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte[] data, short dataLen) {
+    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen) {
     }
 
     @Override

@@ -57,7 +57,7 @@ typedef wiced_bool_t (*wiced_model_message_handler_t)(wiced_bt_mesh_event_t *p_e
 static wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, wiced_bool_t *p_dont_save_rpl);
 static void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_active);
 wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
-extern void meshClientVendorSpecificDataStatus(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *p_data, uint16_t data_len);
+extern void meshClientVendorSpecificDataStatus(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode,uint_8t ttl,uint8_t *p_data, uint16_t data_len);
 extern void mesh_native_lib_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len);
 
 
@@ -461,8 +461,7 @@ wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data
 
     WICED_BT_TRACE("%s\n", buf);
 
-    meshClientVendorSpecificDataStatus(p_event->src, p_event->company_id, p_event->model_id, (uint8_t)p_event
-            ->opcode, p_data, data_len);
+    meshClientVendorSpecificDataStatus(p_event->src, p_event->company_id, p_event->model_id, (uint8_t)p_event->opcode,(uint8_t)p_event->ttl, p_data, data_len);
     wiced_bt_mesh_release_event(p_event);
 
     return WICED_TRUE;

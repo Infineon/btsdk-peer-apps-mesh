@@ -63,6 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
                                     companyId:(uint16_t)companyId
                                       modelId:(uint16_t)modelId
                                        opcode:(uint8_t)opcode
+                                          ttl:(uint8_t)ttl
                                          data:(NSData *)data;
 
 -(void) meshClientNetworkOpenCb:(uint8_t)status;

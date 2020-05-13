@@ -87,7 +87,7 @@ class VendorSpecificDataViewController: UIViewController {
                 return
             }
 
-            log("Company ID: \(vendorData.companyId), Model ID: \(vendorData.modelId), OpCode: \(vendorData.opcode), Data(hex): \(vendorData.data.dumpHexBytes())")
+            log("Company ID: \(vendorData.companyId), Model ID: \(vendorData.modelId), OpCode: \(vendorData.opcode), TTL: \(vendorData.ttl), Data(hex): \(vendorData.data.dumpHexBytes())")
         default:
             break
         }
@@ -130,7 +130,7 @@ class VendorSpecificDataViewController: UIViewController {
             }
 
             meshLog("VendorSpecificDataViewController, onSendVendorDataButtonClick, deviceName: \(deviceName), companyId: \(String(describing: companyId)), modelId: \(String(describing: modelId)), opcode: \(String(describing: opcode)), data: \(vendorData.dumpHexBytes())")
-            let error = MeshFrameworkManager.shared.meshClientVendorDataSet(deviceName: deviceName, companyId: companyId, modelId: modelId, opcode: opcode, data: vendorData)
+            let error = MeshFrameworkManager.shared.meshClientVendorDataSet(deviceName: deviceName, companyId: companyId, modelId: modelId, opcode: opcode, disable_ntwk_retransmit: MeshConstants.MESH_VENDOR_DISABLE_NETWORK_RETRANSMIT, data: vendorData)
             guard error == MeshErrorCode.MESH_SUCCESS else {
                 meshLog("VendorSpecificDataViewController, onSendVendorDataButtonClick, failed to send out data, error: \(error)")
                 UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send out the vendor data, please check the values of Company Id, Model Id and OpCode are all set correctly! Error Code: \(error)", title: "Error")
@@ -138,5 +138,23 @@ class VendorSpecificDataViewController: UIViewController {
             }
             meshLog("VendorSpecificDataViewController, onSendVendorDataButtonClick, send out success")
         })
+    }
+}
+
+extension VendorSpecificDataViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
+    }
+
+    func textFieldDidEndEditing(_ textField: UITextField) {
+        textField.resignFirstResponder()
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        companyIdTextField.resignFirstResponder()
+        modelIdTextField.resignFirstResponder()
+        opcodeTextField.resignFirstResponder()
+        setVendorDataTextfield.resignFirstResponder()
     }
 }

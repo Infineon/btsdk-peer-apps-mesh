@@ -169,6 +169,7 @@ class ComponentViewController: UIViewController {
                 Company ID: \(String.init(format: "0x%04x", vendorData.companyId)) (\(vendorData.companyId))
                 Model ID: \(String.init(format: "0x%04x", vendorData.modelId)) (\(vendorData.modelId))
                 OpCode: \(String.init(format: "0x%02x", vendorData.opcode)) (\(vendorData.opcode))
+                TTL: \(String.init(format: "0x%02x", vendorData.ttl)) (\(vendorData.ttl))
                 Data(hex): \(vendorData.data.dumpHexBytes())
                 """,
                 title: "Information")
@@ -794,7 +795,7 @@ class ComponentViewController: UIViewController {
                 }
 
                 meshLog("onSetVendorSpecifcData, deviceName: \(deviceName), companyId: \(String(describing: companyId)), modelId: \(String(describing: modelId)), opcode: \(String(describing: opcode)), data: \(data.dumpHexBytes())")
-                let error = MeshFrameworkManager.shared.meshClientVendorDataSet(deviceName: deviceName, companyId: companyId, modelId: modelId, opcode: opcode, data: data)
+                let error = MeshFrameworkManager.shared.meshClientVendorDataSet(deviceName: deviceName, companyId: companyId, modelId: modelId, opcode: opcode, disable_ntwk_retransmit: MeshConstants.MESH_VENDOR_DISABLE_NETWORK_RETRANSMIT, data: data)
                 guard error == MeshErrorCode.MESH_SUCCESS else {
                     meshLog("ComponentViewController, onSetVendorSpecifcData, failed to send out data, error: \(error)")
                     UtilityManager.showAlertDialogue(parentVC: self, message: "Failed to send out the vendor data, please check the values of Company Id, Model Id and OpCode are all set correctly! Error Code: \(error)", title: "Error")

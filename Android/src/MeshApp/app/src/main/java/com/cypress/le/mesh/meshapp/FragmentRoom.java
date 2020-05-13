@@ -396,7 +396,7 @@ public class FragmentRoom extends Fragment implements LightingService.IServiceCa
     }
 
     @Override
-    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte[] data, short dataLen) {
+    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen) {
 
     }
 

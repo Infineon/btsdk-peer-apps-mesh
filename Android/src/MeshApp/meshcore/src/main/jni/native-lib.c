@@ -86,7 +86,7 @@ typedef struct
     int publish_retransmit_interval;   ///< Interval in milliseconds between retransmissions
 } device_config_params_t;
 
-device_config_params_t DeviceConfig = { 1, 1, 1, 1, 3, 100, 63, 3, 100, 0, 63, 0, 0, 500 };
+device_config_params_t DeviceConfig = { 1, 1, 1, 1, 3, 100, 8, 3, 100, 0, 8, 0, 0, 500 };
 
 static uint32_t timer_id = 1;
 static char* dfu_firmware_file;
@@ -465,14 +465,14 @@ void meshClientSensorState(const char *device_name, int property_id, uint8_t len
     (*env)->CallStaticVoidMethod(env, cls2, sensorStatuscb, deviceName, property_id, data);
 }
 
-void meshClientVendorSpecificDataStatus(uint16_t src, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *p_data, uint16_t data_len)
+void meshClientVendorSpecificDataStatus(uint16_t src, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t ttl, uint8_t *p_data, uint16_t data_len)
 {
     Log("meshClientVendorSpecificDataState\n");
     JNIEnv *env = AttachJava();
     jclass cls2 = (*env)->FindClass(env,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
     jbyteArray  data = (*env)->NewByteArray(env ,data_len);
     (*env)->SetByteArrayRegion(env, data, 0, data_len, p_data);
-    (*env)->CallStaticVoidMethod(env, cls2, vendorStatusCb, src, company_id, model_id, opcode, data, data_len);
+    (*env)->CallStaticVoidMethod(env, cls2, vendorStatusCb, src, company_id, model_id, opcode, ttl, data, data_len);
 }
 void meshClientNodeConnectionState(uint8_t status, char *p_name) {
     Log("meshClientNodeConnectionState status :%x\n",status);
@@ -1222,6 +1222,7 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientVendorDataSet(JNIEn
                                                                            jshort companyId,
                                                                            jshort modelId,
                                                                            jbyte opcode,
+                                                                           jboolean disable_ntwk_retransmit,
                                                                            jbyteArray buffer_,
                                                                            jshort len) {
 
@@ -1234,7 +1235,7 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientVendorDataSet(JNIEn
 
 
     pthread_mutex_lock(&cs);
-    return_val = mesh_client_vendor_data_set(deviceName, companyId, modelId, opcode, (const uint8_t*)buffer, len);
+    return_val = mesh_client_vendor_data_set(deviceName, companyId, modelId, opcode, disable_ntwk_retransmit, (const uint8_t*)buffer, len);
     pthread_mutex_unlock(&cs);
 
     (*env)->ReleaseStringUTFChars(env, deviceName_, deviceName);
@@ -2446,7 +2447,7 @@ JNI_OnLoad(JavaVM *vm, void *reserved)
     sensorStatuscb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientSensorStatusCb", "(Ljava/lang/String;I[B)V");
     if(sensorStatuscb == NULL) Log("sensorStatuscb is null");
 
-    vendorStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientVendorStatusCb", "(SSSB[BS)V");
+    vendorStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientVendorStatusCb", "(SSSBB[BS)V");
     if(vendorStatusCb == NULL) Log("vendorStatusCb is null");
 
     lightLcModeStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightLcModeStatusCb", "(Ljava/lang/String;I)V");

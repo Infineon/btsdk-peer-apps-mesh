@@ -369,7 +369,7 @@ public class LightController extends AppCompatActivity implements View.OnClickLi
     }
 
     @Override
-    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte[] data, short dataLen) {
+    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen) {
 
     }
 

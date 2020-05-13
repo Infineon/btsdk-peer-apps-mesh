@@ -983,7 +983,7 @@ public class ActivityGroup extends AppCompatActivity implements LightingService.
     }
 
     @Override
-    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte[] data, short dataLen) {
+    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen) {
 
     }
 

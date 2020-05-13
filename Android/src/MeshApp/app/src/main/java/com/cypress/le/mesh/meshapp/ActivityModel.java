@@ -537,7 +537,7 @@ public class ActivityModel extends AppCompatActivity implements IServiceCallback
     }
 
     @Override
-    public void onVendorStatusCb(short componentName, short companyId, short modelId, byte opcode, final byte[] data, short dataLen) {
+    public void onVendorStatusCb(short componentName, short companyId, short modelId, byte opcode, byte ttl, final byte[] data, short dataLen) {
         Log.d(TAG,"onVendorStatusCb "+componentName);
        runOnUiThread(new Runnable() {
             @Override

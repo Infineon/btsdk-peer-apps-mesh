@@ -131,10 +131,13 @@ public struct MeshConstants {
      *       See the macro MESH_VENDOR_COMPANY_ID defined in mesh_app.c which used by mesh libraries.
      */
     public static let MESH_VENDOR_COMPANY_ID    = 0x131
-    public static let MESH_VENDOR_MODEL_ID      = 1         // TODO: This need to be modified based on Mesh Device implementation.
+    public static let MESH_VENDOR_MODEL_ID      = 1                 // TODO: This need to be modified based on Mesh Device implementation.
+    public static let MESH_VENDOR_DISABLE_NETWORK_RETRANSMIT = 0    // TODO: This need to be modified based on required, suggested to 0 to enable network retransmit.
     // This sample shows simple use of vendor get/set/status messages.  Vendor model can define any opcodes it wants.
     public static let MESH_VENDOR_OPCODE1       = 1     // Command to Get data
     public static let MESH_VENDOR_OPCODE2       = 2     // Command to Set data ack is required
+    public static let MESH_VENDOR_OPCODE3       = 3   // Set ADV Tx Power
+    public static let MESH_VENDOR_OPCODE4       = 4   // Disable Network Retransmit
 
     public static let MESH_CLIENT_LC_MODE_ON = 1
     public static let MESH_CLIENT_LC_MODE_OFF = 0
@@ -526,7 +529,8 @@ public struct MeshNotificationConstants {
     public static let USER_INFO_KEY_VENDOR_COMPANY_ID           = "vendorCompanyId"     // value type: Int, raw data type: UInt16
     public static let USER_INFO_KEY_VENDOR_MODEL_ID             = "vendorModelId"       // value type: Int, raw data type: UInt16
     public static let USER_INFO_KEY_VENDOR_OPCODE               = "vendorOpcode"        // value type: Int, raw data type: UInt8
-    public static func getVendorSpecificData(userInfo: [AnyHashable: Any]) -> (deviceName: String, companyId: Int, modelId: Int, opcode: Int, data: Data)? {
+    public static let USER_INFO_KEY_VENDOR_TTL                  = "vendorTtl"        // value type: Int, raw data type: UInt8
+    public static func getVendorSpecificData(userInfo: [AnyHashable: Any]) -> (deviceName: String, companyId: Int, modelId: Int, opcode: Int, ttl: Int, data: Data)? {
         guard let userInfo = userInfo as? [String: Any] else {
             return nil
         }
@@ -534,6 +538,7 @@ public struct MeshNotificationConstants {
         var companyId: Int?
         var modelId: Int?
         var opcode: Int?
+        var ttl: Int?
         var data: Data?
         for (key, value) in userInfo {
             if key == MeshNotificationConstants.USER_INFO_KEY_DEVICE_NAME, value is String, let value = value as? String {
@@ -544,14 +549,16 @@ public struct MeshNotificationConstants {
                 modelId = value
             } else if key == MeshNotificationConstants.USER_INFO_KEY_VENDOR_OPCODE, value is Int, let value = value as? Int {
                 opcode = value
+            } else if key == MeshNotificationConstants.USER_INFO_KEY_VENDOR_TTL, value is Int, let value = value as? Int {
+                ttl = value
             } else if key == MeshNotificationConstants.USER_INFO_KEY_DATA, value is Data, let value = value as? Data {
                 data = value
             }
         }
-        guard let _ = deviceName, let _ = companyId, let _ = modelId, let _ = opcode, let _ = data else {
+        guard let _ = deviceName, let _ = companyId, let _ = modelId, let _ = opcode, let _ = ttl, let _ = data else {
             return nil
         }
-        return (deviceName!, companyId!, modelId!, opcode!, data!)
+        return (deviceName!, companyId!, modelId!, opcode!, ttl!, data!)
     }
 
     public static let MESH_CLIENT_LIGHT_LC_MODE_STATUS      = "meshClientLightLcModeStatusNotification"

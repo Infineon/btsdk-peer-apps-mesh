@@ -599,8 +599,8 @@ public class LightingService extends Service implements IMeshControllerCallback 
     }
 
     @Override
-    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte[] data, short dataLen) {
-        mCallback.onVendorStatusCb(src, companyId, modelId, opcode, data, dataLen);
+    public void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen) {
+        mCallback.onVendorStatusCb(src, companyId, modelId, opcode, ttl, data, dataLen);
     }
 
     @Override
@@ -657,7 +657,7 @@ public class LightingService extends Service implements IMeshControllerCallback 
         void onComponentInfoStatus(byte status, String componentName, String componentInfo);
         void onDfuStatus(byte state, byte[] data);
         void onSensorStatusCb(String componentName, int propertyId, byte[] data);
-        void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte[] data, short dataLen);
+        void onVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen);
         void onLightnessStateChanged(String deviceName, int target, int present, int remainingTime);
         void onLightLcModeStatus(String componentName, int mode);
         void onLightLcOccupancyModeStatus(String componentName, int mode);

@@ -392,7 +392,7 @@ public class MeshNativeHelper {
     public static native int meshClientSetDeviceConfig(String deviceName, int isGattProxy, int isFriend, int isRelay, int beacon, int relayXmitCount, int relayXmitInterval, int defaultTtl, int netXmitCount, int netXmitInterval);
     public static native int meshClientSetPublicationConfig(int publishCredentialFlag, int publishRetransmitCount, int publishRetransmitInterval, int publishTtl);
     public static native byte meshClientResetDevice(String componentName);
-    public static native int meshClientVendorDataSet(String deviceName, short companyId, short modelId, byte opcode, byte[] buffer, short len);
+    public static native int meshClientVendorDataSet(String deviceName, short companyId, short modelId, byte opcode, boolean disable_ntwk_retransmit, byte[] buffer, short len);
     public static native int meshClientIdentify(String name, byte duration);
     public static native int meshClientLightnessGet(String deviceName);
     public static native int meshClientLightnessSet(String deviceName, int lightness, boolean interim, int transition_time, short delay);
@@ -525,9 +525,9 @@ public class MeshNativeHelper {
         mCallback.meshClientSensorStatusCb(componentName, propertyid, data);
     }
 
-    static void meshClientVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte[] data, short dataLen) {
+    static void meshClientVendorStatusCb(short src, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen) {
         Log.d(TAG, "meshClientSensorStatus");
-        mCallback.meshClientVendorStatusCb(src, companyId, modelId, opcode, data, dataLen);
+        mCallback.meshClientVendorStatusCb(src, companyId, modelId, opcode, ttl, data, dataLen);
     }
 
     static String toHexString(byte[] bytes) {

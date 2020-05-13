@@ -184,10 +184,10 @@ public class MeshService extends Service {
         return mMeshNativeHelper.meshClientResetDevice(componentName);
     }
 
-    int vendorDataSet(String deviceName, short companyId, short modelId, byte opcode, byte[] buffer, short len) {
+    int vendorDataSet(String deviceName, short companyId, short modelId, byte opcode, boolean disable_ntwk_retransmit, byte[] buffer, short len) {
         if(!isConnectedToNetwork())
             return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
-        return mMeshNativeHelper.meshClientVendorDataSet(deviceName, companyId, modelId, opcode, buffer, len);
+        return mMeshNativeHelper.meshClientVendorDataSet(deviceName, companyId, modelId, opcode, disable_ntwk_retransmit, buffer, len);
     }
 
     int identify(String name, byte duration) {
@@ -862,8 +862,8 @@ public class MeshService extends Service {
         }
 
         @Override
-        public void meshClientVendorStatusCb(short source, short companyId, short modelId, byte opcode, byte[] data, short dataLen) {
-            mMeshControllerCb.onVendorStatusCb(source, companyId, modelId, opcode, data, dataLen);
+        public void meshClientVendorStatusCb(short source, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen) {
+            mMeshControllerCb.onVendorStatusCb(source, companyId, modelId, opcode, ttl, data, dataLen);
         }
 
         @Override

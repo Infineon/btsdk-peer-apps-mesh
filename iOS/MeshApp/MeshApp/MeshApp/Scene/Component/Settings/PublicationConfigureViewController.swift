@@ -171,8 +171,8 @@ class PublicationConfigureViewController: UIViewController {
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" sensor data, Property ID: \(notificationStatus.propertyId), data: \(notificationStatus.data.dumpHexBytes()).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_VENDOR_SPECIFIC_DATA_CHANGED):
             guard let notificationStatus = MeshNotificationConstants.getVendorSpecificData(userInfo: userInfo) else { return }
-            meshLog("Device \"\(notificationStatus.deviceName)\" vendor specific data, Company ID: \(notificationStatus.companyId), Model ID: \(notificationStatus.modelId), Opcode: \(notificationStatus.opcode), data: \(notificationStatus.data.dumpHexBytes()).")
-            self.log("Device \"\(notificationStatus.deviceName)\" vendor specific data, Company ID: \(notificationStatus.companyId), Model ID: \(notificationStatus.modelId), Opcode: \(notificationStatus.opcode), data: \(notificationStatus.data.dumpHexBytes()).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" vendor specific data, Company ID: \(notificationStatus.companyId), Model ID: \(notificationStatus.modelId), Opcode: \(notificationStatus.opcode), TTL: \(notificationStatus.ttl), data: \(notificationStatus.data.dumpHexBytes()).")
+            self.log("Device \"\(notificationStatus.deviceName)\" vendor specific data, Company ID: \(notificationStatus.companyId), Model ID: \(notificationStatus.modelId), Opcode: \(notificationStatus.opcode), TTL: \(notificationStatus.ttl), data: \(notificationStatus.data.dumpHexBytes()).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" vendor specific data, Company ID: \(notificationStatus.companyId), Model ID: \(notificationStatus.modelId), Opcode: \(notificationStatus.opcode), data: \(notificationStatus.data.dumpHexBytes()).")
         default:
             break

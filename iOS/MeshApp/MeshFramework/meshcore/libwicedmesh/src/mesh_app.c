@@ -64,7 +64,7 @@ static void mesh_sensor_message_handler(uint8_t element_idx, uint16_t addr, uint
 static void mesh_core_state_changed(wiced_bt_mesh_core_state_type_t type, wiced_bt_mesh_core_state_t *p_state);
 extern void mesh_provision_process_event(uint16_t event, wiced_bt_mesh_event_t *p_event, void *p_data);
 extern void mesh_sensor_process_event(uint16_t addr, uint16_t event, void *p_data);
-extern void mesh_vendor_specific_data(uint16_t src, uint16_t company_id, uint16_t model_id, uint8_t opcode, void *p_data, uint16_t data_len);
+extern void mesh_vendor_specific_data(uint16_t src, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t ttl, void* p_data, uint16_t data_len);
 extern wiced_bool_t mesh_gatt_client_provision_connect(wiced_bt_mesh_provision_connect_data_t *p_connect, wiced_bool_t use_pb_gatt);
 extern void mesh_gatt_client_scan_unprovisioned_devices(uint8_t start);
 extern wiced_bool_t mesh_gatt_client_proxy_connect(wiced_bt_mesh_proxy_connect_data_t *p_connect);
@@ -104,8 +104,10 @@ extern wiced_bool_t mesh_native_helper_is_ota_supported_for_dfu(void);
 #define MESH_VENDOR_COMPANY_ID          0x131
 #define MESH_VENDOR_MODEL_ID            1       // TODO: This need to be modified based on Mesh Device implementation.
 // This sample shows simple use of vendor get/set/status messages.  Vendor model can define any opcodes it wants.
-#define MESH_VENDOR_OPCODE1          1       // Command to Get data
-#define MESH_VENDOR_OPCODE2          2       // Command to Set data ack is required
+#define MESH_VENDOR_OPCODE1         1       // Command to Get data
+#define MESH_VENDOR_OPCODE2         2       // Command to Set data ack is required
+#define MESH_VENDOR_OPCODE3         3   // Set ADV Tx Power
+#define MESH_VENDOR_OPCODE4         4   // Disable Network Retransmit
 
 #define SENSOR_PROPERTY_ID_SIZE                     (2)
 #define PROPERTY_ID_AMBIENT_LUX_LEVEL_ON            (0x2B)
@@ -562,7 +564,7 @@ wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data
         sprintf(&buf[strlen(buf)], "%02x", p_data[i]);
 
     WICED_BT_TRACE("%s\n", buf);
-    mesh_vendor_specific_data(p_event->src, p_event->company_id, p_event->model_id, (uint8_t)p_event->opcode, p_data, data_len);
+    mesh_vendor_specific_data(p_event->src, p_event->company_id, p_event->model_id, (uint8_t)p_event->opcode, (uint8_t)p_event->ttl, p_data, data_len);
     wiced_bt_mesh_release_event(p_event);
 
     return WICED_TRUE;

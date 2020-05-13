@@ -159,7 +159,12 @@ NS_ASSUME_NONNULL_BEGIN
             publishRetransmitInterval:(int)publishRetransmitInterval
                            publishTtl:(int)publishTtl;
 +(int) meshClientResetDevice:(NSString *)componentName;
-+(int) meshClientVendorDataSet:(NSString *)deviceName companyId:(uint16_t)companyId modelId:(uint16_t)modelId opcode:(uint8_t)opcode data:(NSData *)data;
++(int) meshClientVendorDataSet:(NSString *)deviceName
+                     companyId:(uint16_t)companyId
+                       modelId:(uint16_t)modelId
+                        opcode:(uint8_t)opcode
+       disable_ntwk_retransmit:(uint8_t)disable_ntwk_retransmit
+                          data:(NSData *)data;
 +(int) meshClientIdentify:(NSString *)name duration:(uint8_t)duration;
 +(int) meshClientLightnessGet:(NSString *)deviceName;
 +(int) meshClientLightnessSet:(NSString *)deviceName lightness:(uint16_t)lightness reliable:(Boolean)reliable transitionTime:(uint32_t)transitionTime delay:(uint16_t)delay;

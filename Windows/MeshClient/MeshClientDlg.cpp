@@ -118,7 +118,7 @@ void network_opened(uint8_t status);
 /*extern "C" */ void hsl_status(const char *device_name, uint16_t lightness, uint16_t hue, uint16_t saturation, uint32_t remaining_time);
 /*extern "C" */ void ctl_status(const char *device_name, uint16_t present_lightness, uint16_t present_temperature, uint16_t target_lightness, uint16_t target_temperature, uint32_t remaining_time);
 /*extern "C" */ void sensor_status(const char *device_name, int property_id, uint8_t value_len, uint8_t *value);
-/*extern "C" */ void vendor_specific_data(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *p_data, uint16_t data_len);
+/*extern "C" */ void vendor_specific_data(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t ttl, uint8_t *p_data, uint16_t data_len);
 
 /*extern "C" */ void fw_distribution_status(uint8_t state, uint8_t* p_data, uint32_t data_length);
 
@@ -615,6 +615,12 @@ BOOL CMeshClientDlg::OnInitDialog()
     CString sHCDFileName = theApp.GetProfileString(L"LightControl", L"HCDFile", L"");
     SetDlgItemText(IDC_FILENAME, sHCDFileName);
 
+    CString sStaticOobData = theApp.GetProfileString(L"LightControl", L"StaticOobData", L"");
+    SetDlgItemText(IDC_OOB_DATA, sStaticOobData);
+
+    BOOL bUseStaticOobData = theApp.GetProfileInt(L"LightControl", L"UseStaticOobData", 0);
+    ((CButton *)GetDlgItem(IDC_STATIC_OOB_DATA))->SetCheck(bUseStaticOobData);
+
     WCHAR szHostName[128];
     DWORD dw = 128;
     GetComputerName(szHostName, &dw);
@@ -636,10 +642,8 @@ BOOL CMeshClientDlg::OnInitDialog()
         p += strlen(p) + 1;
         num_networks++;
     }
-    if (num_networks)
-    {
+    if (num_networks != 0)
         ((CComboBox *)GetDlgItem(IDC_NETWORK))->SetCurSel(0);
-    }
 
     ((CButton *)GetDlgItem(IDC_GATT_PROXY))->SetCheck(DeviceConfig.is_gatt_proxy);
     ((CButton *)GetDlgItem(IDC_FRIEND))->SetCheck(DeviceConfig.is_friend);
@@ -932,7 +936,7 @@ void CMeshClientDlg::OnBnClickedClearTrace()
 
 void CMeshClientDlg::ProcessUnprovisionedDevice(uint8_t *p_uuid, uint16_t oob, uint8_t *name, uint8_t name_len)
 {
-    WCHAR buf[180];
+    WCHAR buf[180] = { 0 };
     WCHAR uuid[200] = { 0 };
     WCHAR szName[31] = { 0 };
     CComboBox *pCbUuid = (CComboBox *)GetDlgItem(IDC_PROVISION_UUID);
@@ -998,6 +1002,17 @@ void CMeshClientDlg::OnBnClickedProvision()
     uint8_t uuid[16];
     num = GetHexValue(IDC_PROVISION_UUID, uuid, 16);
 
+    BOOL is_static_oob_data = ((CButton*)GetDlgItem(IDC_STATIC_OOB_DATA))->GetCheck();
+    uint8_t oob_data_len = 0;
+    uint8_t oob_data[16];
+    if (is_static_oob_data)
+        oob_data_len = (uint8_t)GetHexValue(IDC_OOB_DATA, oob_data, 16);
+
+    CString sStaticOobData;
+    GetDlgItemText(IDC_OOB_DATA, sStaticOobData);
+    theApp.WriteProfileString(L"LightControl", L"StaticOobData", sStaticOobData);
+    theApp.WriteProfileInt(L"LightControl", L"UseStaticOobData", is_static_oob_data);
+
     char group_name[80];
     GetDlgItemTextA(m_hWnd, IDC_CURRENT_GROUP, group_name, sizeof(group_name));
 
@@ -1030,7 +1045,10 @@ void CMeshClientDlg::OnBnClickedProvision()
     mesh_client_set_device_config(NULL, DeviceConfig.is_gatt_proxy, DeviceConfig.is_friend, DeviceConfig.is_relay, DeviceConfig.send_net_beacon, DeviceConfig.relay_xmit_count, DeviceConfig.relay_xmit_interval, DeviceConfig.default_ttl, DeviceConfig.net_xmit_count, DeviceConfig.net_xmit_interval);
     mesh_client_set_publication_config(DeviceConfig.publish_credential_flag, DeviceConfig.publish_retransmit_count, DeviceConfig.publish_retransmit_interval, DeviceConfig.publish_ttl);
 
-    mesh_client_provision(node_name + (3 * num), group_name, uuid, identify_duration);
+    if (!is_static_oob_data || (oob_data_len == 0))
+        mesh_client_provision(node_name + (3 * num), group_name, uuid, identify_duration);
+    else
+        mesh_client_provision_with_oob(node_name + (3 * num), group_name, uuid, identify_duration, oob_data, oob_data_len);
     LeaveCriticalSection(&cs);
 }
 
@@ -1650,7 +1668,7 @@ void sensor_status(const char *device_name, int property_id, uint8_t value_len, 
     Log(msg);
 }
 
-void vendor_specific_data(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t *p_data, uint16_t data_len)
+void vendor_specific_data(const char *device_name, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t ttl, uint8_t *p_data, uint16_t data_len)
 {
     CMeshClientDlg *pDlg = (CMeshClientDlg *)theApp.m_pMainWnd;
     if (!pDlg)
@@ -1883,7 +1901,7 @@ void CMeshClientDlg::OnCbnSelchangeConfigureMoveDevice()
         {
             if (is_component_in_group(device_name, p1))
             {
-                MultiByteToWideChar(CP_UTF8, 0, p, -1, szName, sizeof(szName) / sizeof(WCHAR));
+                MultiByteToWideChar(CP_UTF8, 0, p1, -1, szName, sizeof(szName) / sizeof(WCHAR));
                 p_move_from_groups->AddString(szName);
             }
             char* p_groups2 = mesh_client_get_all_groups(p1);
@@ -2090,7 +2108,7 @@ void CMeshClientDlg::OnBnClickedVsData()
     DWORD len = GetHexValue(IDC_TC_NET_LEVEL_TRX_PDU, buffer, sizeof(buffer));
 
     EnterCriticalSection(&cs);
-    mesh_client_vendor_data_set(name, 0x131, 0x01, 0x01, buffer, (uint16_t)len);
+    mesh_client_vendor_data_set(name, 0x131, 0x01, 0x01, 0x0, buffer, (uint16_t)len);
     LeaveCriticalSection(&cs);
 }
 

@@ -71,7 +71,7 @@ static void mesh_sensor_client_callback(uint8_t element_idx, uint16_t addr, uint
 static void mesh_core_state_changed(wiced_bt_mesh_core_state_type_t type, wiced_bt_mesh_core_state_t *p_state);
 extern void mesh_provision_process_event(uint16_t event, wiced_bt_mesh_event_t *p_event, void *p_data);
 extern void mesh_sensor_process_event(uint16_t addr, uint16_t event, void *p_data);
-extern void mesh_vendor_specific_data(uint16_t src, uint16_t company_id, uint16_t model_id, uint8_t opcode, void *p_data, uint16_t data_len);
+extern void mesh_vendor_specific_data(uint16_t src, uint16_t company_id, uint16_t model_id, uint8_t opcode, uint8_t ttl, void *p_data, uint16_t data_len);
 
 const char* szRegKey = "Software\\Cypress\\Mesh\\MeshClient";
 static UINT32 read_reg(const char* name, UINT8* value, UINT16 len, DWORD *p_res)
@@ -412,7 +412,7 @@ wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data
         sprintf(&buf[strlen(buf)], "%02x", p_data[i]);
 
     WICED_BT_TRACE("%s\n", buf);
-    mesh_vendor_specific_data(p_event->src, p_event->company_id, p_event->model_id, (uint8_t)p_event->opcode, p_data, data_len);
+    mesh_vendor_specific_data(p_event->src, p_event->company_id, p_event->model_id, (uint8_t)p_event->opcode, (uint8_t)p_event->ttl, p_data, data_len);
     wiced_bt_mesh_release_event(p_event);
 
     return WICED_TRUE;

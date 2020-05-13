@@ -312,10 +312,11 @@ public interface IMeshControllerCallback {
      * @param companyId  Company ID of the vendor
      * @param modelId  model ID of the vendor
      * @param opcode Opcode
+     * @param ttl ttl
      * @param data Vendor data
      * @param dataLen Vendor data length
      */
-    void onVendorStatusCb(short source, short companyId, short modelId, byte opcode, byte[] data, short dataLen);
+    void onVendorStatusCb(short source, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen);
 
     /**
      * LC Mode status callback is executed as a result of the Get/Set operation

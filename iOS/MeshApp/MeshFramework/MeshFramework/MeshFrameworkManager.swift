@@ -1195,8 +1195,10 @@ open class MeshFrameworkManager {
     open func meshClientVendorDataSet(deviceName: String,
                                       companyId: Int = MeshConstants.MESH_VENDOR_COMPANY_ID,
                                       modelId: Int = MeshConstants.MESH_VENDOR_MODEL_ID,
-                                      opcode: Int, data: Data) -> Int {
-        return Int(MeshNativeHelper.meshClientVendorDataSet(deviceName, companyId: UInt16(companyId), modelId: UInt16(modelId), opcode: UInt8(opcode), data: data))
+                                      opcode: Int,
+                                      disable_ntwk_retransmit: Int = MeshConstants.MESH_VENDOR_DISABLE_NETWORK_RETRANSMIT,
+                                      data: Data) -> Int {
+        return Int(MeshNativeHelper.meshClientVendorDataSet(deviceName, companyId: UInt16(companyId), modelId: UInt16(modelId), opcode: UInt8(opcode),  disable_ntwk_retransmit: UInt8(disable_ntwk_retransmit), data: data))
     }
 
     /**
@@ -2424,8 +2426,8 @@ extension MeshFrameworkManager: IMeshNativeCallback {
      * Mesh library calls this routine to notify uppler layer (such as: App) about the Vender Specific data changed status.
      * This API will be triggerred after calling meshClientVendorDataSet API successfully.
      */
-    public func onMeshClientVendorSpecificDataChanged(_ deviceName: String, companyId: UInt16, modelId: UInt16, opcode: UInt8, data: Data) {
-        meshLog("IMeshNativeCallback, onMeshClientVendorSpecificDataChanged, deviceName: \(deviceName), companyId: \(companyId), modelId: \(modelId), opcode: \(opcode), data: \(data.dumpHexBytes())")
+    public func onMeshClientVendorSpecificDataChanged(_ deviceName: String, companyId: UInt16, modelId: UInt16, opcode: UInt8, ttl: UInt8, data: Data) {
+        meshLog("IMeshNativeCallback, onMeshClientVendorSpecificDataChanged, deviceName: \(deviceName), companyId: \(companyId), modelId: \(modelId), opcode: \(opcode), ttl: \(ttl) data: \(data.dumpHexBytes())")
 
         NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_VENDOR_SPECIFIC_DATA_CHANGED),
                                         object: nil,
@@ -2433,6 +2435,7 @@ extension MeshFrameworkManager: IMeshNativeCallback {
                                                    MeshNotificationConstants.USER_INFO_KEY_VENDOR_COMPANY_ID: Int(companyId),
                                                    MeshNotificationConstants.USER_INFO_KEY_VENDOR_MODEL_ID: Int(modelId),
                                                    MeshNotificationConstants.USER_INFO_KEY_VENDOR_OPCODE: Int(opcode),
+                                                   MeshNotificationConstants.USER_INFO_KEY_VENDOR_TTL: Int(ttl),
                                                    MeshNotificationConstants.USER_INFO_KEY_DATA: data])
     }
 

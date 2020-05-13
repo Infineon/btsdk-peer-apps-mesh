@@ -51,7 +51,7 @@ public interface IMeshNativeCallback {
     void meshClientDfuStartOtaCb(String firmwareFileName);
     void meshClientDfuStatusCb(byte state, byte[] data);
     void meshClientSensorStatusCb(String componentName, int propertyId, byte[] data);
-    void meshClientVendorStatusCb(short source, short companyId, short modelId, byte opcode, byte[] data, short dataLen);
+    void meshClientVendorStatusCb(short source, short companyId, short modelId, byte opcode, byte ttl, byte[] data, short dataLen);
 
     //GATT APIS
     void meshClientAdvScanStartCb();
