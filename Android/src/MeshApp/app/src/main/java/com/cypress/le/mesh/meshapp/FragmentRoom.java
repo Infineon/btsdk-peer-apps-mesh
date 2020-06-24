@@ -550,12 +550,12 @@ public class FragmentRoom extends Fragment implements LightingService.IServiceCa
                         }
                     }
                     break;
-                case R.id.menu_network_dfu:
-                    Log.d(TAG, "DFU");
-                    Intent intent;
-                    intent = new Intent(getContext(), com.cypress.le.mesh.meshapp.ActivityDfu.class);
-                    startActivity(intent);
-                    break;
+//                case R.id.menu_network_dfu:
+//                    Log.d(TAG, "DFU");
+//                    Intent intent;
+//                    intent = new Intent(getContext(), com.cypress.le.mesh.meshapp.ActivityDfu.class);
+//                    startActivity(intent);
+//                    break;
                 case R.id.importfile:
 
                     readFromSdcard();

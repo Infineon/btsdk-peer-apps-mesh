@@ -1,5 +1,34 @@
 /*
- * Copyright Cypress Semiconductor
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Cypress Semiconductor Corporation. All Rights Reserved.
+ *
+ * This software, including source code, documentation and related
+ * materials ("Software"), is owned by Cypress Semiconductor Corporation
+ * or one of its subsidiaries ("Cypress") and is protected by and subject to
+ * worldwide patent protection (United States and foreign),
+ * United States copyright laws and international treaty provisions.
+ * Therefore, you may use this Software only as provided in the license
+ * agreement accompanying the software package from which you
+ * obtained this Software ("EULA").
+ * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
+ * non-transferable license to copy, modify, and compile the Software
+ * source code solely for use in connection with Cypress's
+ * integrated circuit products. Any reproduction, modification, translation,
+ * compilation, or representation of this Software except as specified
+ * above is prohibited without the express written permission of Cypress.
+ *
+ * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Cypress
+ * reserves the right to make changes to the Software without notice. Cypress
+ * does not assume any liability arising out of the application or use of the
+ * Software or any product or circuit described in the Software. Cypress does
+ * not authorize its products for use in any products where a malfunction or
+ * failure of the Cypress product may reasonably be expected to result in
+ * significant property damage, injury or death ("High Risk Product"). By
+ * including Cypress's product in a High Risk Product, the manufacturer
+ * of such system or application assumes all risk of such use and in doing
+ * so agrees to indemnify Cypress against all liability.
  */
 
 /** @file
@@ -18,7 +47,7 @@ public enum OtaCharacteristic {
 /* The firmwareVersionBuild field only valid when the metadataVersion >= 3; if not valid, it was always set to 0.  */
 public typealias OtaDfuMetadata = (companyId: UInt16, firwmareId: Data, productId: UInt16, hardwareVeresionId: UInt16,
     firmwareVersionMajor: UInt8, firmwareVersionMinor: UInt8, firmwareVersionRevision: UInt16, firmwareVersionBuild: UInt16,
-    validationData: Data, metadataVersion: UInt8)
+    metadata: Data, metadataVersion: UInt8)
 
 public protocol OtaUpgraderProtocol {
     /*
@@ -157,14 +186,14 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         return OtaErrorCode.SUCCESS
     }
 
-    open func otaUpgradeDfuStart(for device: OtaDeviceProtocol, dfuType: Int, fwImage: Data, metadata: OtaDfuMetadata? = nil)
+    open func otaUpgradeDfuStart(for device: OtaDeviceProtocol, dfuType: Int, fwImage: Data, dfuMetadata: OtaDfuMetadata? = nil)
     {
         guard isMeshDfuIdle, (self.state == .idle || self.state == .complete) else {
             meshLog("error: OtaUpgrader, otaUpgradeDfuStart, DFU already started")
             OtaNotificationData.init(otaState: .dfuCommand, otaError: OtaError(code: OtaErrorCode.BUSYING, desc: "DFU process already started")).post()
             return
         }
-        if metadata == nil, dfuType != MeshDfuType.APP_OTA_TO_DEVICE {
+        if dfuMetadata == nil, dfuType != MeshDfuType.APP_OTA_TO_DEVICE {
             meshLog("error: OtaUpgrader, otaUpgradeDfuStart, invalid metadata, nil")
             let dfuTypeString = (dfuType == MeshDfuType.APP_DFU_TO_ALL) ? "APP_DFU_TO_ALL" : "PROXY_DFU_TO_ALL"
             OtaNotificationData.init(otaState: .dfuCommand, otaError: OtaError(code: OtaErrorCode.BUSYING, desc: "start DFU failed, no metadata found for dfuType: \(dfuTypeString)")).post()
@@ -174,7 +203,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
         self.otaDevice = device
         self.fwImage = fwImage
         self.dfuType = dfuType
-        self.dfuMetadata = metadata
+        self.dfuMetadata = dfuMetadata
 
         self.fwOffset = 0
         self.fwImageSize = fwImage.count
@@ -202,7 +231,7 @@ open class OtaUpgrader: OtaUpgraderProtocol {
             } else {
                 // do DFU process.
                 OtaUpgrader.meshDfuState = MeshDfuState.MESH_DFU_STATE_INIT
-                let error = MeshFrameworkManager.shared.meshClientDfuStart(dfuMethod: dfuType, firmwareId: metadata!.firwmareId, validationData: metadata!.validationData)
+                let error = MeshFrameworkManager.shared.meshClientDfuStart(dfuMethod: dfuType, firmwareId: dfuMetadata!.firwmareId, metadata: dfuMetadata!.metadata)
                 if error == MeshErrorCode.MESH_SUCCESS {
                     OtaNotificationData.init(otaState: .dfuCommand, otaError: OtaError(code: OtaErrorCode.SUCCESS, desc: "DFU process started success")).post()
                     // let mesh library keep reporting the DFU status.
@@ -1230,11 +1259,15 @@ extension OtaUpgrader {
         let exists = FileManager.default.fileExists(atPath: filePath, isDirectory: &isDirectory)
         guard exists, !isDirectory.boolValue, let fwImageData = FileManager.default.contents(atPath: filePath), fwImageData.count > 0 else {
             meshLog("error: OtaUpgrader, readParseFirmwareImage, failed to read and parse firmware image: \(filePath)")
+            #if MESH_DFU_ENABLED
             MeshNativeHelper.meshClientSetDfuFilePath(nil);
+            #endif
             return nil
         }
         meshLog("OtaUpgrader, readParseFirmwareImage, fwImageData.count: \(fwImageData.count) bytes")
+        #if MESH_DFU_ENABLED
         MeshNativeHelper.meshClientSetDfuFilePath(filePath);
+        #endif
         return fwImageData
     }
 
@@ -1249,7 +1282,7 @@ extension OtaUpgrader {
         var fwVerMin: UInt8?
         var fwVerRev: UInt16?
         var fwVerBuild: UInt16 = 0
-        var validationData: Data?  // Only valid when the metadataVersion >= 3
+        var metadata: Data?  // Only valid when the metadataVersion >= 3
         var metadataVersion: UInt8 = 1
 
         // The latest Mesh DFU metadata format, version 4, process.
@@ -1259,16 +1292,18 @@ extension OtaUpgrader {
             do {
                 let documentsPath: URL? = path.starts(with: "/") ? nil : URL(fileURLWithPath: NSHomeDirectory() + "/Documents", isDirectory: true)
                 let urlPath = URL(fileURLWithPath: path, isDirectory: false, relativeTo: documentsPath)
-                let metadata = try Data(contentsOf: urlPath)
+                let metadataData = try Data(contentsOf: urlPath)
                 let firmwareIdString = firmwareId.trimmingCharacters(in: .whitespaces)
                 guard firmwareIdString.count >= 22, let fwIdData = firmwareIdString.dataFromHexadecimalString() else {
                     meshLog("error: OtaUpgrader, readFwMetadataImageFile, firmwareId string: \(firmwareIdString)")
+                    #if MESH_DFU_ENABLED
                     MeshNativeHelper.meshClientClearDfuFwMetadata()
+                    #endif
                     return nil
                 }
                 metadataVersion = 4
                 fwId = fwIdData             // the data stored in little-endian in manifest.json file.
-                validationData = metadata   // the metadata stored in metadata file is in binary format.
+                metadata = metadataData   // the metadata stored in metadata file is in binary format.
                 cid = UInt16((UInt16(fwIdData[1]) << 8) | UInt16(fwIdData[0]))
                 pid = UInt16((UInt16(fwIdData[3]) << 8) | UInt16(fwIdData[2]))
                 hwid = UInt16((UInt16(fwIdData[5]) << 8) | UInt16(fwIdData[4]))
@@ -1280,18 +1315,24 @@ extension OtaUpgrader {
                 // Always update the siglone DFU FW metadata when new firmware image read successfully.
                 guard let cid = cid, let fwId = fwId, let pid = pid, let hwid = hwid,
                     let fwVerMaj = fwVerMaj, let fwVerMin = fwVerMin, let fwVerRev = fwVerRev,
-                    let validationData = validationData else {
+                    let metadata = metadata else {
                         meshLog("error: OtaUpgrader, readFwMetadataImageFile, failed to read metadata and parse firmwareId string")
+                        #if MESH_DFU_ENABLED
                         MeshNativeHelper.meshClientClearDfuFwMetadata()
+                        #endif
                         return nil
                 }
                 meshLog("OtaUpgrader, readFwMetadataImageFile, firmwareId(\(fwId.count)): \(fwId.dumpHexBytes())")
-                meshLog("OtaUpgrader, readFwMetadataImageFile, metadata(\(validationData.count)): \(validationData.dumpHexBytes())")
-                MeshNativeHelper.meshClientSetDfuFwMetadata(fwId, validationData: validationData)
-                return (cid, fwId, pid, hwid, fwVerMaj, fwVerMin, fwVerRev, fwVerBuild, validationData, metadataVersion)
+                meshLog("OtaUpgrader, readFwMetadataImageFile, metadata(\(metadata.count)): \(metadata.dumpHexBytes())")
+                #if MESH_DFU_ENABLED
+                MeshNativeHelper.meshClientSetDfuFwMetadata(fwId, metadata: metadata)
+                #endif
+                return (cid, fwId, pid, hwid, fwVerMaj, fwVerMin, fwVerRev, fwVerBuild, metadata, metadataVersion)
             } catch {
                 meshLog("error: OtaUpgrader, readFwMetadataImageFile, failed to read : \(path)")
+                #if MESH_DFU_ENABLED
                 MeshNativeHelper.meshClientClearDfuFwMetadata()
+                #endif
             }
             return nil
         }
@@ -1321,7 +1362,7 @@ extension OtaUpgrader {
                         fwVerMin = UInt8(fwIdData[5])
                         fwVerRev = UInt16((UInt16(fwIdData[6]) << 8) | UInt16(fwIdData[7]))
                     }
-                    validationData = Data()
+                    metadata = Data()
                 } else if line.hasPrefix("Firmware ID = 0x"), line.count >= 36 {
                     if line.count == 36 {
                         metadataVersion = 2
@@ -1346,36 +1387,44 @@ extension OtaUpgrader {
                             fwVerBuild = UInt16((UInt16(fwIdData[9]) << 8) | UInt16(fwIdData[10]))
                         }
                     }
-                } else if line.hasPrefix("Validation Data = 0x"), line.count >= 28 {
+                } else if line.hasPrefix("Metadata Data = 0x"), line.count >= 28 {
                     var check_metadataVersion: Int = 3
                     if line.count == 28 {
                         check_metadataVersion = 2
                     }
                     if metadataVersion != check_metadataVersion {
-                        meshLog("error: OtaUpgrader, readFwMetadataImageFile, invalid matadata image, the Firmware ID data not match with Validation Data. metadataVersion: \(metadataVersion), check_metadataVersion: \(check_metadataVersion)")
+                        meshLog("error: OtaUpgrader, readFwMetadataImageFile, invalid matadata image, the Firmware ID data not match with Metadata Data. metadataVersion: \(metadataVersion), check_metadataVersion: \(check_metadataVersion)")
+                        #if MESH_DFU_ENABLED
                         MeshNativeHelper.meshClientClearDfuFwMetadata()
+                        #endif
                         return nil
                     }
                     let index = line.index(line.startIndex, offsetBy: 20)
                     let hexString = String(line[index...])
-                    validationData = hexString.dataFromHexadecimalString()  // the data stored in big-endian in image_info file.
+                    metadata = hexString.dataFromHexadecimalString()  // the data stored in big-endian in image_info file.
                 }
             }
 
             guard let cid = cid, let fwId = fwId, let pid = pid, let hwid = hwid,
                 let fwVerMaj = fwVerMaj, let fwVerMin = fwVerMin, let fwVerRev = fwVerRev,
-                let validationData = validationData else {
+                let metadata = metadata else {
                     meshLog("error: OtaUpgrader, readFwMetadataImageFile, invalid the matadata image.\n\(data)")
+                    #if MESH_DFU_ENABLED
                     MeshNativeHelper.meshClientClearDfuFwMetadata()
+                    #endif
                     return nil
             }
             // Always update the siglone DFU FW metadata when new firmware image read successfully.
-            MeshNativeHelper.meshClientSetDfuFwMetadata(fwId, validationData: validationData)
-            return (cid, fwId, pid, hwid, fwVerMaj, fwVerMin, fwVerRev, fwVerBuild, validationData, metadataVersion)
+            #if MESH_DFU_ENABLED
+            MeshNativeHelper.meshClientSetDfuFwMetadata(fwId, metadata: metadata)
+            #endif
+            return (cid, fwId, pid, hwid, fwVerMaj, fwVerMin, fwVerRev, fwVerBuild, metadata, metadataVersion)
         } catch {
             meshLog("error: OtaUpgrader, readFwMetadataImageFile, failed to read \"\(path)\". \(error)")
         }
+        #if MESH_DFU_ENABLED
         MeshNativeHelper.meshClientClearDfuFwMetadata()
+        #endif
         return nil
     }
 

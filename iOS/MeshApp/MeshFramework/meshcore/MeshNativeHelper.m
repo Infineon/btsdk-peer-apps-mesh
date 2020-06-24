@@ -73,18 +73,20 @@ static mesh_device_config_params_t mesh_device_config_params = {
 };
 #define MESH_DEVICE_CONFIG_PARAMS_FILE_NAME "NetParameters.bin"
 
+#ifdef MESH_DFU_ENABLED
 // siglone instance of DFW metadata data.
 static uint8_t dfuFwId[WICED_BT_MESH_MAX_FIRMWARE_ID_LEN];
 static uint32_t dfuFwIdLen;
-static uint8_t dfuValidationData[WICED_BT_MESH_MAX_VALIDATION_DATA_LEN];
-static uint32_t dfuValidationDataLen;
+static uint8_t dfuMetadataData[WICED_BT_MESH_MAX_METADATA_LEN];
+static uint32_t dfuMetadataDataLen;
 void mesh_dfu_metadata_init()
 {
     dfuFwIdLen = 0;
     memset(dfuFwId, 0, WICED_BT_MESH_MAX_FIRMWARE_ID_LEN);
     dfuFwIdLen = 0;
-    memset(dfuValidationData, 0, WICED_BT_MESH_MAX_VALIDATION_DATA_LEN);
+    memset(dfuMetadataData, 0, WICED_BT_MESH_MAX_METADATA_LEN);
 }
+#endif  // #ifdef MESH_DFU_ENABLED
 
 /*
  * Implementation of APIs that required by wiced mesh core stack library for event and data callback.
@@ -499,7 +501,9 @@ void mesh_adv_scan_stop(void)
 {
     [self meshTimerInit];
     [self meshBdAddrDictInit];
+#ifdef MESH_DFU_ENABLED
     mesh_dfu_metadata_init();
+#endif
 }
 
 +(NSString *) getProvisionerUuidFileName
@@ -1798,6 +1802,7 @@ static CBPeripheral *currentConnectedPeripheral = nil;
     return peripheral;
 }
 
+#ifdef MESH_DFU_ENABLED
 // DFU APIs
 void mesh_client_dfu_status_cb(uint8_t state, uint8_t *p_data, uint32_t data_length)
 {
@@ -1829,7 +1834,7 @@ void mesh_client_dfu_status_cb(uint8_t state, uint8_t *p_data, uint32_t data_len
     return ret;
 }
 
-+(int) meshClientDfuStart:(int)dfuMethod firmwareId:(NSData *)firmwareId validationData:(NSData *)validationData
++(int) meshClientDfuStart:(int)dfuMethod firmwareId:(NSData *)firmwareId metadata:(NSData *)metadata
 {
     WICED_BT_TRACE("[MeshNativeHelper meshClientDfuStart] dfuMethod:%d\n", dfuMethod);
     wiced_bool_t self_distributor = (dfuMethod == DFU_METHOD_PROXY_TO_ALL) ? FALSE : TRUE;
@@ -1841,7 +1846,7 @@ void mesh_client_dfu_status_cb(uint8_t state, uint8_t *p_data, uint32_t data_len
     }
 
     EnterCriticalSection();
-    ret = mesh_client_dfu_start((uint8_t *)firmwareId.bytes, (uint8_t)firmwareId.length, (uint8_t *)validationData.bytes, (uint8_t)validationData.length, TRUE, self_distributor);
+    ret = mesh_client_dfu_start((uint8_t *)firmwareId.bytes, (uint8_t)firmwareId.length, (uint8_t *)metadata.bytes, (uint8_t)metadata.length, TRUE, self_distributor);
     LeaveCriticalSection();
     return ret;
 }
@@ -1864,6 +1869,7 @@ void mesh_client_dfu_status_cb(uint8_t state, uint8_t *p_data, uint32_t data_len
     mesh_client_dfu_ota_finish((uint8_t)status);
     LeaveCriticalSection();
 }
+#endif  // #ifdef MESH_DFU_ENABLED
 
 // Sensor APIs
 +(int) meshClientSensorCadenceGet:(NSString *)deviceName
@@ -2235,12 +2241,13 @@ uint32_t update_crc32(uint32_t crc, uint8_t *buf, uint32_t len)
     return update_crc32(crc, (uint8_t *)data.bytes, (uint32_t)data.length);
 }
 
-+(void) meshClientSetDfuFwMetadata:(NSData *)fwId validationData:(NSData *)validationData
+#ifdef MESH_DFU_ENABLED
++(void) meshClientSetDfuFwMetadata:(NSData *)fwId metadata:(NSData *)metadata
 {
     dfuFwIdLen = (uint32_t)fwId.length;
     memcpy(dfuFwId, fwId.bytes, dfuFwIdLen);
-    dfuValidationDataLen = (uint32_t)validationData.length;
-    memcpy(dfuValidationData, validationData.bytes, dfuValidationDataLen);
+    dfuMetadataDataLen = (uint32_t)metadata.length;
+    memcpy(dfuMetadataData, metadata.bytes, dfuMetadataDataLen);
 }
 
 +(void) meshClientClearDfuFwMetadata
@@ -2263,15 +2270,15 @@ uint32_t update_crc32(uint32_t crc, uint8_t *buf, uint32_t len)
     return [NSString stringWithUTF8String:(const char *)filePath];
 }
 
-void mesh_native_helper_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_meta_data, uint32_t *p_meta_data_len)
+void mesh_native_helper_read_dfu_metadata(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_metadata, uint32_t *p_metadata_len)
 {
     *p_fw_id_len = dfuFwIdLen;
-    *p_meta_data_len = dfuValidationDataLen;
+    *p_metadata_len = dfuMetadataDataLen;
     if (p_fw_id && dfuFwIdLen) {
         memcpy(p_fw_id, dfuFwId, dfuFwIdLen);
     }
-    if (p_meta_data && dfuValidationDataLen) {
-        memcpy(p_meta_data, dfuValidationData, dfuValidationDataLen);
+    if (p_metadata && dfuMetadataDataLen) {
+        memcpy(p_metadata, dfuMetadataData, dfuMetadataDataLen);
     }
 }
 
@@ -2330,6 +2337,7 @@ void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uin
         [handle closeFile];
     }
 }
+#endif  // #ifdef MESH_DFU_ENABLED
 
 /* This API is implemented for test purpose only. It is used in the Scan Provision Test function. */
 +(Boolean) isMeshClientProvisionKeyRefreshing
@@ -2379,6 +2387,7 @@ void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uin
     return nil;
 }
 
+#ifdef MESH_DFU_ENABLED
 void mesh_native_helper_start_ota_transfer_for_dfu(void)
 {
     WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_start_ota_transfer_for_dfu]\n");
@@ -2391,5 +2400,6 @@ wiced_bool_t mesh_native_helper_is_ota_supported_for_dfu(void)
     WICED_BT_TRACE("[MeshNativeHelper mesh_native_helper_is_ota_supported_for_dfu] is_ota_supported=%d\n", is_ota_supported);
     return is_ota_supported;
 }
+#endif  // #ifdef MESH_DFU_ENABLED
 
 @end

@@ -28,13 +28,17 @@
 		</dict>
 		<dict>
 			<key>Type</key>
-			<string>PSToggleSwitchSpecifier</string>
+			<string>PSTextFieldSpecifier</string>
 			<key>Title</key>
-			<string>Mesh DFU Enabled</string>
+			<string>Tracking Timer Interval (ms)</string>
 			<key>Key</key>
-			<string>mesh_dfu_enabled_preference</string>
+			<string>tracking_timer_interval</string>
 			<key>DefaultValue</key>
-			<true/>
+			<string>500</string>
+			<key>IsSecure</key>
+			<false/>
+			<key>KeyboardType</key>
+			<string>NumbersAndPunctuation</string>
 		</dict>
 	</array>
 </dict>

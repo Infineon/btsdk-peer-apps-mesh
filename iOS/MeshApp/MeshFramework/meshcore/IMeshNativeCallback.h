@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -78,7 +78,9 @@ NS_ASSUME_NONNULL_BEGIN
            targetTemperature:(uint16_t)targetTemperature
                remainingTime:(uint32_t)remainingTime;
 -(void) meshClientLightnessStateCb:(NSString *)deviceName target:(uint16_t)target present:(uint16_t)present remainingTime:(uint32_t)remainingTime;
+#ifdef MESH_DFU_ENABLED
 -(void) meshClientDfuStatusCb:(uint8_t)state data:(NSData *)data;
+#endif
 
 //GATT APIS
 -(Boolean) meshClientAdvScanStartCb;
@@ -95,8 +97,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 -(void) updateProvisionerUuid:(NSUUID *)uuid;
 
+#ifdef MESH_DFU_ENABLED
 -(void) meshClientStartOtaTransferForDfu;
 -(Boolean) meshClientIsOtaSupportedForDfu;
+#endif
 @end
 
 NS_ASSUME_NONNULL_END

@@ -1,9 +1,40 @@
+/*
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Cypress Semiconductor Corporation. All Rights Reserved.
+ *
+ * This software, including source code, documentation and related
+ * materials ("Software"), is owned by Cypress Semiconductor Corporation
+ * or one of its subsidiaries ("Cypress") and is protected by and subject to
+ * worldwide patent protection (United States and foreign),
+ * United States copyright laws and international treaty provisions.
+ * Therefore, you may use this Software only as provided in the license
+ * agreement accompanying the software package from which you
+ * obtained this Software ("EULA").
+ * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
+ * non-transferable license to copy, modify, and compile the Software
+ * source code solely for use in connection with Cypress's
+ * integrated circuit products. Any reproduction, modification, translation,
+ * compilation, or representation of this Software except as specified
+ * above is prohibited without the express written permission of Cypress.
+ *
+ * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Cypress
+ * reserves the right to make changes to the Software without notice. Cypress
+ * does not assume any liability arising out of the application or use of the
+ * Software or any product or circuit described in the Software. Cypress does
+ * not authorize its products for use in any products where a malfunction or
+ * failure of the Cypress product may reasonably be expected to result in
+ * significant property damage, injury or death ("High Risk Product"). By
+ * including Cypress's product in a High Risk Product, the manufacturer
+ * of such system or application assumes all risk of such use and in doing
+ * so agrees to indemnify Cypress against all liability.
+ */
 //
 //  MeshOtaDfuViewController.swift
 //  MeshApp
 //
 //  Created by Dudley Du on 2019/4/2.
-//  Copyright © 2019 Cypress Semiconductor. All rights reserved.
 //
 
 import UIKit
@@ -749,15 +780,15 @@ class MeshOtaDfuViewController: UIViewController {
         }
         if self.otaDfuMetadata == nil, let metadataFile = self.selectedMetadataImageName {
             self.otaDfuMetadata = OtaUpgrader.readParseMetadataImage(at: metadataFile)
-            if let metadata = self.otaDfuMetadata {
+            if let dfuMetadata = self.otaDfuMetadata {
                 meshLog("MeshOtaDfuViewController, onStartUpgradeButtonClick, read new firmwareFile=\(firmwareFile) metadataFile=\(metadataFile), DFU Type=\(selectedDfuType)")
-                meshLog("    Firmware ID: \(metadata.firwmareId.dumpHexBytes())")
-                if metadata.metadataVersion <= 2 {
-                    meshLog("    Company ID: \(String(format: "0x%04x", metadata.companyId)), Product ID: \(String(format: "0x%04x", metadata.productId)), Vednor ID: \(String(format: "0x%04x", metadata.hardwareVeresionId)), firmware version=\(metadata.firmwareVersionMajor).\(metadata.firmwareVersionMinor).\(metadata.firmwareVersionRevision)")
+                meshLog("    Firmware ID: \(dfuMetadata.firwmareId.dumpHexBytes())")
+                if dfuMetadata.metadataVersion <= 2 {
+                    meshLog("    Company ID: \(String(format: "0x%04x", dfuMetadata.companyId)), Product ID: \(String(format: "0x%04x", dfuMetadata.productId)), Vednor ID: \(String(format: "0x%04x", dfuMetadata.hardwareVeresionId)), firmware version=\(dfuMetadata.firmwareVersionMajor).\(dfuMetadata.firmwareVersionMinor).\(dfuMetadata.firmwareVersionRevision)")
                 } else {
-                    meshLog("    Company ID: \(String(format: "0x%04x", metadata.companyId)), Product ID: \(String(format: "0x%04x", metadata.productId)), Vednor ID: \(String(format: "0x%04x", metadata.hardwareVeresionId)), firmware version=\(metadata.firmwareVersionMajor).\(metadata.firmwareVersionMinor).\(metadata.firmwareVersionRevision).\(metadata.firmwareVersionBuild)")
+                    meshLog("    Company ID: \(String(format: "0x%04x", dfuMetadata.companyId)), Product ID: \(String(format: "0x%04x", dfuMetadata.productId)), Vednor ID: \(String(format: "0x%04x", dfuMetadata.hardwareVeresionId)), firmware version=\(dfuMetadata.firmwareVersionMajor).\(dfuMetadata.firmwareVersionMinor).\(dfuMetadata.firmwareVersionRevision).\(dfuMetadata.firmwareVersionBuild)")
                 }
-                meshLog("    Validation Data: \(metadata.validationData.dumpHexBytes())")
+                meshLog("    Metadata Data: \(dfuMetadata.metadata.dumpHexBytes())")
             }
         }
         // For APP_OTA_TO_DEVICE, the metadata file is not required., could be ignored.
@@ -784,7 +815,7 @@ class MeshOtaDfuViewController: UIViewController {
         } else {
             self.log("\(MeshDfuType.getDfuTypeText(type: selectedDfuType) ?? "DFU") process started")
         }
-        OtaUpgrader.shared.otaUpgradeDfuStart(for: otaDevice, dfuType: selectedDfuType, fwImage: otaDfuFirmware, metadata: self.otaDfuMetadata)
+        OtaUpgrader.shared.otaUpgradeDfuStart(for: otaDevice, dfuType: selectedDfuType, fwImage: otaDfuFirmware, dfuMetadata: self.otaDfuMetadata)
         self.otaUpdatedStarted = true
     }
 

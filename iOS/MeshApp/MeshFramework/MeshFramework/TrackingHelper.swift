@@ -1,5 +1,34 @@
 /*
- * Copyright Cypress Semiconductor
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Cypress Semiconductor Corporation. All Rights Reserved.
+ *
+ * This software, including source code, documentation and related
+ * materials ("Software"), is owned by Cypress Semiconductor Corporation
+ * or one of its subsidiaries ("Cypress") and is protected by and subject to
+ * worldwide patent protection (United States and foreign),
+ * United States copyright laws and international treaty provisions.
+ * Therefore, you may use this Software only as provided in the license
+ * agreement accompanying the software package from which you
+ * obtained this Software ("EULA").
+ * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
+ * non-transferable license to copy, modify, and compile the Software
+ * source code solely for use in connection with Cypress's
+ * integrated circuit products. Any reproduction, modification, translation,
+ * compilation, or representation of this Software except as specified
+ * above is prohibited without the express written permission of Cypress.
+ *
+ * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Cypress
+ * reserves the right to make changes to the Software without notice. Cypress
+ * does not assume any liability arising out of the application or use of the
+ * Software or any product or circuit described in the Software. Cypress does
+ * not authorize its products for use in any products where a malfunction or
+ * failure of the Cypress product may reasonably be expected to result in
+ * significant property damage, injury or death ("High Risk Product"). By
+ * including Cypress's product in a High Risk Product, the manufacturer
+ * of such system or application assumes all risk of such use and in doing
+ * so agrees to indemnify Cypress against all liability.
  */
 
 /** @file
@@ -29,8 +58,6 @@ open class TrackingHelper: NSObject {
         return tracking
     }
 
-    private static let TRACKING_TIMER_INTERVAL = 200  // unit: ms
-
     private func execute(reliable: Bool) {
         // For reliable message, always send it out even the data no changed.
         // Because last unreliable message maybe not received or processed by remote device.
@@ -38,7 +65,6 @@ open class TrackingHelper: NSObject {
             isValueChanged = true
         }
 
-        meshLog("TrackingHelper, execute, componentType=\(componentType)")
         switch componentType {
         case MeshConstants.MESH_COMPONENT_LIGHT_HSL:
             if let hslSet = self.hslSet, isValueChanged {
@@ -175,11 +201,10 @@ open class TrackingHelper: NSObject {
         }
     }
 
-
     private func _stopTracking() {
         stopTrackingTimer()
-        execute(reliable: true)
         mIsTracking = false
+        execute(reliable: true)
         levelSet = nil
         hslSet = nil
         lightnessSet = nil
@@ -197,15 +222,16 @@ open class TrackingHelper: NSObject {
     open func startTracking(componentType: Int) {
         lock.lock()
         if mIsTracking {
-            _stopTracking()
+            lock.unlock()
+            return  // the tracking has been started already, return early.
         }
 
+        // start a new tracking.
         mIsTracking = true
         self.componentType = componentType
         startTrackingTimer()
         lock.unlock()
     }
-
 
     @objc private func onTrackingTimerTimeout() {
         self.execute(reliable: false)
@@ -219,7 +245,16 @@ open class TrackingHelper: NSObject {
     private func startTrackingTimer() {
         stopTrackingTimer()
 
-        let interval = (TimeInterval(exactly: TrackingHelper.TRACKING_TIMER_INTERVAL) ?? 1000.0) / 1000.0   // convert to uint seconds from ms.
+        guard let tracking_timer_interval_str = UserDefaults.standard.string(forKey: "tracking_timer_interval"),
+            let tracking_timer_interval = Int(tracking_timer_interval_str),
+            tracking_timer_interval > 0 else {
+                // The tracking timer is not support or disabled (0 indicates disabled),
+                // so only when the tracking stopped, the control command will be really sent out.
+                mIsTracking = false
+                return
+        }
+
+        let interval = (TimeInterval(exactly: tracking_timer_interval) ?? 1000.0) / 1000.0
         if #available(iOS 10.0, *) {
             self.trackingTimer = Timer.scheduledTimer(withTimeInterval: interval,
                                                       repeats: true, block: { (Timer) in

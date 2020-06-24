@@ -1,3 +1,35 @@
+/*
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Cypress Semiconductor Corporation. All Rights Reserved.
+ *
+ * This software, including source code, documentation and related
+ * materials ("Software"), is owned by Cypress Semiconductor Corporation
+ * or one of its subsidiaries ("Cypress") and is protected by and subject to
+ * worldwide patent protection (United States and foreign),
+ * United States copyright laws and international treaty provisions.
+ * Therefore, you may use this Software only as provided in the license
+ * agreement accompanying the software package from which you
+ * obtained this Software ("EULA").
+ * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
+ * non-transferable license to copy, modify, and compile the Software
+ * source code solely for use in connection with Cypress's
+ * integrated circuit products. Any reproduction, modification, translation,
+ * compilation, or representation of this Software except as specified
+ * above is prohibited without the express written permission of Cypress.
+ *
+ * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Cypress
+ * reserves the right to make changes to the Software without notice. Cypress
+ * does not assume any liability arising out of the application or use of the
+ * Software or any product or circuit described in the Software. Cypress does
+ * not authorize its products for use in any products where a malfunction or
+ * failure of the Cypress product may reasonably be expected to result in
+ * significant property damage, injury or death ("High Risk Product"). By
+ * including Cypress's product in a High Risk Product, the manufacturer
+ * of such system or application assumes all risk of such use and in doing
+ * so agrees to indemnify Cypress against all liability.
+ */
 #include <jni.h>
 #include <android/log.h>
 #include <platform.h>
@@ -14,6 +46,11 @@
 #include <time.h>
 #include <pthread.h>
 #include <p_256_types.h>
+
+#ifdef MESH_DFU_ENABLED
+#include "wiced_bt_mesh_dfu.h"
+#include "wiced_mesh_client_dfu.h"
+#endif
 
 //#define LOG_TAG "Jni"
 #define  Log(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
@@ -40,9 +77,11 @@ static jmethodID meshClientLightnessStateCb;
 static jmethodID meshClientCtlStateCb;
 static jmethodID meshClientNodeConnectStateCb;
 static jmethodID meshClientDbStateCb;
+#ifdef MESH_DFU_ENABLED
 static jmethodID meshClientDfuIsOtaSupportedCb;
 static jmethodID meshClientDfuStartOtaCb;
 static jmethodID meshClientDfuStatusCb;
+#endif
 static jmethodID meshClientLinkStatusCb;
 static jmethodID meshClientNetworkOpenedCb;
 static jmethodID meshClientComponentInfoCb;
@@ -65,7 +104,9 @@ extern void MeshTimerFunc(long timer_id);
 extern pthread_mutex_t cs;
 
 static void create_prov_uuid(void);
+#ifdef MESH_DFU_ENABLED
 static wiced_bool_t read_json_file(const char* sFilePath,mesh_dfu_fw_id_t *fw_id, mesh_dfu_meta_data_t *meta_data);
+#endif
 static void unprovisioned_device(uint8_t *p_uuid, uint16_t oob, uint8_t *name, uint8_t name_len);
 
 typedef struct
@@ -301,6 +342,7 @@ void wiced_bt_get_fw_image_chunk(uint8_t partition, uint32_t offset, uint8_t *p_
     fclose(file);
 }
 
+#ifdef MESH_DFU_ENABLED
 wiced_bool_t wiced_bt_fw_is_ota_supported()
 {
     jboolean ota_supported;
@@ -320,6 +362,18 @@ void wiced_bt_fw_start_ota()
     (*env)->CallStaticVoidMethod(env, cls2, meshClientDfuStartOtaCb, dfu_firmware_file_name);
 }
 
+
+void mesh_client_dfu_status(uint8_t state, uint8_t *p_data, uint32_t data_len)
+{
+    Log("mesh_client_dfu_status: state:%x\n", state);
+    JNIEnv *env = AttachJava();
+    jclass cls2 = (*env)->FindClass(env,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
+    jbyte state_val = state;
+    jbyteArray data_val = (*env)->NewByteArray(env, data_len);
+    (*env)->SetByteArrayRegion(env, data_val, 0, data_len, p_data);
+    (*env)->CallStaticVoidMethod(env, cls2, meshClientDfuStatusCb, state_val, data_val);
+}
+#endif
 
 JNIEXPORT void JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_SendGattPktToCore(JNIEnv *env, jclass type, jshort opcode_,
@@ -389,16 +443,6 @@ void meshClientProvisionCompleted(uint8_t is_success, uint8_t *p_uuid) {
     (*env)->CallStaticVoidMethod(env, cls2, meshClientProvisionCompletedCb, isSuccess, data);
 }
 
-void mesh_client_dfu_status(uint8_t state, uint8_t *p_data, uint32_t data_len)
-{
-    Log("mesh_client_dfu_status: state:%x\n", state);
-    JNIEnv *env = AttachJava();
-    jclass cls2 = (*env)->FindClass(env,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
-    jbyte state_val = state;
-    jbyteArray data_val = (*env)->NewByteArray(env, data_len);
-    (*env)->SetByteArrayRegion(env, data_val, 0, data_len, p_data);
-    (*env)->CallStaticVoidMethod(env, cls2, meshClientDfuStatusCb, state_val, data_val);
-}
 
 /*
  * in general the application knows better when connection to the proxy is established or lost.
@@ -1866,11 +1910,11 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientAddComponentToGroup
     (*env)->ReleaseStringUTFChars(env, groupName_, groupName);
     return return_val;
 }
-
 JNIEXPORT jint JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuStart(JNIEnv *env, jclass type,
                                                                       jstring firmware_file_,
                                                                       jbyte dfuMethod) {
+#ifdef MESH_DFU_ENABLED
     int res;
     mesh_dfu_fw_id_t fw_id = {0};
     mesh_dfu_meta_data_t meta_data = {0};
@@ -1896,33 +1940,45 @@ Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuStart(JNIEnv *en
     (*env)->ReleaseStringUTFChars(env, firmware_file_, json_file);
 //    (*env)->ReleaseStringUTFChars(env, metadata_file_, metadata_file);
     return res;
+#else
+    return 0;
+#endif
 }
 
 JNIEXPORT jint JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuStop(JNIEnv *env, jclass type) {
+#ifdef MESH_DFU_ENABLED
     int res;
     pthread_mutex_lock(&cs);
     res = mesh_client_dfu_stop();
     pthread_mutex_unlock(&cs);
     return res;
+#else
+    return 0;
+#endif
 }
 
 JNIEXPORT void JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuOtaFinished(JNIEnv *env, jclass type, jbyte status) {
+#ifdef MESH_DFU_ENABLED
     Log("meshClientDfuOtaFinished: status = %d\n", status);
     pthread_mutex_lock(&cs);
     mesh_client_dfu_ota_finish(status);
     pthread_mutex_unlock(&cs);
+#endif
 }
 
 JNIEXPORT void JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientDfuGetStatus(JNIEnv *env, jclass type,
                                                                           jint status_interval) {
+#ifdef MESH_DFU_ENABLED
     pthread_mutex_lock(&cs);
     mesh_client_dfu_get_status(mesh_client_dfu_status, status_interval);
     pthread_mutex_unlock(&cs);
+#endif
 }
 
+#ifdef MESH_DFU_ENABLED
 static wiced_bool_t read_json_file(const char* sFilePath, mesh_dfu_fw_id_t *fw_id, mesh_dfu_meta_data_t *meta_data)
 {
     char rootPath[150]={0};
@@ -2019,6 +2075,7 @@ static wiced_bool_t read_json_file(const char* sFilePath, mesh_dfu_fw_id_t *fw_i
 //    fclose(p_file);
 //    return TRUE;
 }
+#endif
 
 JNIEXPORT jint JNICALL
 Java_com_cypress_le_mesh_meshcore_MeshNativeHelper_meshClientNetworkConnectionChanged(JNIEnv *env,
@@ -2396,6 +2453,7 @@ JNI_OnLoad(JavaVM *vm, void *reserved)
     meshGattDisconnectCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDisconnectCb", "(I)V");
     if(meshGattDisconnectCb == NULL) Log("meshGattDisconnectCb is null");
 
+#ifdef MESH_DFU_ENABLED
     meshClientDfuIsOtaSupportedCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDfuIsOtaSupportedCb", "()Z");
     if(meshClientDfuIsOtaSupportedCb == NULL) Log("meshClientDfuIsOtaSupportedCb is null");
 
@@ -2404,7 +2462,7 @@ JNI_OnLoad(JavaVM *vm, void *reserved)
 
     meshClientDfuStatusCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientDfuStatusCb", "(B[B)V");
     if(meshClientDfuStatusCb == NULL) Log("meshClientDfuStatusCb is null");
-
+#endif
     meshClientProvisionCompletedCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientProvisionCompletedCb", "(B[B)V");
     if(meshClientProvisionCompletedCb == NULL) Log("provisionCompletedCb is null");
 

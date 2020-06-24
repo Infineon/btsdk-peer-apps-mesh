@@ -1,26 +1,35 @@
 /*
-* Copyright 2017, Cypress Semiconductor Corporation or a subsidiary of Cypress Semiconductor
- *  Corporation. All rights reserved. This software, including source code, documentation and  related
- * materials ("Software"), is owned by Cypress Semiconductor  Corporation or one of its
- *  subsidiaries ("Cypress") and is protected by and subject to worldwide patent protection
- * (United States and foreign), United States copyright laws and international treaty provisions.
- * Therefore, you may use this Software only as provided in the license agreement accompanying the
- * software package from which you obtained this Software ("EULA"). If no EULA applies, Cypress
- * hereby grants you a personal, nonexclusive, non-transferable license to  copy, modify, and
- * compile the Software source code solely for use in connection with Cypress's  integrated circuit
- * products. Any reproduction, modification, translation, compilation,  or representation of this
- * Software except as specified above is prohibited without the express written permission of
- * Cypress. Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO  WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING,  BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY
- * AND FITNESS FOR A PARTICULAR PURPOSE. Cypress reserves the right to make changes to
- * the Software without notice. Cypress does not assume any liability arising out of the application
- * or use of the Software or any product or circuit  described in the Software. Cypress does
- * not authorize its products for use in any products where a malfunction or failure of the
- * Cypress product may reasonably be expected to result  in significant property damage, injury
- * or death ("High Risk Product"). By including Cypress's product in a High Risk Product, the
- *  manufacturer of such system or application assumes  all risk of such use and in doing so agrees
- * to indemnify Cypress against all liability.
-*/
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Cypress Semiconductor Corporation. All Rights Reserved.
+ *
+ * This software, including source code, documentation and related
+ * materials ("Software"), is owned by Cypress Semiconductor Corporation
+ * or one of its subsidiaries ("Cypress") and is protected by and subject to
+ * worldwide patent protection (United States and foreign),
+ * United States copyright laws and international treaty provisions.
+ * Therefore, you may use this Software only as provided in the license
+ * agreement accompanying the software package from which you
+ * obtained this Software ("EULA").
+ * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
+ * non-transferable license to copy, modify, and compile the Software
+ * source code solely for use in connection with Cypress's
+ * integrated circuit products. Any reproduction, modification, translation,
+ * compilation, or representation of this Software except as specified
+ * above is prohibited without the express written permission of Cypress.
+ *
+ * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Cypress
+ * reserves the right to make changes to the Software without notice. Cypress
+ * does not assume any liability arising out of the application or use of the
+ * Software or any product or circuit described in the Software. Cypress does
+ * not authorize its products for use in any products where a malfunction or
+ * failure of the Cypress product may reasonably be expected to result in
+ * significant property damage, injury or death ("High Risk Product"). By
+ * including Cypress's product in a High Risk Product, the manufacturer
+ * of such system or application assumes all risk of such use and in doing
+ * so agrees to indemnify Cypress against all liability.
+ */
 
 /** @file
  *
@@ -42,6 +51,12 @@
 
 #include <malloc.h>
 #include <wiced_bt_mesh_core.h>
+
+#ifdef MESH_DFU_ENABLED
+#include "wiced_bt_mesh_dfu.h"
+#include "wiced_mesh_client_dfu.h"
+#endif
+
 static void mesh_app_init(wiced_bool_t is_provisioned);
 static void mesh_provision_message_handler(uint16_t event, wiced_bt_mesh_event_t *p_event, void *p_data);
 static void mesh_config_message_handler(uint16_t event, wiced_bt_mesh_event_t *p_event, void *p_data);
@@ -112,8 +127,10 @@ wiced_bt_mesh_core_config_model_t   mesh_element1_models[] =
     WICED_BT_MESH_MODEL_LIGHT_HSL_CLIENT,
     WICED_BT_MESH_MODEL_SENSOR_CLIENT,
     WICED_BT_MESH_MODEL_LIGHT_LC_CLIENT,
+#ifdef MESH_DFU_ENABLED
     WICED_BT_MESH_MODEL_FW_DISTRIBUTION_CLIENT,
     WICED_BT_MESH_MODEL_BLOB_TRANSFER_CLIENT,
+#endif
 #ifdef MESH_VENDOR_MODEL_ID
     { MESH_VENDOR_COMPANY_ID, MESH_VENDOR_MODEL_ID, vendor_data_handler, NULL, NULL },
 #endif
@@ -322,8 +339,9 @@ void mesh_app_init(wiced_bool_t is_provisioned)
     wiced_bt_mesh_config_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_health_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_proxy_client_init(mesh_config_message_handler, is_provisioned);
+#ifdef MESH_DFU_ENABLED
     wiced_bt_mesh_model_fw_provider_init();
-
+#endif
     wiced_bt_mesh_model_property_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_onoff_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_level_client_init(0, mesh_control_message_handler, is_provisioned);

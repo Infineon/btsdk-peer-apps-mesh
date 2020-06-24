@@ -1,5 +1,5 @@
 /*
- * Copyright Cypress Semiconductor
+ *$ Copyright 2016-YEAR Cypress Semiconductor $
  */
 
 /** @file
@@ -34,6 +34,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 meshLog("Build: \(bundleVersion)")
                 UserDefaults.standard.set("Build \(bundleVersion)", forKey: "build_number_preference")
             }
+            let tracking_timer_interval_str = UserDefaults.standard.string(forKey: "tracking_timer_interval") ?? "500"
+            meshLog("Tracking Timer Interval: \(tracking_timer_interval_str)")
+            #if MESH_DFU_ENABLED
+            meshLog("MESH_DFU_ENABLED")
+            #else
+            UserDefaults.standard.set(false, forKey: "mesh_dfu_enabled_preference")
+            #endif
         }
 
         /// 1. Login automatically if App exist without logout, else show the login scene.

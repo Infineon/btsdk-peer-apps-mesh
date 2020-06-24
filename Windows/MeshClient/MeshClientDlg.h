@@ -1,5 +1,5 @@
 /*
-* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -41,6 +41,9 @@
 #include "afxcmn.h"
 #include "WsOtaDownloader.h"
 #include "wiced_bt_mesh_models.h"
+#ifdef MESH_DFU_ENABLED
+#include "wiced_bt_mesh_dfu.h"
+#endif
 
 
 #define WM_USER_PROXY_DATA              (WM_USER + (WICED_BT_MESH_CORE_UUID_CHARACTERISTIC_PROXY_DATA_OUT & 0xFF))
@@ -81,8 +84,10 @@ public:
     BOOL        m_bScanning;
     BOOL        m_bDfuStatus;
     CString     m_sDfuImageFilePath;
+#ifdef MESH_DFU_ENABLED
     mesh_dfu_fw_id_t        m_DfuFwId;
     mesh_dfu_meta_data_t    m_DfuMetaData;
+#endif
 
     void OnCancel();
     void SetDlgItemHex(DWORD id, DWORD val);
@@ -158,13 +163,15 @@ public:
     void CMeshClientDlg::updateProvisionerUuid();
     void SetHexValue(DWORD id, LPBYTE val, DWORD val_len);
     void OnNodeConnected();
+    BOOL IsOtaSupported();
+    void StartOta();
+#ifdef MESH_DFU_ENABLED
     BOOL ReadDfuManifestFile(CString sFilePath);
     uint32_t GetDfuImageSize();
     void GetDfuImageChunk(uint8_t *p_data, uint32_t offset, uint16_t data_len);
     BOOL GetDfuImageInfo(void *p_fw_id, void *p_va_data);
-    BOOL IsOtaSupported();
-    void StartOta();
     void OnDfuStatusCallback(uint8_t state, uint8_t* p_data, uint32_t data_length);
+#endif
 
 public:
     afx_msg void OnTimer(UINT_PTR nIDEvent);

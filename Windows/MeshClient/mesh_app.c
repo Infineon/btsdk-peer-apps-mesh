@@ -1,5 +1,5 @@
 /*
-* Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+* Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
 * Cypress Semiconductor Corporation. All Rights Reserved.
 *
 * This software, including source code, documentation and related
@@ -50,7 +50,9 @@
 #include "wiced_bt_trace.h"
 #include "wiced_bt_ble.h"
 #include "wiced_bt_gatt.h"
-
+#ifdef MESH_DFU_ENABLED
+#include "wiced_bt_mesh_dfu.h"
+#endif
 #include "wiced_bt_cfg.h"
 wiced_bt_cfg_settings_t wiced_bt_cfg_settings;
 
@@ -144,8 +146,10 @@ wiced_bt_mesh_core_config_model_t   mesh_element1_models[] =
     WICED_BT_MESH_MODEL_LIGHT_HSL_CLIENT,
     WICED_BT_MESH_MODEL_SENSOR_CLIENT,
     WICED_BT_MESH_MODEL_LIGHT_LC_CLIENT,
+#ifdef MESH_DFU_ENABLED
     WICED_BT_MESH_MODEL_FW_DISTRIBUTION_CLIENT,
     WICED_BT_MESH_MODEL_FW_DISTRIBUTOR,
+#endif
 #ifdef MESH_VENDOR_MODEL_ID
     { MESH_VENDOR_COMPANY_ID, MESH_VENDOR_MODEL_ID, vendor_data_handler, NULL, NULL },
 #endif
@@ -338,8 +342,10 @@ void mesh_app_init(wiced_bool_t is_provisioned)
     wiced_bt_mesh_config_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_health_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_proxy_client_init(mesh_config_message_handler, is_provisioned);
+#ifdef MESH_DFU_ENABLED
     wiced_bt_mesh_model_fw_provider_init();
     wiced_bt_mesh_model_fw_distribution_server_init();
+#endif
 
     wiced_bt_mesh_model_property_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_onoff_client_init(0, mesh_control_message_handler, is_provisioned);

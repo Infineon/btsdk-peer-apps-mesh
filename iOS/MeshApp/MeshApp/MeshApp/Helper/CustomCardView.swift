@@ -1,5 +1,5 @@
 /*
- * Copyright Cypress Semiconductor
+ *$ Copyright 2016-YEAR Cypress Semiconductor $
  */
 
 /** @file

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -78,7 +78,7 @@ typedef wiced_bool_t (*wiced_model_message_handler_t)(wiced_bt_mesh_event_t *p_e
 static wiced_bt_mesh_core_received_msg_handler_t get_msg_handler_callback(uint16_t company_id, uint16_t opcode, uint16_t *p_model_id, uint8_t* p_rpl_delay);
 static void mesh_start_stop_scan_callback(wiced_bool_t start, wiced_bool_t is_active);
 wiced_bool_t vendor_data_handler(wiced_bt_mesh_event_t *p_event, uint8_t *p_data, uint16_t data_len);
-extern void mesh_native_helper_read_dfu_meta_data(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_validation_data, uint32_t *p_validation_data_len);
+extern void mesh_native_helper_read_dfu_metadata(uint8_t *p_fw_id, uint32_t *p_fw_id_len, uint8_t *p_metadata_data, uint32_t *p_metadata_data_len);
 extern void mesh_native_helper_read_file_chunk(const char *p_path, uint8_t *p_data, uint32_t offset, uint16_t data_len);
 extern uint32_t mesh_native_helper_read_file_size(const char *p_path);
 extern void mesh_native_helper_start_ota_transfer_for_dfu(void);
@@ -146,8 +146,10 @@ wiced_bt_mesh_core_config_model_t   mesh_element1_models[] =
     WICED_BT_MESH_MODEL_LIGHT_HSL_CLIENT,
     WICED_BT_MESH_MODEL_SENSOR_CLIENT,
     WICED_BT_MESH_MODEL_LIGHT_LC_CLIENT,
+#ifdef MESH_DFU_ENABLED
     WICED_BT_MESH_MODEL_FW_DISTRIBUTION_CLIENT,
     WICED_BT_MESH_MODEL_FW_DISTRIBUTOR,
+#endif
 #ifdef MESH_VENDOR_MODEL_ID
     { MESH_VENDOR_COMPANY_ID, MESH_VENDOR_MODEL_ID, vendor_data_handler, NULL, NULL },
 #endif
@@ -325,8 +327,10 @@ void mesh_app_init(wiced_bool_t is_provisioned)
     wiced_bt_mesh_config_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_health_client_init(mesh_config_message_handler, is_provisioned);
     wiced_bt_mesh_proxy_client_init(mesh_config_message_handler, is_provisioned);
+#ifdef MESH_DFU_ENABLED
     wiced_bt_mesh_model_fw_provider_init();
     wiced_bt_mesh_model_fw_distribution_server_init();
+#endif
 
     wiced_bt_mesh_model_property_client_init(0, mesh_control_message_handler, is_provisioned);
     wiced_bt_mesh_model_onoff_client_init(0, mesh_control_message_handler, is_provisioned);
@@ -397,6 +401,7 @@ static uint32_t mesh_nvram_access(wiced_bool_t write, int inx, uint8_t* value, u
     return len;
 }
 
+#ifdef MESH_DFU_ENABLED
 char* filePath = NULL;
 void setDfuFilePath(char* dfuFilePath)
 {
@@ -438,19 +443,19 @@ void wiced_bt_get_fw_image_chunk(uint8_t partition, uint32_t offset, uint8_t *p_
     return GetDfuImageChunk(p_data, offset, data_len);
 }
 
-wiced_bool_t wiced_bt_get_upgrade_fw_info(uint32_t *p_fw_size, uint8_t *p_fw_id, uint8_t *p_fw_id_len, uint8_t *p_meta_data, uint8_t *p_meta_data_len)
+wiced_bool_t wiced_bt_get_upgrade_fw_info(uint32_t *p_fw_size, uint8_t *p_fw_id, uint8_t *p_fw_id_len, uint8_t *p_metadata, uint8_t *p_metadata_len)
 {
     mesh_dfu_fw_id_t fw_id;
-    mesh_dfu_meta_data_t meta_data;
+    mesh_dfu_metadata_t metadata;
     uint32_t fw_id_len = 0;
-    uint32_t meta_data_len = 0;
+    uint32_t metadata_len = 0;
 
-    mesh_native_helper_read_dfu_meta_data(fw_id.fw_id, (uint32_t *)&fw_id_len, meta_data.data, (uint32_t *)&meta_data_len);
-    if (!fw_id_len || !meta_data_len) {
+    mesh_native_helper_read_dfu_metadata(fw_id.fw_id, (uint32_t *)&fw_id_len, metadata.data, (uint32_t *)&metadata_len);
+    if (!fw_id_len || !metadata_len) {
         return WICED_FALSE;
     }
     fw_id.fw_id_len = (uint8_t)fw_id_len;
-    meta_data.len = (uint8_t)meta_data_len;
+    metadata.len = (uint8_t)metadata_len;
 
     if (p_fw_size) {
         *p_fw_size = wiced_bt_get_fw_image_size(PARTITION_UPGRADE);
@@ -464,12 +469,12 @@ wiced_bool_t wiced_bt_get_upgrade_fw_info(uint32_t *p_fw_size, uint8_t *p_fw_id,
         memcpy(p_fw_id, fw_id.fw_id, fw_id.fw_id_len);
     }
 
-    if (p_meta_data && p_meta_data_len) {
-        if (*p_meta_data_len < meta_data.len) {
+    if (p_metadata && p_metadata_len) {
+        if (*p_metadata_len < metadata.len) {
             return WICED_FALSE;
         }
-        *p_meta_data_len = meta_data.len;
-        memcpy(p_meta_data, meta_data.data, meta_data.len);
+        *p_metadata_len = metadata.len;
+        memcpy(p_metadata, metadata.data, metadata.len);
     }
     return WICED_TRUE;
 }
@@ -531,6 +536,7 @@ wiced_bool_t wiced_ota_fw_upgrade_set_transfer_mode(wiced_bool_t transfer_only, 
 {
     return WICED_TRUE;
 }
+#endif  // #ifdef MESH_DFU_ENABLED
 
 void mesh_core_state_changed(wiced_bt_mesh_core_state_type_t type, wiced_bt_mesh_core_state_t *p_state)
 {

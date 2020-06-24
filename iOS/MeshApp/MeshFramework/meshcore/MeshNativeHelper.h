@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -204,11 +204,13 @@ NS_ASSUME_NONNULL_BEGIN
 +(NSData * __nullable) meshClientOTADataEncrypt:(NSString *)componentName data:(NSData *)data;
 +(NSData * __nullable) meshClientOTADataDecrypt:(NSString *)componentName data:(NSData *)data;
 
+#ifdef MESH_DFU_ENABLED
 // DFU APIs
 +(int) meshClientDfuGetStatus:(int)interval;
-+(int) meshClientDfuStart:(int)dfuMethod firmwareId:(NSData *)firmwareId validationData:(NSData *)validationData;
++(int) meshClientDfuStart:(int)dfuMethod firmwareId:(NSData *)firmwareId metadata:(NSData *)metadata;
 +(int) meshClientDfuStop;
 +(void) meshClientDfuOtaFinish:(int)status;
+#endif
 
 // Sensor APIs
 +(int) meshClientSensorCadenceGet:(NSString *)deviceName
@@ -272,10 +274,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 +(uint32_t) updateCrc32:(uint32_t)crc data:(NSData *)data;
 
-+(void) meshClientSetDfuFwMetadata:(NSData *)fwId validationData:(NSData *)validationData;
+#ifdef MESH_DFU_ENABLED
++(void) meshClientSetDfuFwMetadata:(NSData *)fwId metadata:(NSData *)metadata;
 +(void) meshClientClearDfuFwMetadata;
 +(void) meshClientSetDfuFilePath:(NSString * __nullable)filePath;
 +(NSString *) meshClientGetDfuFilePath;
+#endif
 
 +(Boolean) isMeshClientProvisionKeyRefreshing;
 +(void) meshClientLog:(NSString *)message;

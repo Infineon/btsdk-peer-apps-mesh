@@ -72,6 +72,9 @@ public class MeshService extends Service {
     private MeshNativeHelper mMeshNativeHelper = null;
     private Timer            mTrackingTimer    = null;
 
+    private static long PrevTimeStamp = 0;
+    private static long CurrTimeStamp = 0;
+
     /* Mesh Client changes*/
     private String mCurrNetwork = null;
     IMeshControllerCallback mMeshControllerCb = null;
@@ -152,7 +155,7 @@ public class MeshService extends Service {
             public void run() {
                 mTrackingHelper.execute(false);
             }
-        }, 0, 100);
+        }, 0, 500);
     }
 
     void stopTracking() {
@@ -204,14 +207,18 @@ public class MeshService extends Service {
 
     int lightnessSet(String name, int lightness, boolean reliable, int transitionTime, short delay) {
         int res;
+        CurrTimeStamp = System.currentTimeMillis();
         if (!isConnectedToNetwork())
             return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         if (CURRENT_TRACKING_STATE == STATE_TRACKING) {
             mTrackingHelper.setTrackingType(TrackingHelper.TRACK_LIGHTNESS_SET);
             mTrackingHelper.LightnessSetMessage(name, lightness, transitionTime,delay);
             res = 1;
-        }
-        else {
+        } else if (CurrTimeStamp -PrevTimeStamp < 500){
+            Log.d(TAG, "do not send 2 or more commands in 500ms");
+            res = 1;
+        } else{
+            PrevTimeStamp = CurrTimeStamp;
             res = mMeshNativeHelper.meshClientLightnessSet(name, lightness, reliable, transitionTime,delay);
         }
         return res;
@@ -223,14 +230,18 @@ public class MeshService extends Service {
 
     int ctlSet(String name, int lightness, short temperature, short deltaUv, boolean reliable, int transitionTime, short delay) {
         int res;
+        CurrTimeStamp = System.currentTimeMillis();
         if (!isConnectedToNetwork())
             return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         if (CURRENT_TRACKING_STATE == STATE_TRACKING) {
             mTrackingHelper.setTrackingType(TrackingHelper.TRACK_CTL_SET);
             mTrackingHelper.CtlSetMessage(name, lightness, temperature, deltaUv, transitionTime,delay);
             res = 1;
-        }
-        else {
+        } else if (CurrTimeStamp -PrevTimeStamp < 500){
+            Log.d(TAG, "do not send 2 or more commands in 500ms");
+            res = 1;
+        } else{
+            PrevTimeStamp = CurrTimeStamp;
             res = mMeshNativeHelper.meshClientCtlSet(name, lightness, temperature, deltaUv, reliable, transitionTime,delay);
         }
         return res;
@@ -700,13 +711,18 @@ public class MeshService extends Service {
 
     int levelSet(String deviceName, short level, boolean reliable, int transitionTime, short delay) {
         int res;
+        CurrTimeStamp = System.currentTimeMillis();
         if(!isConnectedToNetwork())
             return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         if(CURRENT_TRACKING_STATE == STATE_TRACKING) {
             mTrackingHelper.setTrackingType(TrackingHelper.TRACK_LEVEL_SET);
             mTrackingHelper.levelSetMessage(deviceName, level, transitionTime, delay);
             res = 1;
-        } else {
+        } else if (CurrTimeStamp -PrevTimeStamp < 500){
+            Log.d(TAG, "do not send 2 or more commands in 500ms");
+            res = 1;
+        } else{
+            PrevTimeStamp = CurrTimeStamp;
             res = mMeshNativeHelper.meshClientLevelSet(deviceName, level, reliable, transitionTime, delay);
         }
         return res;
@@ -720,13 +736,18 @@ public class MeshService extends Service {
 
     int hslSet(String deviceName, int lightness, int hue, int saturation, boolean reliable, int transitionTime, short delay) {
         int res;
+        CurrTimeStamp = System.currentTimeMillis();
         if(!isConnectedToNetwork())
             return MeshController.MESH_CLIENT_ERR_NOT_CONNECTED;
         if(CURRENT_TRACKING_STATE == STATE_TRACKING) {
             mTrackingHelper.setTrackingType(TrackingHelper.TRACK_HSL_SET);
             mTrackingHelper.hslSetMessage(deviceName, (short)lightness, (short)hue, (short)saturation, transitionTime, delay);
             res = 1;
-        } else {
+        } else if (CurrTimeStamp -PrevTimeStamp < 500){
+            Log.d(TAG, "do not send 2 or more commands in 500ms");
+            res = 1;
+        } else{
+            PrevTimeStamp = CurrTimeStamp;
             res = mMeshNativeHelper.meshClientHslSet(deviceName, lightness, hue, saturation, reliable, transitionTime, delay);
         }
         return res;
