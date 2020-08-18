@@ -65,6 +65,8 @@
 		1865F5A8221D487000263C8B /* OtaConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1865F5A7221D487000263C8B /* OtaConstants.swift */; };
 		1865F5AC221D5D1400263C8B /* OtaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1865F5AB221D5D1400263C8B /* OtaManager.swift */; };
 		1865F5AE221E3D2700263C8B /* OtaDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1865F5AD221E3D2700263C8B /* OtaDevice.swift */; };
+		186706EF249C9C79001395C2 /* wiced_bt_mesh_dfu.h in Headers */ = {isa = PBXBuildFile; fileRef = 186706EE249C9C79001395C2 /* wiced_bt_mesh_dfu.h */; };
+		186706F5249C9D31001395C2 /* wiced_bt_mesh_model_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 186706F4249C9D31001395C2 /* wiced_bt_mesh_model_utils.h */; };
 		1868D95D2193E67300CC27FB /* MeshFramework.h in Headers */ = {isa = PBXBuildFile; fileRef = 1868D95B2193E67300CC27FB /* MeshFramework.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		1868D9642193E6A300CC27FB /* MeshFrameworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1868D9632193E6A300CC27FB /* MeshFrameworkManager.swift */; };
 		1868DB802194354B00CC27FB /* trace.c in Sources */ = {isa = PBXBuildFile; fileRef = 1868DB3D2194354A00CC27FB /* trace.c */; };
@@ -151,6 +153,8 @@
 		1865F5A7221D487000263C8B /* OtaConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtaConstants.swift; sourceTree = "<group>"; };
 		1865F5AB221D5D1400263C8B /* OtaManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtaManager.swift; sourceTree = "<group>"; };
 		1865F5AD221E3D2700263C8B /* OtaDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtaDevice.swift; sourceTree = "<group>"; };
+		186706EE249C9C79001395C2 /* wiced_bt_mesh_dfu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_dfu.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_dfu.h"; sourceTree = "<group>"; };
+		186706F4249C9D31001395C2 /* wiced_bt_mesh_model_utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = wiced_bt_mesh_model_utils.h; path = "../../../../../../../../../dev-kit/btsdk-include/wiced_bt_mesh_model_utils.h"; sourceTree = "<group>"; };
 		1868D9582193E67300CC27FB /* MeshFramework.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MeshFramework.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1868D95B2193E67300CC27FB /* MeshFramework.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MeshFramework.h; sourceTree = "<group>"; };
 		1868D95C2193E67300CC27FB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -360,8 +364,10 @@
 				1828D36B2384ECCB0006479C /* wiced_bt_mesh_cfg.h */,
 				1828D3632384ECCB0006479C /* wiced_bt_mesh_client.h */,
 				1828D36A2384ECCB0006479C /* wiced_bt_mesh_core.h */,
+				186706EE249C9C79001395C2 /* wiced_bt_mesh_dfu.h */,
 				1828D3622384ECCB0006479C /* wiced_bt_mesh_event.h */,
 				1828D3652384ECCB0006479C /* wiced_bt_mesh_model_defs.h */,
+				186706F4249C9D31001395C2 /* wiced_bt_mesh_model_utils.h */,
 				1828D3612384ECCB0006479C /* wiced_bt_mesh_models.h */,
 				1828D3672384ECCB0006479C /* wiced_bt_mesh_provision.h */,
 				1828D3692384ECCB0006479C /* wiced_bt_ota_firmware_upgrade.h */,
@@ -420,6 +426,7 @@
 				1868DBA72194354B00CC27FB /* MeshNativeHelper.h in Headers */,
 				1828D3762384ECCB0006479C /* wiced_bt_mesh_cfg.h in Headers */,
 				1828D32C2384EB6E0006479C /* wiced_bt_mesh_db.h in Headers */,
+				186706F5249C9D31001395C2 /* wiced_bt_mesh_model_utils.h in Headers */,
 				1828D36D2384ECCB0006479C /* wiced_bt_mesh_event.h in Headers */,
 				1828D3542384EC2E0006479C /* rtc.h in Headers */,
 				1828D3492384EC060006479C /* bt_types.h in Headers */,
@@ -450,6 +457,7 @@
 				186BF715238F741D0046247C /* brg_endian.h in Headers */,
 				186BF712238F741D0046247C /* ecdh.h in Headers */,
 				1828D3402384EBC20006479C /* wiced_bt_cfg.h in Headers */,
+				186706EF249C9C79001395C2 /* wiced_bt_mesh_dfu.h in Headers */,
 				1828D3712384ECCB0006479C /* wiced_firmware_upgrade.h in Headers */,
 				1828D3292384EB6E0006479C /* wiced_mesh_client.h in Headers */,
 				1828D3522384EC2E0006479C /* clock_timer.h in Headers */,

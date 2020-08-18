@@ -150,26 +150,31 @@ public interface IMeshControllerCallback {
      * OnOff status received from a component
      *
      * @param name  Name of the component which reported OnOff state change
-     * @param onOff Current OnOff State of the component
+     * @param targetOnOff Target OnOff state of the component
+     * @param presentOnOff Present OnOff state of the component
+     * @param remainingTime Transition time from present state to target state
      */
-    void onOnOffStateChanged(String name, byte onOff);
+    void onOnOffStateChanged(String name, byte targetOnOff, byte presentOnOff, int remainingTime);
 
     /**
      * Level status received from a component
      *
      * @param name  Name of the component to which reported the Level state change
-     * @param level Current Level State of the component
+     * @param targetLevel Target Level of the component
+     * @param presentLevel Present Level of the component
+     * @param remainingTime Transition time from present Level to target Level
      */
-    void onLevelStateChanged(String name, short level);
+    void onLevelStateChanged(String name, short targetLevel, short presentLevel, int remainingTime);
 
     /**
      * HSL status received from a component
      * @param name  Name of the component which reported HSL state change
      * @param lightness Current lightness of the component
      * @param hue Current hue of the component
-     * @param saturation Current saturation of the component
+     * @param remainingTime Transition time from present state to target state
+     *
      */
-    void onHslStateChanged(String name, int lightness, int hue, int saturation);
+    void onHslStateChanged(String name, int lightness, int hue, int saturation, int remainingTime);
 
     /**
      * Event triggered whenever MeshService is bound or unbound

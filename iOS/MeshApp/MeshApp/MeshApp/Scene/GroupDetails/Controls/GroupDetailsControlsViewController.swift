@@ -174,6 +174,18 @@ class GroupDetailsControlsViewController: UIViewController {
     let pickerTypeSuffixString: String = "  >"
 
     var trackingHelper: TrackingHelper = TrackingHelper()
+    private var onoffStateTimer: Timer?
+    private var levelStateTimer: Timer?
+    private var hslStateTimer: Timer?
+    private var ctlStateTimer: Timer?
+    private var lightnessStateTimer: Timer?
+    private enum StateTimerType {
+        case ONOFF_STATE_TIMER
+        case LEVEL_STATE_TIMER
+        case HSL_STATE_TIMER
+        case CTL_STATE_TIMER
+        case LIGHTNESS_STATE_TIMER
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -320,7 +332,14 @@ class GroupDetailsControlsViewController: UIViewController {
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_ON_OFF_STATUS):
             if let onOffStatus = MeshNotificationConstants.getOnOffStatus(userInfo: userInfo) {
                 meshLog("GroupDetailsControlsViewController, onOffStatusNotificationHandler, onOffStatus=\(onOffStatus)")
+
                 if onOffStatus.deviceName == self.deviceName {
+                    if self.onoffStateTimer?.isValid ?? false || MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: onOffStatus.remainingTime) != 0 {
+                        // wait the device completed the state convert, then try to get the final state again.
+                        self.startMeshGetTimer(type: StateTimerType.ONOFF_STATE_TIMER, remainingTime: onOffStatus.remainingTime)
+                        break;
+                    }
+
                     deviceIsOn = onOffStatus.isOn
                     // TODO[optional]: change the device icon images if required.
                     if let isOn = deviceIsOn {
@@ -352,11 +371,15 @@ class GroupDetailsControlsViewController: UIViewController {
             if let levelStatus = MeshNotificationConstants.getLevelStatus(userInfo: userInfo) {
                 meshLog("GroupDetailsControlsViewController, levelStatusNotificationHandler, levelStatus=\(levelStatus)")
 
-                if TrackingHelper.shared.isTracking {
-                    break  // avoid UI jump issue when UI value changed quickly by user.
-                }
-
                 if levelStatus.deviceName == self.deviceName {
+                    if TrackingHelper.shared.isTracking || self.levelStateTimer?.isValid ?? false {
+                        break  // avoid UI jump issue when UI value changed quickly by user.
+                    } else if MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: levelStatus.remainingTime) != 0 {
+                        // wait the device completed the state convert, then try to get the final state again.
+                        self.startMeshGetTimer(type: StateTimerType.LEVEL_STATE_TIMER, remainingTime: levelStatus.remainingTime)
+                        break;
+                    }
+
                     deviceIsOn = (levelStatus.level == 0) ? false : true
                     // TODO[optional]: change the device icon images if required.
                     if let isOn = deviceIsOn {
@@ -372,11 +395,15 @@ class GroupDetailsControlsViewController: UIViewController {
             if let hslStatus = MeshNotificationConstants.getHslStatus(userInfo: userInfo) {
                 meshLog("GroupDetailsControlsViewController, hslStatusNotificationHandler, hslStatus=\(hslStatus)")
 
-                if TrackingHelper.shared.isTracking {
-                    break  // avoid UI jump issue when UI value changed quickly by user.
-                }
-
                 if hslStatus.deviceName == self.deviceName {
+                    if TrackingHelper.shared.isTracking || self.hslStateTimer?.isValid ?? false {
+                        break  // avoid UI jump issue when UI value changed quickly by user.
+                    } else if MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: hslStatus.remainingTime) != 0 {
+                        // wait the device completed the state convert, then try to get the final state again.
+                        self.startMeshGetTimer(type: StateTimerType.HSL_STATE_TIMER, remainingTime: hslStatus.remainingTime)
+                        break;
+                    }
+
                     deviceIsOn = (hslStatus.lightness == 0) ? false : true
                     // TODO[optional]: change the device icon images if required.
                     if let isOn = deviceIsOn {
@@ -398,11 +425,15 @@ class GroupDetailsControlsViewController: UIViewController {
             if let ctlStatus = MeshNotificationConstants.getCtlStatus(userInfo: userInfo) {
                 meshLog("GroupDetailsControlsViewController, ctlStatusNotificationHandler, ctlStatus=\(ctlStatus)")
 
-                if TrackingHelper.shared.isTracking {
-                    break  // avoid UI jump issue when UI value changed quickly by user.
-                }
-
                 if ctlStatus.deviceName == self.deviceName {
+                    if TrackingHelper.shared.isTracking || self.ctlStateTimer?.isValid ?? false {
+                        break  // avoid UI jump issue when UI value changed quickly by user.
+                    } else if MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: ctlStatus.remainingTime) != 0 {
+                        // wait the device completed the state convert, then try to get the final state again.
+                        self.startMeshGetTimer(type: StateTimerType.CTL_STATE_TIMER, remainingTime: ctlStatus.remainingTime)
+                        break;
+                    }
+
                     deviceIsOn = (ctlStatus.targetLightness == 0) ? false : true
                     // TODO[optional]: change the device icon images if required.
                     if let isOn = deviceIsOn {
@@ -422,11 +453,15 @@ class GroupDetailsControlsViewController: UIViewController {
             if let lightnessStatus = MeshNotificationConstants.getLightnessStatus(userInfo: userInfo) {
                 meshLog("GroupDetailsControlsViewController, lightnessStatusNotificationHandler, lightnessStatus=\(lightnessStatus)")
 
-                if TrackingHelper.shared.isTracking {
-                    break  // avoid UI jump issue when UI value changed quickly by user.
-                }
-
                 if lightnessStatus.deviceName == self.deviceName {
+                    if TrackingHelper.shared.isTracking || self.lightnessStateTimer?.isValid ?? false {
+                        break  // avoid UI jump issue when UI value changed quickly by user.
+                    } else if MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: lightnessStatus.remainingTime) != 0 {
+                        // wait the device completed the state convert, then try to get the final state again.
+                        self.startMeshGetTimer(type: StateTimerType.LIGHTNESS_STATE_TIMER, remainingTime: lightnessStatus.remainingTime)
+                        break;
+                    }
+
                     deviceIsOn = (lightnessStatus.targetLightness == 0) ? false : true
                     // TODO[optional]: change the device icon images if required.
                     if let isOn = deviceIsOn {
@@ -568,6 +603,18 @@ class GroupDetailsControlsViewController: UIViewController {
     func trackingDataUpdate() {
         if !TrackingHelper.shared.isTracking {
             TrackingHelper.shared.startTracking(componentType: MeshControlPickerType.convertPickerTypeToMeshComponentType(pickerType: self.pickerType))
+
+            // User starts to do new operations on the UI, so should ignore previous end data.
+            switch self.pickerType {
+            case .LIGHT_HSL:
+                self.stopMeshGetTimer(type: StateTimerType.HSL_STATE_TIMER)
+            case .LIGHT_CTL:
+                self.stopMeshGetTimer(type: StateTimerType.CTL_STATE_TIMER)
+            case .LIGHT_DIMMABLE:
+                self.stopMeshGetTimer(type: StateTimerType.LIGHTNESS_STATE_TIMER)
+            default:
+                break
+            }
         }
 
         if let deviceName = self.deviceName {
@@ -912,6 +959,86 @@ extension GroupDetailsControlsViewController {
 
             meshLog("calculateCTLTempreture, temperature:\(String(describing: self.currentTemperatureValue)), LIGHT_TEMPERATURE_MIN:\(MeshAppConstants.LIGHT_TEMPERATURE_MIN)")
             meshLog("calculateCTLTempreture, positionYPoints:\(positionYPoints), maxYPoints:\(maxYPoints)")
+        }
+    }
+
+    /* functions aimed to try to keep the states between the UI and device as same as possible. */
+    private func meshGetState(type: StateTimerType) {
+        guard let deviceName = self.deviceName else {
+            meshLog("error: GroupDetailsControlsViewController, meshGetState, invalid deviceName, nil")
+            return
+        }
+        switch type {
+        case StateTimerType.ONOFF_STATE_TIMER:
+            let error = MeshFrameworkManager.shared.meshClientOnOffGet(deviceName: deviceName)
+            meshLog("GroupDetailsControlsViewController, meshGetState, meshClientOnOffGet(\(deviceName)), error=\(error)")
+        case StateTimerType.LEVEL_STATE_TIMER:
+            let error = MeshFrameworkManager.shared.meshClientLevelGet(deviceName: deviceName)
+            meshLog("GroupDetailsControlsViewController, meshGetState, meshClientLevelGet(\(deviceName)), error=\(error)")
+        case StateTimerType.HSL_STATE_TIMER:
+            let error = MeshFrameworkManager.shared.meshClientHslGet(deviceName: deviceName)
+            meshLog("GroupDetailsControlsViewController, meshGetState, meshClientHslGet(\(deviceName)), error=\(error)")
+        case StateTimerType.CTL_STATE_TIMER:
+            let error = MeshFrameworkManager.shared.meshClientCtlGet(deviceName: deviceName)
+            meshLog("GroupDetailsControlsViewController, meshGetState, meshClientCtlGet(\(deviceName)), error=\(error)")
+        case StateTimerType.LIGHTNESS_STATE_TIMER:
+            let error = MeshFrameworkManager.shared.meshClientLightnessGet(deviceName: deviceName)
+            meshLog("GroupDetailsControlsViewController, meshGetState, meshClientLightnessGet(\(deviceName)), error=\(error)")
+        }
+    }
+
+    //@objc
+    @objc private func onStateTimeout(timer: Timer) {
+        guard let type = timer.userInfo as? StateTimerType else {
+            return
+        }
+
+        self.meshGetState(type: type)
+        stopMeshGetTimer(type: type)
+    }
+
+    private func startMeshGetTimer(type: StateTimerType, remainingTime: UInt32) {
+        stopMeshGetTimer(type: type)
+
+        let remainingMs = MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: remainingTime)
+        let interval: TimeInterval = TimeInterval(exactly: Double(remainingMs) / 1000.0) ?? 0.0
+        if interval == 0 {
+            meshGetState(type: type)  // try to get the state immediately.
+            return
+        }
+
+        let stateTimer = Timer.scheduledTimer(timeInterval: interval, target: self, selector: #selector(onStateTimeout), userInfo: type, repeats: false)
+        switch type {
+        case StateTimerType.ONOFF_STATE_TIMER:
+            self.onoffStateTimer = stateTimer
+        case StateTimerType.LEVEL_STATE_TIMER:
+            self.levelStateTimer = stateTimer
+        case StateTimerType.HSL_STATE_TIMER:
+            self.hslStateTimer = stateTimer
+        case StateTimerType.CTL_STATE_TIMER:
+            self.ctlStateTimer = stateTimer
+        case StateTimerType.LIGHTNESS_STATE_TIMER:
+            self.lightnessStateTimer = stateTimer
+        }
+    }
+
+    private func stopMeshGetTimer(type: StateTimerType) {
+        switch type {
+        case StateTimerType.ONOFF_STATE_TIMER:
+            onoffStateTimer?.invalidate()
+            onoffStateTimer = nil
+        case StateTimerType.LEVEL_STATE_TIMER:
+            levelStateTimer?.invalidate()
+            levelStateTimer = nil
+        case StateTimerType.HSL_STATE_TIMER:
+            hslStateTimer?.invalidate()
+            hslStateTimer = nil
+        case StateTimerType.CTL_STATE_TIMER:
+            ctlStateTimer?.invalidate()
+            ctlStateTimer = nil
+        case StateTimerType.LIGHTNESS_STATE_TIMER:
+            lightnessStateTimer?.invalidate()
+            lightnessStateTimer = nil
         }
     }
 }

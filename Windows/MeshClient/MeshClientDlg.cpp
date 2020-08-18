@@ -619,7 +619,10 @@ BOOL CMeshClientDlg::OnInitDialog()
     SetDlgItemText(IDC_FILENAME, sHCDFileName);
 
     CString sStaticOobData = theApp.GetProfileString(L"LightControl", L"StaticOobData", L"");
-    SetDlgItemText(IDC_OOB_DATA, sStaticOobData);
+    if (sStaticOobData == "")
+        SetDlgItemText(IDC_OOB_DATA, L"00000000000000000102030405060708");
+    else
+        SetDlgItemText(IDC_OOB_DATA, sStaticOobData);
 
     BOOL bUseStaticOobData = theApp.GetProfileInt(L"LightControl", L"UseStaticOobData", 0);
     ((CButton *)GetDlgItem(IDC_STATIC_OOB_DATA))->SetCheck(bUseStaticOobData);

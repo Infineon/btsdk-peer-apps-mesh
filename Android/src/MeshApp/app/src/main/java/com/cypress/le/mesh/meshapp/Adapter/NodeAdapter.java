@@ -568,7 +568,7 @@ public class NodeAdapter extends BaseAdapter {
         Log.d(TAG, "sendHSLSet hue: "+hsl[0]+ " saturation"+hsl[1]*100+ " lightness"+hsl[2]*100);
         Thread t = new Thread(new Runnable() {
             public void run() {
-                service.onHslValueChange(mCompName, hue, saturation, lightness);
+                service.getMesh().hslSet(mCompName, lightness, hue, saturation, true, Constants.DEFAULT_TRANSITION_TIME, (short)0);
             }
         });
         t.start();

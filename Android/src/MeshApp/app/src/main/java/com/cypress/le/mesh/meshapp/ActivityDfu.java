@@ -623,15 +623,15 @@ public class ActivityDfu extends AppCompatActivity implements LightingService.IS
     }
 
     @Override
-    public void onHslStateChanged(String deviceName, final int lightness, int hue, int saturation) {
+    public void onHslStateChanged(String deviceName, final int lightness, int hue, int saturation, int remainingTime) {
     }
 
     @Override
-    public void onOnOffStateChanged(String deviceName, final byte onOff) {
+    public void onOnOffStateChanged(String deviceName, byte targetOnOff, byte presentOnOff, int remainingTime) {
     }
 
     @Override
-    public void onLevelStateChanged(String deviceName, final short level) {
+    public void onLevelStateChanged(String deviceName, short targetLevel, short presentLevel, int remainingTime) {
     }
 
     @Override

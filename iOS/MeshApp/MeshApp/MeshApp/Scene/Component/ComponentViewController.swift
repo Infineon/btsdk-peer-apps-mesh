@@ -668,9 +668,11 @@ class ComponentViewController: UIViewController {
             case .move:
                 onMovedToGroupHandler(.none, nil)
             default:
+                UtilityManager.showAlertDialogue(parentVC: self, message: "\"\(opType.rawValue)\" operation timeout.")
                 break
             }
         }
+        indicatorView.stopAnimating()
     }
 
     func getPopoverSelectionItemList(popoverType: PopoverType) -> [String]? {

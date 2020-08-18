@@ -735,7 +735,7 @@ public class ActivityGroup extends AppCompatActivity implements LightingService.
         Log.d(TAG, "sendHSLSet hue: "+hsl[0]+ " saturation"+hsl[1]*100+ " lightness"+hsl[2]*100);
         Thread t = new Thread(new Runnable() {
             public void run() {
-                serviceReference.onHslValueChange(groupName, hue, saturation, lightness);
+                serviceReference.onHslValueChange(groupName, lightness, hue, saturation);
             }
         });
         t.start();
@@ -887,18 +887,18 @@ public class ActivityGroup extends AppCompatActivity implements LightingService.
     }
 
     @Override
-    public void onHslStateChanged(final String deviceName, final int lightness, int hue, int saturation) {
-     //   show(" Received HSL :" + lightness + ", from :" + (deviceName), Toast.LENGTH_SHORT);
+    public void onHslStateChanged(final String deviceName, final int lightness, final int hue, final int saturation, final int remainingTime) {
+//        show(" Received HSL :" + " lightness:"+lightness + " hue" + hue + " saturation:" +saturation + " remaining time:" + remainingTime + ", from :" + (deviceName), Toast.LENGTH_SHORT);
     }
 
     @Override
-    public void onOnOffStateChanged(final String deviceName, final byte onOff) {
-        show(" Received Generic on/off :" + onOff + ", from :" + (deviceName), Toast.LENGTH_SHORT);
+    public void onOnOffStateChanged(final String deviceName, final byte targetOnOff, final byte presentOnOff, final int remainingTime) {
+        show(" Received Generic on/off :" + targetOnOff + ", from :" + (deviceName), Toast.LENGTH_SHORT);
     }
 
     @Override
-    public void onLevelStateChanged(final String deviceName, final short level) {
-        show(" Received level :" + level + ", from :" + (deviceName), Toast.LENGTH_SHORT);
+    public void onLevelStateChanged(final String deviceName, final short targetLevel, final short presentLevel, final int remainingTime) {
+        show(" Received level :" + targetLevel + ", from :" + (deviceName), Toast.LENGTH_SHORT);
     }
 
     @Override

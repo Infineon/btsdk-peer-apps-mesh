@@ -1661,9 +1661,9 @@ public class MeshAm extends Service {
         }
 
         @Override
-        public void onOnOffStateChanged(String name, byte onOff) {
+        public void onOnOffStateChanged(String name, byte targetOnOff, byte presentOnOff, int remainingTime) {
             if(pendingResult != null) {
-                String result = "name:"+name+", onoff:"+onOff;
+                String result = "name:"+name+", onoff:"+ targetOnOff;
                 pendingResult.setResultData(result);
                 pendingResult.finish();
                 pendingResult = null;
@@ -1671,9 +1671,9 @@ public class MeshAm extends Service {
         }
 
         @Override
-        public void onLevelStateChanged(String name, short level) {
+        public void onLevelStateChanged(String name, short targetLevel, short presentLevel, int remainingTime) {
             if(pendingResult != null) {
-                String result = "name:"+name+", level:"+level;
+                String result = "name:"+name+", level:"+ targetLevel;
                 pendingResult.setResultData(result);
                 pendingResult.finish();
                 pendingResult = null;
@@ -1681,9 +1681,9 @@ public class MeshAm extends Service {
         }
 
         @Override
-        public void onHslStateChanged(String name, int lightness, int hue, int saturation) {
+        public void onHslStateChanged(String name, int lightness, int hue, int saturation, int remainingTime) {
             if(pendingResult != null) {
-                String result = "name:"+name+", lightness:"+lightness+", hue:"+hue+", saturation:"+saturation;
+                String result = "name:"+name+", lightness:"+lightness+", hue:"+hue+", saturation:"+saturation+", remaining time:"+remainingTime;
                 pendingResult.setResultData(result);
                 pendingResult.finish();
                 pendingResult = null;

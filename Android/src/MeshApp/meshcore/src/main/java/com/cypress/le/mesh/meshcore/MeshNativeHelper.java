@@ -470,19 +470,19 @@ public class MeshNativeHelper {
 
     static void meshClientNetworkOpenedCb(byte status) {mCallback.onNetworkOpenedCb(status);}
 
-    static void meshClientOnOffStateCb(String deviceName, byte onOff) {
-        Log.d(TAG, "onoffStatus dev:"+deviceName+ " status:"+onOff);
-        mCallback.meshClientOnOffStateCb(deviceName, onOff);
+    static void meshClientOnOffStateCb(String deviceName, byte targetOnOff, byte presentOnOff, int remainingTime) {
+        Log.d(TAG, "onoffStatus dev:"+deviceName+ " target status:"+ targetOnOff + " present status:"+ presentOnOff +" remaining time:" + remainingTime);
+        mCallback.meshClientOnOffStateCb(deviceName, targetOnOff, presentOnOff, remainingTime);
     }
 
-    static void meshClientLevelStateCb(String deviceName, short level) {
-        Log.d(TAG, "meshClientLevelStateCb dev:"+deviceName+ " status:"+level);
-        mCallback.meshClientLevelStateCb(deviceName, level);
+    static void meshClientLevelStateCb(String deviceName, short targetLevel, short presentLevel, int remainingTime) {
+        Log.d(TAG, "meshClientLevelStateCb dev:"+deviceName+ " target level:"+ targetLevel + " present level:"+ presentLevel +" remaining time:" + remainingTime);
+        mCallback.meshClientLevelStateCb(deviceName, targetLevel, presentLevel, remainingTime);
     }
 
-    static void meshClientHslStateCb(String deviceName, int lightness, int hue, int saturation) {
-        Log.d(TAG, "meshClientHslStateCb dev:"+deviceName+ " lightness:"+lightness);
-        mCallback.meshClientHslStateCb(deviceName, lightness, hue, saturation);
+    static void meshClientHslStateCb(String deviceName, int lightness, int hue, int saturation, int remainingTime) {
+        Log.d(TAG, "meshClientHslStateCb dev:"+deviceName+ " lightness:"+lightness + " hue" + hue + " saturation:" +saturation + " remaining time:" + remainingTime);
+        mCallback.meshClientHslStateCb(deviceName, lightness, hue, saturation, remainingTime);
     }
 
     static void meshClientCtlStateCb(String deviceName, int presentLightness, short presentTemperature, int targetLightness, short targetTemperature, int remainingTime) {

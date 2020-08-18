@@ -172,28 +172,28 @@ class PublicationConfigureViewController: UIViewController {
 
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_ON_OFF_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getOnOffStatus(userInfo: userInfo) else { return }
-            meshLog("Device \"\(notificationStatus.deviceName)\" is \(notificationStatus.isOn ? "ON" : "OFF").")
-            self.log("Device \"\(notificationStatus.deviceName)\" is \(notificationStatus.isOn ? "ON" : "OFF").")
+            meshLog("Device \"\(notificationStatus.deviceName)\" is \(notificationStatus.isOn ? "ON" : "OFF"), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
+            self.log("Device \"\(notificationStatus.deviceName)\" is \(notificationStatus.isOn ? "ON" : "OFF"), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" is \(notificationStatus.isOn ? "ON" : "OFF").")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LEVEL_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getLevelStatus(userInfo: userInfo) else { return }
-            meshLog("Device \"\(notificationStatus.deviceName)\" level status is \(notificationStatus.level).")
-            self.log("Device \"\(notificationStatus.deviceName)\" level status is \(notificationStatus.level).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" level status is \(notificationStatus.level), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
+            self.log("Device \"\(notificationStatus.deviceName)\" level status is \(notificationStatus.level), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" level status is \(notificationStatus.level).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_LIGHTNESS_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getLightnessStatus(userInfo: userInfo) else { return }
-            meshLog("Device \"\(notificationStatus.deviceName)\" lightness status is \(notificationStatus.targetLightness).")
-            self.log("Device \"\(notificationStatus.deviceName)\" lightness status is \(notificationStatus.targetLightness).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" lightness status is \(notificationStatus.targetLightness), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
+            self.log("Device \"\(notificationStatus.deviceName)\" lightness status is \(notificationStatus.targetLightness), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" lightness status is \(notificationStatus.targetLightness).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_HSL_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getHslStatus(userInfo: userInfo) else { return }
-            meshLog("Device \"\(notificationStatus.deviceName)\" HSL status, hue: \(notificationStatus.hue), saturation: \(notificationStatus.saturation), lightness: \(notificationStatus.lightness).")
-            self.log("Device \"\(notificationStatus.deviceName)\" HSL status, hue: \(notificationStatus.hue), saturation: \(notificationStatus.saturation), lightness: \(notificationStatus.lightness).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" HSL status, hue: \(notificationStatus.hue), saturation: \(notificationStatus.saturation), lightness: \(notificationStatus.lightness), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
+            self.log("Device \"\(notificationStatus.deviceName)\" HSL status, hue: \(notificationStatus.hue), saturation: \(notificationStatus.saturation), lightness: \(notificationStatus.lightness), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" HSL status, hue: \(notificationStatus.hue), saturation: \(notificationStatus.saturation), lightness: \(notificationStatus.lightness).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_CTL_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getCtlStatus(userInfo: userInfo) else { return }
-            meshLog("Device \"\(notificationStatus.deviceName)\" CTL status, temperature: \(notificationStatus.targetTemperature), lightness: \(notificationStatus.targetLightness).")
-            self.log("Device \"\(notificationStatus.deviceName)\" CTL status, temperature: \(notificationStatus.targetTemperature), lightness: \(notificationStatus.targetLightness).")
+            meshLog("Device \"\(notificationStatus.deviceName)\" CTL status, temperature: \(notificationStatus.targetTemperature), lightness: \(notificationStatus.targetLightness), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
+            self.log("Device \"\(notificationStatus.deviceName)\" CTL status, temperature: \(notificationStatus.targetTemperature), lightness: \(notificationStatus.targetLightness), remainingTime: \(MeshConstants.meshTransitionTimeToMilliseconds(transitionTime: notificationStatus.remainingTime)).")
             //self.showToast(message: "Device \"\(notificationStatus.deviceName)\" CTL status, temperature: \(notificationStatus.targetTemperature), lightness: \(notificationStatus.targetLightness).")
         case Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_SENSOR_STATUS):
             guard let notificationStatus = MeshNotificationConstants.getSensorStatus(userInfo: userInfo) else { return }

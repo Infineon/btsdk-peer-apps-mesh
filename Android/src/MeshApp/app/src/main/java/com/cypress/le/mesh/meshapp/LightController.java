@@ -314,17 +314,17 @@ public class LightController extends AppCompatActivity implements View.OnClickLi
     }
 
     @Override
-    public void onHslStateChanged(String deviceName, int lightness, int hue, int saturation) {
+    public void onHslStateChanged(String deviceName, int lightness, int hue, int saturation, int remainingTime) {
 
     }
 
     @Override
-    public void onOnOffStateChanged(String deviceName, byte onOff) {
-        show("Light onoff status "+onOff, Toast.LENGTH_SHORT);
+    public void onOnOffStateChanged(final String deviceName, final byte targetOnOff, final byte presentOnOff, final int remainingTime) {
+        show("Light onoff status "+ targetOnOff, Toast.LENGTH_SHORT);
     }
 
     @Override
-    public void onLevelStateChanged(String deviceName, short level) {
+    public void onLevelStateChanged(String deviceName, short targetLevel, short presentLevel, int remainingTime) {
 
     }
 

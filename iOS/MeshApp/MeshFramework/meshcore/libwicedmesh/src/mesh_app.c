@@ -46,6 +46,11 @@
 #endif
 #include "mesh_main.h"
 #include "wiced_bt_ble.h"
+#include "wiced_mesh_client.h"
+#ifdef MESH_DFU_ENABLED
+#include "wiced_mesh_client_dfu.h"
+#include "wiced_bt_mesh_dfu.h"
+#endif
 #include "wiced_bt_mesh_cfg.h"
 #include "wiced_bt_mesh_core.h"
 #include "wiced_bt_mesh_models.h"

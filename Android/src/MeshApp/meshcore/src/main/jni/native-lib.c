@@ -490,9 +490,11 @@ void meshClientOnOffState(const char *device_name, uint8_t target, uint8_t prese
     JNIEnv *env = AttachJava();
     jstring deviceName;
     jclass cls2 = (*env)->FindClass(env,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
-    jbyte onoff = target;
+    jbyte targetOnOff = target;
+    jbyte presentOnOff = present;
+    jint remainingTime =  remaining_time;
     deviceName = (*env)->NewStringUTF(env, device_name);
-    (*env)->CallStaticVoidMethod(env, cls2, onOffStateCb, deviceName, onoff);
+    (*env)->CallStaticVoidMethod(env, cls2, onOffStateCb, deviceName, targetOnOff, presentOnOff, remainingTime);
 }
 
 void meshClientSensorState(const char *device_name, int property_id, uint8_t length, uint8_t *value)
@@ -542,9 +544,11 @@ void meshClientLevelState(const char *device_name, uint16_t target, uint16_t pre
     JNIEnv *env = AttachJava();
     jstring deviceName;
     jclass cls2 = (*env)->FindClass(env,"com/cypress/le/mesh/meshcore/MeshNativeHelper");
-    jshort level_val = target;
+    jshort targetLevel = target;
+    jshort presentLevel = present;
+    jint remainingTime = remaining_time;
     deviceName = (*env)->NewStringUTF(env, device_name);
-    (*env)->CallStaticVoidMethod(env, cls2, levelStateCb, deviceName, level_val);
+    (*env)->CallStaticVoidMethod(env, cls2, levelStateCb, deviceName, targetLevel, presentLevel, remainingTime);
 }
 
 void meshClientHslState(const char *device_name, uint16_t lightness, uint16_t hue, uint16_t saturation, uint32_t remaining_time) {
@@ -555,8 +559,9 @@ void meshClientHslState(const char *device_name, uint16_t lightness, uint16_t hu
     jint lightness_val = lightness;
     jint hue_val = hue;
     jint saturation_val = saturation;
+    jint remainingTime = remaining_time;
     deviceName = (*env)->NewStringUTF(env, device_name);
-    (*env)->CallStaticVoidMethod(env, cls2, meshClientHslStateCb, deviceName, lightness_val, hue_val, saturation_val);
+    (*env)->CallStaticVoidMethod(env, cls2, meshClientHslStateCb, deviceName, lightness_val, hue_val, saturation_val, remainingTime);
 }
 
 void meshClientCtlState(const char *device_name, uint16_t present_lightness, uint16_t present_temperature, uint16_t target_lightness, uint16_t target_temperature, uint32_t remaining_time) {
@@ -2466,13 +2471,13 @@ JNI_OnLoad(JavaVM *vm, void *reserved)
     meshClientProvisionCompletedCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientProvisionCompletedCb", "(B[B)V");
     if(meshClientProvisionCompletedCb == NULL) Log("provisionCompletedCb is null");
 
-    onOffStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientOnOffStateCb", "(Ljava/lang/String;B)V");
+    onOffStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientOnOffStateCb", "(Ljava/lang/String;BBI)V");
     if(onOffStateCb == NULL) Log("onOffStateCb is null");
 
-    levelStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLevelStateCb", "(Ljava/lang/String;S)V");
+    levelStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLevelStateCb", "(Ljava/lang/String;SSI)V");
     if(levelStateCb == NULL) Log("levelStateCb is null");
 
-    meshClientHslStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientHslStateCb", "(Ljava/lang/String;III)V");
+    meshClientHslStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientHslStateCb", "(Ljava/lang/String;IIII)V");
     if(meshClientHslStateCb == NULL) Log("meshClientHslStateCb is null");
 
     meshClientLightnessStateCb = (*sCallbackEnv)->GetStaticMethodID(sCallbackEnv, jniWrapperClass, "meshClientLightnessStateCb", "(Ljava/lang/String;III)V");

@@ -2311,15 +2311,16 @@ extension MeshFrameworkManager: IMeshNativeCallback {
                                                    MeshNotificationConstants.USER_INFO_KEY_REMAINING_TIME: UInt32(remainingTime)])
     }
 
-    public func meshClientHslStateCb(_ deviceName: String, lightness: UInt16, hue: UInt16, saturation: UInt16) {
-        meshLog("IMeshNativeCallback, meshClientHslStateCb, deviceName:\(deviceName), lightness:\(lightness), hue:\(hue), saturation:\(saturation)")
+    public func meshClientHslStateCb(_ deviceName: String, lightness: UInt16, hue: UInt16, saturation: UInt16, remainingTime: UInt32) {
+        meshLog("IMeshNativeCallback, meshClientHslStateCb, deviceName:\(deviceName), lightness:\(lightness), hue:\(hue), saturation:\(saturation), remainingTime:\(remainingTime)")
 
         NotificationCenter.default.post(name: Notification.Name(rawValue: MeshNotificationConstants.MESH_CLIENT_HSL_STATUS),
                                         object: nil,
                                         userInfo: [MeshNotificationConstants.USER_INFO_KEY_DEVICE_NAME: deviceName,
                                                    MeshNotificationConstants.USER_INFO_KEY_LIGHTNESS: Int(lightness),
                                                    MeshNotificationConstants.USER_INFO_KEY_HUE: Int(hue),
-                                                   MeshNotificationConstants.USER_INFO_KEY_SATURATION: Int(saturation)])
+                                                   MeshNotificationConstants.USER_INFO_KEY_SATURATION: Int(saturation),
+                                                   MeshNotificationConstants.USER_INFO_KEY_REMAINING_TIME: UInt32(remainingTime)])
     }
 
     public func meshClientCtlStateCb(_ deviceName: String, presentLightness: UInt16, presentTemperature: UInt16, targetLightness: UInt16, targetTemperature: UInt16, remainingTime: UInt32) {
@@ -2331,7 +2332,8 @@ extension MeshFrameworkManager: IMeshNativeCallback {
                                                    MeshNotificationConstants.USER_INFO_KEY_PRESENT_LIGHTNESS: Int(presentLightness),
                                                    MeshNotificationConstants.USER_INFO_KEY_PRESENT_TEMPERATURE: Int(presentTemperature),
                                                    MeshNotificationConstants.USER_INFO_KEY_TARGET_LIGHTNESS: Int(targetLightness),
-                                                   MeshNotificationConstants.USER_INFO_KEY_TARGET_TEMPERATURE: Int(targetTemperature)])
+                                                   MeshNotificationConstants.USER_INFO_KEY_TARGET_TEMPERATURE: Int(targetTemperature),
+                                                   MeshNotificationConstants.USER_INFO_KEY_REMAINING_TIME: UInt32(remainingTime)])
     }
 
     public func meshClientLightnessStateCb(_ deviceName: String, target: UInt16, present: UInt16, remainingTime: UInt32) {

@@ -70,7 +70,7 @@ NS_ASSUME_NONNULL_BEGIN
 -(void) meshClientProvisionCompletedCb:(uint8_t)status uuid:(NSUUID *)uuid;
 -(void) meshClientOnOffStateCb:(NSString *)deviceName target:(uint8_t)target present:(uint8_t)present remainingTime:(uint32_t)remainingTime;
 -(void) meshClientLevelStateCb:(NSString *)deviceName target:(int16_t)target present:(int16_t)present remainingTime:(uint32_t)remainingTime;
--(void) meshClientHslStateCb:(NSString *)deviceName lightness:(uint16_t)lightness hue:(uint16_t)hue saturation:(uint16_t)saturation;
+-(void) meshClientHslStateCb:(NSString *)deviceName lightness:(uint16_t)lightness hue:(uint16_t)hue saturation:(uint16_t)saturation remainingTime:(uint32_t)remainingTime;
 -(void) meshClientCtlStateCb:(NSString *)deviceName
             presentLightness:(uint16_t)presentLightness
           presentTemperature:(uint16_t)presentTemperature

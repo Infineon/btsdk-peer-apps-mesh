@@ -59,7 +59,51 @@ public struct MeshConstants {
     public static let MESH_DEFAULT_RETRANSMIT_COUNT            = Int(MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_RETRANSMIT_COUNT)
     public static let MESH_DEFAULT_RETRANSMIT_INTERVAL         = Int(MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_RETRANSMIT_INTERVAL)
     public static let MESH_DEFAULT_PUBLISH_TTL                 = Int(MESH_DEVICE_DEFAULT_CONFIG_PUBLISH_TTL)
-    public static let MESH_DEFAULT_TRANSITION_TIME: UInt32     = 0xFFFFFFFF
+    public static let MESH_DEFAULT_TRANSITION_TIME: UInt32     = 0xFFFFFFFF  // indicates the target device using its default transition time.
+                                                                             // if set value, per mesh sepc, the data format is:
+                                                                             //     bit0-5: transition number of steps; bit6-7: transition step resolution.
+    public static let MESH_TRANSITION_TIME_RESOLUTION_MASK: UInt32  = 0xC0
+    public static let MESH_TRANSITION_TIME_RESOLUTION_100MS: UInt32 = 0x00      // each step is 100 milliseconds.
+    public static let MESH_TRANSITION_TIME_RESOLUTION_1S: UInt32    = 0x40      // each step is 1 second.
+    public static let MESH_TRANSITION_TIME_RESOLUTION_10S: UInt32   = 0x80      // each step is 10 seconds.
+    public static let MESH_TRANSITION_TIME_RESOLUTION_10M: UInt32   = 0xC0      // each step is 10 minutes.
+    public static let MESH_TRANSITION_TIME_STEPS_MASK: UInt32       = 0x3F
+    public static let MESH_TRANSITION_TIME_STEPS_UNKNOWN: UInt32    = 0x3F
+    public static let MESH_TRANSITION_TIME_STEPS_MAX: UInt32        = 0x3E
+    public static func meshMillisecondsToTransitionTime(milliseconds: UInt32) -> UInt32 {
+        let maxSteps = MeshConstants.MESH_TRANSITION_TIME_STEPS_MAX
+        if milliseconds == 0xFFFFFFFF {
+            return UInt32(MeshConstants.MESH_TRANSITION_TIME_STEPS_UNKNOWN)
+        } else if milliseconds <= (maxSteps * 100) {
+            return ((milliseconds / 100) | MeshConstants.MESH_TRANSITION_TIME_RESOLUTION_100MS)
+        } else if milliseconds <= (maxSteps * 1000) {
+            return ((milliseconds / 1000) | MeshConstants.MESH_TRANSITION_TIME_RESOLUTION_1S)
+        } else if milliseconds <= (maxSteps * 10000) {
+            return ((milliseconds / 10000) | MeshConstants.MESH_TRANSITION_TIME_RESOLUTION_10S)
+        } else {
+            return (((milliseconds / 600000) & MeshConstants.MESH_TRANSITION_TIME_STEPS_MASK) | MeshConstants.MESH_TRANSITION_TIME_RESOLUTION_10M)
+        }
+    }
+    public static func meshTransitionTimeToMilliseconds(transitionTime: UInt32) -> Int {
+        let transition_time_resolution = transitionTime & MeshConstants.MESH_TRANSITION_TIME_RESOLUTION_MASK
+        var remaining_time  = Int(transitionTime & MeshConstants.MESH_TRANSITION_TIME_STEPS_MASK)
+        if remaining_time == 0 || remaining_time == MeshConstants.MESH_TRANSITION_TIME_STEPS_UNKNOWN {
+            return 0
+        }
+        switch transition_time_resolution {
+        case MESH_TRANSITION_TIME_RESOLUTION_100MS:
+            remaining_time = (remaining_time) * 100
+        case MESH_TRANSITION_TIME_RESOLUTION_1S:
+            remaining_time = (remaining_time) * 1000
+        case MESH_TRANSITION_TIME_RESOLUTION_10S:
+            remaining_time = (remaining_time) * 101000
+        case MESH_TRANSITION_TIME_RESOLUTION_10M:
+            remaining_time = (remaining_time) * 600000
+        default:
+            break  // never happen.
+        }
+        return remaining_time
+    }
 
     // Public BLE device address, just a placeholder, useless.
     public static let MESH_DEFAULT_PERIPHERAL_BDADDR_TYPE: UInt8    = 0
@@ -68,7 +112,7 @@ public struct MeshConstants {
     public static let MESH_DEFAULT_COMPONENT_CONNECT_USE_PROXY      = true
 
     // See <<Mesh Model>> section 3.1.3 and 3.2.1.2 about the detail of the values of transition time and delay.
-    public static let MESH_DEFAULT_ONOFF_TRANSITION_TIME: UInt32    = 0xFFFFFFFF     // bit0-5: transition number of steps; bit6-7: transition step resolution.
+    public static let MESH_DEFAULT_ONOFF_TRANSITION_TIME: UInt32    = MeshConstants.MESH_DEFAULT_TRANSITION_TIME
     public static let MESH_DEFAULT_ONOFF_DELAY                      = 0     // uint: ms, must be multiple of 5 millisecond (one step is 5 millisecond).
 
     // Currently, with the support of the mesh library, only one connection can be established at any time between the provisioner and target mesh device.
@@ -423,7 +467,7 @@ public struct MeshNotificationConstants {
     public static let USER_INFO_KEY_LIGHTNESS           = "lightness"           // value type: Int, raw data type: Int16
     public static let USER_INFO_KEY_HUE                 = "hue"                 // value type: Int, raw data type: Int16
     public static let USER_INFO_KEY_SATURATION          = "saturation"          // value type: Int, raw data type: Int16
-    public static func getHslStatus(userInfo: [AnyHashable: Any]) -> (deviceName: String, lightness: Int, hue: Int, saturation: Int)? {
+    public static func getHslStatus(userInfo: [AnyHashable: Any]) -> (deviceName: String, lightness: Int, hue: Int, saturation: Int, remainingTime: UInt32)? {
         guard let userInfo = userInfo as? [String: Any] else {
             return nil
         }
@@ -431,6 +475,7 @@ public struct MeshNotificationConstants {
         var lightness: Int?
         var hue: Int?
         var saturation: Int?
+        var remainingTime: UInt32?
         for (key, value) in userInfo {
             if key == MeshNotificationConstants.USER_INFO_KEY_DEVICE_NAME, value is String, let value = value as? String, !value.isEmpty {
                 deviceName = value
@@ -440,12 +485,14 @@ public struct MeshNotificationConstants {
                 hue = value
             } else if key == MeshNotificationConstants.USER_INFO_KEY_SATURATION, value is Int, let value = value as? Int {
                 saturation = value
-            }
+            } else if key == MeshNotificationConstants.USER_INFO_KEY_REMAINING_TIME, value is UInt32, let value = value as? UInt32 {
+               remainingTime = value
+           }
         }
-        guard let _ = deviceName, let _ = lightness, let _ = hue, let _ = saturation else {
+        guard let _ = deviceName, let _ = lightness, let _ = hue, let _ = saturation, let _ = remainingTime else {
             return nil
         }
-        return (deviceName!, lightness!, hue!, saturation!)
+        return (deviceName!, lightness!, hue!, saturation!, remainingTime!)
     }
 
     public static let MESH_CLIENT_CTL_STATUS                = "meshClientCtlStatusNotification"
@@ -453,7 +500,7 @@ public struct MeshNotificationConstants {
     public static let USER_INFO_KEY_PRESENT_TEMPERATURE     = "presentTemperature"          // value type: Int, raw data type: Int16
     public static let USER_INFO_KEY_TARGET_LIGHTNESS        = "targetLightness"             // value type: Int, raw data type: Int16
     public static let USER_INFO_KEY_TARGET_TEMPERATURE      = "targetTemperature"           // value type: Int, raw data type: Int16
-    public static func getCtlStatus(userInfo: [AnyHashable: Any]) -> (deviceName: String, presentLightness: Int, presentTemperature: Int, targetLightness: Int, targetTemperature: Int)? {
+    public static func getCtlStatus(userInfo: [AnyHashable: Any]) -> (deviceName: String, presentLightness: Int, presentTemperature: Int, targetLightness: Int, targetTemperature: Int, remainingTime: UInt32)? {
         guard let userInfo = userInfo as? [String: Any] else {
             return nil
         }
@@ -462,6 +509,7 @@ public struct MeshNotificationConstants {
         var presentTemperature: Int?
         var targetLightness: Int?
         var targetTemperature: Int?
+        var remainingTime: UInt32?
         for (key, value) in userInfo {
             if key == MeshNotificationConstants.USER_INFO_KEY_DEVICE_NAME, value is String, let value = value as? String, !value.isEmpty {
                 deviceName = value
@@ -473,12 +521,14 @@ public struct MeshNotificationConstants {
                 targetLightness = value
             } else if key == MeshNotificationConstants.USER_INFO_KEY_TARGET_TEMPERATURE, value is Int, let value = value as? Int {
                 targetTemperature = value
-            }
+            } else if key == MeshNotificationConstants.USER_INFO_KEY_REMAINING_TIME, value is UInt32, let value = value as? UInt32 {
+               remainingTime = value
+           }
         }
-        guard let _ = deviceName, let _ = presentLightness, let _ = presentTemperature, let _ = targetLightness, let _ = targetTemperature else {
+        guard let _ = deviceName, let _ = presentLightness, let _ = presentTemperature, let _ = targetLightness, let _ = targetTemperature, let _ = remainingTime else {
             return nil
         }
-        return (deviceName!, presentLightness!, presentTemperature!, targetLightness!, targetTemperature!)
+        return (deviceName!, presentLightness!, presentTemperature!, targetLightness!, targetTemperature!, remainingTime!)
     }
 
     public static let MESH_CLIENT_LIGHTNESS_STATUS                = "meshClientLightnessStatusNotification"

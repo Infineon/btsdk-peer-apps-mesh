@@ -430,7 +430,7 @@ public class ActivityModel extends AppCompatActivity implements IServiceCallback
     }
 
     @Override
-    public void onHslStateChanged(String deviceName, final int lightness, int hue, final int saturation) {
+    public void onHslStateChanged(final String deviceName, final int lightness, final int hue, final int saturation, final int remainingTime) {
         final int lightnessVal, hueVal, saturationVal;
         lightnessVal = Math.round((100 * lightness) / (float)65535);
         hueVal = Math.round((360 * hue) / (float)65535);
@@ -445,24 +445,24 @@ public class ActivityModel extends AppCompatActivity implements IServiceCallback
     }
 
     @Override
-    public void onOnOffStateChanged(String deviceName, final byte onOff) {
-        show("onOnOffStateChanged : "+onOff,Toast.LENGTH_SHORT);
+    public void onOnOffStateChanged(final String deviceName, final byte targetOnOff, final byte presentOnOff, final int remainingTime) {
+        show("onOnOffStateChanged : "+ targetOnOff, Toast.LENGTH_SHORT);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                statusTxt.append("\n"+"On Off Status : "+onOff);
+                statusTxt.append("\n"+"On Off Status : "+ targetOnOff);
             }
         });
     }
 
     @Override
-    public void onLevelStateChanged(String deviceName, final short level) {
-        show("onLevelStateChanged : "+level,
+    public void onLevelStateChanged(final String deviceName, final short targetLevel, final short presentLevel, final int remainingTime) {
+        show("onLevelStateChanged : "+ targetLevel,
                 Toast.LENGTH_SHORT);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                statusTxt.append("\n"+"Level Status : "+level);
+                statusTxt.append("\n"+"Level Status : "+ targetLevel);
             }
         });
     }

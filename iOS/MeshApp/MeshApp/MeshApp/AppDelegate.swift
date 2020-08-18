@@ -35,6 +35,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 UserDefaults.standard.set("Build \(bundleVersion)", forKey: "build_number_preference")
             }
             let tracking_timer_interval_str = UserDefaults.standard.string(forKey: "tracking_timer_interval") ?? "500"
+            UserDefaults.standard.set("\(tracking_timer_interval_str)", forKey: "tracking_timer_interval")
             meshLog("Tracking Timer Interval: \(tracking_timer_interval_str)")
             #if MESH_DFU_ENABLED
             meshLog("MESH_DFU_ENABLED")

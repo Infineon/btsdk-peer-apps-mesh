@@ -853,18 +853,18 @@ public class MeshService extends Service {
         }
 
         @Override
-        public void meshClientOnOffStateCb(String deviceName, byte onOff) {
-            mMeshControllerCb.onOnOffStateChanged(deviceName, onOff);
+        public void meshClientOnOffStateCb(String deviceName, byte targetOnOff, byte presentOnOff, int remainingTime) {
+            mMeshControllerCb.onOnOffStateChanged(deviceName, targetOnOff, presentOnOff, remainingTime);
         }
 
         @Override
-        public void meshClientLevelStateCb(String deviceName, short level) {
-            mMeshControllerCb.onLevelStateChanged(deviceName, level);
+        public void meshClientLevelStateCb(String deviceName, short targetLevel, short presentLevel, int remainingTime) {
+            mMeshControllerCb.onLevelStateChanged(deviceName, targetLevel, presentLevel, remainingTime);
         }
 
         @Override
-        public void meshClientHslStateCb(String deviceName, int lightness, int hue, int saturation) {
-            mMeshControllerCb.onHslStateChanged(deviceName, lightness, hue, saturation);
+        public void meshClientHslStateCb(String deviceName, int lightness, int hue, int saturation, int remainingTime) {
+            mMeshControllerCb.onHslStateChanged(deviceName, lightness, hue, saturation, remainingTime);
         }
 
         @Override

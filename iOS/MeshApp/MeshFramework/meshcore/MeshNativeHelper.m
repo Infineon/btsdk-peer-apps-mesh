@@ -22,6 +22,10 @@
 #import "wiced_bt_mesh_provision.h"
 #import "wiced_bt_mesh_db.h"
 #import "wiced_mesh_client.h"
+#ifdef MESH_DFU_ENABLED
+#import "wiced_mesh_client_dfu.h"
+#import "wiced_bt_mesh_dfu.h"
+#endif
 #import <CommonCrypto/CommonDigest.h>
 
 extern void mesh_application_init(void);
@@ -192,7 +196,7 @@ void meshClientHslState(const char *device_name, uint16_t lightness, uint16_t hu
     WICED_BT_TRACE("[MeshNativeHelper meshClientHslState] device_name: %s, lightness: %u, hue: %u, saturation: %u, remaining_time: %u\n",
           device_name, lightness, hue, saturation, remaining_time);
     [nativeCallbackDelegate meshClientHslStateCb:[NSString stringWithUTF8String:(const char *)device_name]
-                                       lightness:lightness hue:hue saturation:saturation];
+                                       lightness:lightness hue:hue saturation:saturation remainingTime:remaining_time];
 }
 
 void meshClientCtlState(const char *device_name, uint16_t present_lightness, uint16_t present_temperature, uint16_t target_lightness, uint16_t target_temperature, uint32_t remaining_time)

@@ -42,9 +42,9 @@ public interface IMeshNativeCallback {
     void onLightLcPropertyStatus(String deviceName, int propertyId, int value);
 
     void meshClientProvisionCompletedCb(byte isSuccess, byte[] uuid);
-    void meshClientOnOffStateCb(String deviceName, byte onOff);
-    void meshClientLevelStateCb(String deviceName, short level);
-    void meshClientHslStateCb(String deviceName, int lightness, int hue, int saturation);
+    void meshClientOnOffStateCb(String deviceName, byte targetOnOff, byte presentOnOff, int remainingTime);
+    void meshClientLevelStateCb(String deviceName, short targetLevel, short presentLevel, int remainingTime);
+    void meshClientHslStateCb(String deviceName, int lightness, int hue, int saturation, int remainingTime);
     void meshClientCtlStateCb(String deviceName, int presentLightness, short presentTemperature, int targetLightness, short targetTemperature, int remainingTime);
     void meshClientLightnessStateCb(String deviceName, int target, int present, int remainingTime);
     boolean meshClientDfuIsOtaSupportedCb();

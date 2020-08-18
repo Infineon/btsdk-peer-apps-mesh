@@ -360,7 +360,7 @@ public class LightingService extends Service implements IMeshControllerCallback 
         mMesh.levelSet(deviceName, (short)level, true, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
     }
 
-    public void onHslValueChange(String deviceName, int hue, int saturation, int lightness) {
+    public void onHslValueChange(String deviceName, int lightness, int hue, int saturation) {
         Log.d(TAG, "onHslValueChange device=" + deviceName);
         mMesh.hslSet(deviceName, (short)lightness, (short)hue, (short)saturation, false, Constants.DEFAULT_TRANSITION_TIME, (short) 0);
     }
@@ -475,26 +475,26 @@ public class LightingService extends Service implements IMeshControllerCallback 
     }
 
     @Override
-    public void onOnOffStateChanged(String deviceName, byte onOff) {
-        Log.d(TAG, "onOnOffStateChanged Name: "+deviceName);
+    public void onOnOffStateChanged(String deviceName, byte targetOnOff, byte presentOnOff, int remainingTime) {
+        Log.d(TAG, "onOnOffStateChanged Name: "+ deviceName);
 //        if(ACK_NEEDED) {
 //            if(!groups.contains(deviceName))
-//                mCallback.onOnOffStateChanged(deviceName, onOff);
+//                mCallback.onOnOffStateChanged(deviceName, targetOnOff, presentOnOff, remainingTime);
 //        }
 
-        mCallback.onOnOffStateChanged(deviceName, onOff);
+        mCallback.onOnOffStateChanged(deviceName, targetOnOff, presentOnOff, remainingTime);
     }
 
     @Override
-    public void onLevelStateChanged(String deviceName, short level) {
+    public void onLevelStateChanged(String deviceName, short targetLevel, short presentLevel, int remainingTime) {
         Log.d(TAG, "onLevelStateChanged");
-        mCallback.onLevelStateChanged(deviceName, level);
+        mCallback.onLevelStateChanged(deviceName, targetLevel, presentLevel,remainingTime);
     }
 
     @Override
-    public void onHslStateChanged(String deviceName, int lightness, int hue, int saturation) {
+    public void onHslStateChanged(String deviceName, int lightness, int hue, int saturation, int remainingTime) {
         Log.d(TAG, "onHslStateChanged");
-        mCallback.onHslStateChanged(deviceName, lightness, hue, saturation);
+        mCallback.onHslStateChanged(deviceName, lightness, hue, saturation, remainingTime);
     }
 
     @Override
@@ -646,9 +646,9 @@ public class LightingService extends Service implements IMeshControllerCallback 
         void onMeshServiceStatusChangeCb(int status);
         void onDeviceFound(UUID uuid, String name);
         void onProvisionComplete(UUID device, byte status);
-        void onHslStateChanged(String deviceName, int lightness, int hue, int saturation);
-        void onOnOffStateChanged(String deviceName, byte onOff);
-        void onLevelStateChanged(String deviceName, short level);
+        void onHslStateChanged(String deviceName, int lightness, int hue, int saturation, int remainingTime);
+        void onOnOffStateChanged(String deviceName, byte targetOnOff, byte presentOnOff, int remainingTime);
+        void onLevelStateChanged(String deviceName, short targetLevel, short presentLevel, int remainingTime);
         void onNetworkConnectionStatusChanged(byte transport, byte status);
         void onCtlStateChanged(String deviceName, int presentLightness, short presentTemperature, int targetLightness, short targetTemperature, int remainingTime);
         void onNodeConnStateChanged(byte isConnected, String componentName);
